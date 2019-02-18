@@ -1,0 +1,45 @@
+<div class="team_selector filter_block">
+  <h4 class="title"><strong>Team</strong></h4>
+  <h6 class="clear">Clear</h6>
+  <%= select_tag "team", options_from_collection_for_select(@teams, :id, :name, current_user.current_team_id),{'data-select-all-button': 'All teams'}  %>
+</div>
+
+<div class="date_selector filter_block">
+  <h4 class="title"><strong>Activity created</strong></h4>
+
+  <div class="date_selector">
+    <div class="hot_buttons">
+      <div class="hot_button btn btn-default" data-period="today" >Today</div>
+      <div class="hot_button btn btn-default" data-period="yesterday">Yesterday</div>
+      <div class="hot_button btn btn-default" data-period="this_week">This week</div>
+      <div class="hot_button btn btn-default" data-period="last_week">Last week</div>
+      <div class="hot_button btn btn-default" data-period="this_month">This month</div>
+      <div class="hot_button btn btn-default" data-period="last_month">Last month</div>
+    </div>
+    <div class="from">
+      <%= render partial: "date_picker", locals: {id: 'from_date', label: false} %>
+    </div>
+    <div class="separator"></div>
+    <div class="to">
+      <%= render partial: "date_picker", locals: {id: 'to_date', label: false} %>
+    </div>
+  </div>
+</div>
+
+<div class="activity_selector filter_block">
+  <h4 class="title"><strong>Activity type</strong></h4>
+  <h6 class="clear">Clear</h6>
+  <%= select_tag "activity", options_for_select(@activity_types.map{|i| [i[:name], i[:id]]}),{'data-select-all-button': 'All activities', 'data-select-all': 'true'}  %>
+</div>
+
+<div class="user_selector filter_block">
+  <h4 class="title"><strong>User</strong></h4>
+  <h6 class="clear">Clear</h6>
+  <%= select_tag "user", options_for_select(@users.map{|i| [i['full_name'], i['id']]}),{'data-select-all-button': 'All users', 'data-select-all': 'true'}  %>
+</div>
+
+<div class="subject_selector filter_block">
+  <h4 class="title"><strong>Object</strong></h4>
+  <h6 class="clear">Clear</h6>
+  <select name="subject" data-select-all="false"></select>
+</div>

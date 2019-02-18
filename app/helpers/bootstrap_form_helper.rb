@@ -22,6 +22,7 @@ module BootstrapFormHelper
     def datetime_picker(name, options = {})
       id = "#{@object_name}_#{name.to_s}"
       input_name = "#{@object_name}[#{name.to_s}]"
+      p 
       timestamp = @object[name] ? "#{@object[name].to_i}000" : ""
       js_locale = I18n.locale.to_s
       js_format = I18n.backend.date_format.dup

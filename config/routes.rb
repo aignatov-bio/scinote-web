@@ -637,7 +637,9 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :global_activities, only: [:index]
+  resources :global_activities, only: [:index] do
+    get :test_query, on: :collection
+  end
 
   constraints WopiSubdomain do
     # Office integration

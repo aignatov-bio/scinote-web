@@ -6,6 +6,8 @@ class Team < ApplicationRecord
   # output in space_taken related functions
   include ActionView::Helpers::NumberHelper
 
+  scope :teams_select, -> { select(:id,:name).order(name: :asc) }
+
   auto_strip_attributes :name, :description, nullify: false
   validates :name,
             length: { minimum: Constants::NAME_MIN_LENGTH,

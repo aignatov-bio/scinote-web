@@ -1,0 +1,13 @@
+<div class="datetime_picker_container" id="<%= id %>">
+  <% if label %>
+    <label class="control-label required" for="calendar_from"><%= label %></label>
+  <% end %>
+  <input type="datetime" class="form-control" name="calendar[<%= id %>]" id="calendar_<%= id %>" readonly="" data-ts="">
+  <script type="text/javascript">
+    $(function () { 
+      var dt = $('#calendar_<%= id %>'); 
+      dt.datetimepicker({ ignoreReadonly: true, locale: 'en', format: 'MM/DD/YYYY' }); 
+      $('#calendar_<%= id %>').data('DateTimePicker').date(new Date)
+    });
+  </script>
+</div>

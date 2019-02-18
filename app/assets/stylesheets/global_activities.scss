@@ -1,0 +1,143 @@
+@import 'constants';
+@import "mixins";
+
+.global-activities__side{
+  .filter_block{
+    width:100%;
+    padding:10px;
+    padding-right:0;
+    .title{
+      float:left;
+      line-height:20px;
+    }
+    .clear{
+      float:right;
+      line-height:12px;
+      padding-top:8px;
+      cursor:pointer;
+    }
+    select{
+      width:100%;
+    }
+  }
+  .date_selector{
+    width:100%;
+    position:relative;
+    display:inline-block;
+    .hot_buttons{
+      width:100%;
+      margin-bottom:10px;
+      display:inline-block;
+      .hot_button{
+        width:calc(50% - 25px);
+        margin:5px;
+        float:left;
+        border:0;
+        text-align: left;
+        cursor:pointer;
+        &:nth-child(even){
+          margin-left:20px
+        }
+        &:nth-child(odd){
+          margin-right:20px
+        }
+
+      }
+    }
+    .from,.to{
+      width:calc(50% - 15px);
+      float:left;
+      position:relative;
+    }
+    .separator{
+      float:left;
+      position:relative;
+      height:2px;
+      width:10px;
+      margin:16px 10px;
+      background: $color-alto;
+    }
+  }
+}
+
+.datetime_picker_container{
+  position:relative;
+  width:100%;
+}
+
+.select2-container{
+  .select2-selection{
+    max-height:23px;
+    overflow:hidden;
+    position:relative;
+    &.select2-selection--multiple{
+      border: 1px solid $color-alto;
+    }
+    .select2-selection__rendered{
+      width:200%;
+    }
+    .select2-selection__choice{
+      background:$color-concrete;
+      border: 1px solid $color-alto;
+      .select2-selection__choice__remove{
+        float:right;
+        margin:0;
+        margin-left:5px;
+      }
+    }
+  }
+  .select2-dropdown{
+    border: 1px solid $color-alto;
+    border-top: 0;
+    .select2_select_all{
+      cursor:pointer;
+      width:100%;
+      padding:5px;
+      line-height:20px;
+      text-align:center;
+      border: 0;
+      border-bottom:1px solid $color-alto;
+      border-radius: 0;
+    }
+    .select2-results__option[role="group"]{
+      strong{
+        font-size:$font-size-base;
+        &:hover{
+          //background:#e6e6e6;
+          //cursor:pointer;
+        }
+      }
+    }
+    .select2-results__option[role="treeitem"]{
+      padding-left:30px;
+      line-height:18px;
+      position:relative;
+      &:before{
+        content:'';
+        position:absolute;
+        margin:9px;
+        width:12px;
+        height:12px;
+        border:1px solid $color-emperor;
+        border-radius: 6px;
+        left:0px;
+        top:0px;
+        background: $color-white;
+        transition: 0.3s;
+      }
+      &[aria-selected="true"]{
+        background: $color-concrete !important;
+        &:before{
+          background: $color-emperor;
+        }
+      }
+      &.select2-results__option--highlighted{
+        background: none;
+        color: inherit;
+      }
+      &:hover{
+        background: $color-alto !important;
+      }
+    }
+  }
+}

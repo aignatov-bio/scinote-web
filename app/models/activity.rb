@@ -70,6 +70,11 @@ class Activity < ApplicationRecord
   belongs_to :my_module, inverse_of: :activities, optional: true
   belongs_to :user, inverse_of: :activities
 
+  def self.activity_types_list
+    type_ofs.map{|key,value| {:id => value, :name => key.gsub('_',' ').capitalize}}
+            .sort{|a,b| a[:name] <=> b[:name]}
+  end
+
   private
 
   def generate_notification
