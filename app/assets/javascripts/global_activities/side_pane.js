@@ -1,16 +1,18 @@
 $.fn.extend({
-  select2Multiple: function(ajax, customSelection) {
+  select2Multiple: function(config = {}) {
     var select2 = this.select2({
       closeOnSelect: false,
       multiple: true,
-      ajax: ajax,
-      templateSelection: customSelection
+      ajax: config.ajax,
+      templateSelection: config.customSelection
     });
     // select all check
+    this[0].dataset.singleDisplay=config.singleDisplay || false
     if (this[0].dataset.selectAll === 'true') {
       $.each($(this).find('option'), (index, e) => { e.selected = true; });
       this.trigger('change');
     }
+    select2.updateSingleName()
     return select2
       // Adding select all button
       .on('select2:open', function() {
@@ -51,10 +53,27 @@ $.fn.extend({
       .on('select2:select select2:unselect', function(e) {
         $('.select2-selection').scrollTo(0);
         $('.select2-results__options').scrollTop($(e.currentTarget).data('scrolltop'));
+        $(this).updateSingleName()
       });
   },
   select2MultipleClearAll: function() {
     $(this).val([]).trigger('change');
+  },
+  updateSingleName: function() {
+    var selectElement=this
+    var selectedOptions=selectElement.next().find('.select2-selection__choice')
+    var optionsCounter=selectedOptions.length
+    var allOptionsSelected= this.find('option').length == optionsCounter
+    var optionText=allOptionsSelected ? this[0].dataset.selectMultipleAllSelected : optionsCounter+" "+this[0].dataset.selectMultipleName
+    if (optionsCounter > 1){
+      selectedOptions.remove()
+      template='<li class="select2-selection__choice">'+
+                  '<span class="select2-selection__choice__remove" role="presentation">×</span>'+
+                    optionText+
+                '</li>'
+      $(template).prependTo(selectElement.next().find('.select2-selection__rendered')).find('.select2-selection__choice__remove')
+                 .click(function(){ selectElement.select2MultipleClearAll() })
+    }
   }
 });
 
@@ -98,13 +117,13 @@ $(function() {
   };
   // Common selection intialize
   $.each(selectors, (index, e) => {
-    $('.global-activities__side .' + e + '-selector select').select2Multiple();
+    $('.global-activities__side .' + e + '-selector select').select2Multiple({ singleDisplay: true});
     $('.global-activities__side .' + e + '-selector .clear').click(function() {
       $('.global-activities__side .' + e + '-selector select').select2MultipleClearAll();
     });
   });
   // Object selection intialize
-  $('.global-activities__side .subject-selector select').select2Multiple(subjectAjaxQuery, subjectCustomDisplay);
+  $('.global-activities__side .subject-selector select').select2Multiple({ ajax: subjectAjaxQuery, customSelection: subjectCustomDisplay});
   $('.global-activities__side .subject-selector .clear').click(function() {
     $('.global-activities__side .subject-selector select').select2MultipleClearAll();
   });

@@ -1,7 +1,11 @@
 <div class="team-selector filter-block">
   <h4 class="title"><strong>Team</strong></h4>
   <h6 class="clear">Clear</h6>
-  <%= select_tag "team", options_from_collection_for_select(@teams, :id, :name, current_user.current_team_id),{'data-select-all-button': 'All teams'} %>
+  <%= select_tag "team", options_from_collection_for_select(@teams, :id, :name, current_user.current_team_id),{
+      'data-select-all-button': 'All teams',
+      'data-select-multiple-name': 'teams',
+      'data-select-multiple-all-selected': 'All teams'
+    } %>
 </div>
 
 <div class="date-selector filter-block">
@@ -29,13 +33,23 @@
 <div class="activity-selector filter-block">
   <h4 class="title"><strong>Activity type</strong></h4>
   <h6 class="clear">Clear</h6>
-  <%= select_tag "activity", options_for_select(@activity_types.map{|i| [i[:name], i[:id]]}),{'data-select-all-button': 'All activities', 'data-select-all': 'true'} %>
+  <%= select_tag "activity", options_for_select(@activity_types.map{|i| [i[:name], i[:id]]}),{
+      'data-select-all-button': 'All activities', 
+      'data-select-all': 'true',
+      'data-select-multiple-name': 'activities',
+      'data-select-multiple-all-selected': 'All activities'
+    } %>
 </div>
 
 <div class="user-selector filter-block">
   <h4 class="title"><strong>User</strong></h4>
   <h6 class="clear">Clear</h6>
-  <%= select_tag "user", options_for_select(@users.map{|i| [i['full_name'], i['id']]}),{'data-select-all-button': 'All users', 'data-select-all': 'true'} %>
+  <%= select_tag "user", options_for_select(@users.map{|i| [i['full_name'], i['id']]}),{
+      'data-select-all-button': 'All users', 
+      'data-select-all': 'true',
+      'data-select-multiple-name': 'users',
+      'data-select-multiple-all-selected': 'All users'
+    } %>
 </div>
 
 <div class="subject-selector filter-block">

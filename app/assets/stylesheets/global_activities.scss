@@ -40,6 +40,7 @@
         float: left;
         margin: 5px;
         text-align: left;
+        width:calc(50% - 25px);
 
         &:nth-child(even) {
           margin-left: 20px;
