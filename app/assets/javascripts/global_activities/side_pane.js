@@ -13,7 +13,7 @@ $.fn.extend({
     }
     return select2
       // Adding select all button
-      .on('select2:close select2:open', function() {
+      .on('select2:open', function() {
         var selectElement = this;
         $('.select2-selection').scrollTo(0);
         $('.select2_select_all').remove();
@@ -24,11 +24,11 @@ $.fn.extend({
             $(selectElement).val(elementsToSelect).trigger('change');
             $(selectElement).select2('close');
             $(selectElement).select2('open');
-          }).hover(function() {
-            $('.select2-results__option').removeClass('select2-results__option--highlighted');
           });
         }
-        // Prevent shake bug with multiple select
+      })
+      // Prevent shake bug with multiple select
+      .on('select2:open select2:close', function() {
         if ($(this).val() != null && $(this).val().length > 3) {
           $(this).next().find('.select2-search__field')[0].disabled = true;
         } else {
@@ -41,7 +41,6 @@ $.fn.extend({
         if (resultWindow.length === 0) {
           $(this).select2('open');
         }
-        $('.select2-results__option').removeClass('select2-results__option--highlighted');
       })
       // Fxied scroll bug
       .on('select2:selecting select2:unselecting', function(e) {
@@ -52,13 +51,17 @@ $.fn.extend({
       .on('select2:select select2:unselect', function(e) {
         $('.select2-selection').scrollTo(0);
         $('.select2-results__options').scrollTop($(e.currentTarget).data('scrolltop'));
-        $('.select2-results__option').removeClass('select2-results__option--highlighted');
       });
   },
   select2MultipleClearAll: function() {
     $(this).val([]).trigger('change');
   }
 });
+
+Date.prototype.date_to_string = function() {
+  return this.getFullYear() + '-' + (this.getMonth() + 1) + '-' + this.getDate();
+};
+
 
 $(function() {
   var selectors = ['team', 'activity', 'user'];
@@ -71,47 +74,53 @@ $(function() {
         search_query: params.term // search term
       };
     },
+    // preparing results
     processResults: function(data) {
       var result = [];
       $.each(data, (key, items) => {
-        var update_items=items.map( item => { return {
-          id: key + '_' + item.id, 
-          text: item.name,
-          label: key
-        }})
-        result.push({ text: key, children: update_items })
+        var updateItems = items.map(item => {
+          return {
+            id: key + '_' + item.id,
+            text: item.name,
+            label: key
+          };
+        });
+        result.push({ text: key, children: updateItems });
       });
       return {
         results: result
       };
     }
   };
+  // custom display function
   var subjectCustomDisplay = (state) => {
-    return state.label + ': ' + state.text
-  }
+    return state.label + ': ' + state.text;
+  };
+  // Common selection intialize
   $.each(selectors, (index, e) => {
-    $('.global-activities__side .' + e + '_selector select').select2Multiple();
-    $('.global-activities__side .' + e + '_selector .clear').click(function() {
-      $('.global-activities__side .' + e + '_selector select').select2MultipleClearAll();
+    $('.global-activities__side .' + e + '-selector select').select2Multiple();
+    $('.global-activities__side .' + e + '-selector .clear').click(function() {
+      $('.global-activities__side .' + e + '-selector select').select2MultipleClearAll();
     });
   });
-  $('.global-activities__side .subject_selector select').select2Multiple(subjectAjaxQuery,subjectCustomDisplay);
-  $('.global-activities__side .subject_selector .clear').click(function() {
-    $('.global-activities__side .subject_selector select').select2MultipleClearAll();
+  // Object selection intialize
+  $('.global-activities__side .subject-selector select').select2Multiple(subjectAjaxQuery, subjectCustomDisplay);
+  $('.global-activities__side .subject-selector .clear').click(function() {
+    $('.global-activities__side .subject-selector select').select2MultipleClearAll();
   });
 
-  $('#calendar_from_date').on('dp.change', function(e) {
-    $('#calendar_to_date').data('DateTimePicker').minDate(e.date);
+  $('#calendar-from-date').on('dp.change', function(e) {
+    $('#calendar-to-date').data('DateTimePicker').minDate(e.date);
   });
-  $('#calendar_to_date').on('dp.change', function(e) {
-    $('#calendar_from_date').data('DateTimePicker').maxDate(e.date);
-  });  
+  $('#calendar-to-date').on('dp.change', function(e) {
+    $('#calendar-from-date').data('DateTimePicker').maxDate(e.date);
+  });
 });
 
-$('.date_selector .hot_button').click(function() {
+$('.date-selector .hot-button').click(function() {
   var selectPeriod = this.dataset.period;
-  var fromDate = $('#calendar_from_date').data('DateTimePicker');
-  var toDate = $('#calendar_to_date').data('DateTimePicker');
+  var fromDate = $('#calendar-from-date').data('DateTimePicker');
+  var toDate = $('#calendar-to-date').data('DateTimePicker');
   var today = new Date();
   var yesterday = new Date(new Date().setDate(today.getDate() - 1));
   var weekDay = today.getDay();
@@ -120,7 +129,7 @@ $('.date_selector .hot_button').click(function() {
   var lastWeek = new Date(new Date().setDate(today.getDate() - 6));
   var firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
   var lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  var lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+  var lastMonth = new Date(new Date().setDate(today.getDate() - 30));
   if (selectPeriod === 'today') {
     toDate.date(today);
     fromDate.date(today);
@@ -143,7 +152,30 @@ $('.date_selector .hot_button').click(function() {
 });
 
 function GlobalActivitiesFiltersGetDates() {
-  var fromDate = new Date($('#calendar_from_date').val()).toGMTString();
-  var toDate = new Date($('#calendar_to_date').val() + ' 23:59:59').toGMTString();
+  var fromDate = $('#calendar-from-date').data('DateTimePicker').date()._d.date_to_string();
+  var toDate = $('#calendar-to-date').data('DateTimePicker').date()._d.date_to_string();
   return { from: fromDate, to: toDate };
+}
+
+function GlobalActivitiesFilterPrepareArray() {
+  var teamFilter = ($('.global-activities__side .team-selector select').val() || [])
+    .map(e => { return parseInt(e, 10); });
+  var userFilter = ($('.global-activities__side .user-selector select').val() || [])
+    .map(e => { return parseInt(e, 10); });
+  var activityFilter = ($('.global-activities__side .activity-selector select').val() || [])
+    .map(e => { return parseInt(e, 10); });
+  var subjectFilter = {};
+  $.each(($('.global-activities__side .subject-selector select').val() || []), function(index, object) {
+    var splitObject = object.split('_');
+    if (subjectFilter[splitObject[0]] === undefined) subjectFilter[splitObject[0]] = [];
+    subjectFilter[splitObject[0]].push(parseInt(splitObject[1], 10));
+  });
+  return {
+    teams: JSON.stringify(teamFilter),
+    users: JSON.stringify(userFilter),
+    types: JSON.stringify(activityFilter),
+    subjects: JSON.stringify(subjectFilter),
+    from_date: GlobalActivitiesFiltersGetDates().from,
+    to_date: GlobalActivitiesFiltersGetDates().to
+  };
 }

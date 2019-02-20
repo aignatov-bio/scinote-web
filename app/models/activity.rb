@@ -71,8 +71,12 @@ class Activity < ApplicationRecord
   belongs_to :user, inverse_of: :activities
 
   def self.activity_types_list
-    type_ofs.map{|key,value| {:id => value, :name => key.gsub('_',' ').capitalize}}
-            .sort{|a,b| a[:name] <=> b[:name]}
+    type_ofs.map{ |key, value|
+                  {
+                    id: value,
+                    name: key.tr('_', ' ').capitalize
+                  }
+            }.sort_by{ |a| a[:name] }
   end
 
   private
