@@ -637,11 +637,15 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :global_activities, only: [:index]
-  namespace :global_activities do
-    get 'search_subjects', to: 'global_activities#search_subjects',
-                           as: 'search_subjects'
+  resources :global_activities, only: [:index] do
+    collection do
+      get 'search_subjects'
+    end
   end
+  #namespace :global_activities do
+  #  get 'search_subjects', to: 'global_activities#search_subjects',
+  #                         as: 'search_subjects'
+  #end
 
   constraints WopiSubdomain do
     # Office integration

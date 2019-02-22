@@ -6,6 +6,7 @@ class GlobalActivitiesController < ApplicationController
     teams = current_user.teams if teams.blank?
     @teams = teams
     @users = UserTeam.my_employees(current_user)
+    @activity_types = Activity.activity_types_list
     @grouped_activities, more_activities =
       ActivitiesService.load_activities(teams, activity_filters)
     respond_to do |format|
@@ -61,7 +62,6 @@ class GlobalActivitiesController < ApplicationController
   end
 
   def subject_search_params
-    params.require(:query)
     params.permit(:query, teams: [], subject_types: [])
   end
 end

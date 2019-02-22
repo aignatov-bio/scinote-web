@@ -1,96 +1,77 @@
-$.fn.extend({
-  select2Multiple: function(config = {}) {
-    var select2 = this.select2({
-      closeOnSelect: false,
-      multiple: true,
-      ajax: config.ajax,
-      templateSelection: config.customSelection
-    });
-    // select all check
-    this[0].dataset.singleDisplay=config.singleDisplay || false
-    if (this[0].dataset.selectAll === 'true') {
-      $.each($(this).find('option'), (index, e) => { e.selected = true; });
-      this.trigger('change');
-    }
-    select2.updateSingleName()
-    return select2
-      // Adding select all button
-      .on('select2:open', function() {
-        var selectElement = this;
-        $('.select2-selection').scrollTo(0);
-        $('.select2_select_all').remove();
-        if (selectElement.dataset.selectAllButton !== undefined) {
-          $('<div class="select2_select_all btn btn-default"><strong>' + selectElement.dataset.selectAllButton + '</strong></div>').prependTo('.select2-dropdown').on('click', function() {
-            var elementsToSelect = $.map($(selectElement).find('option'), e => e.value);
-            if ($(selectElement).find('option:selected').length === elementsToSelect.length) elementsToSelect = [];
-            $(selectElement).val(elementsToSelect).trigger('change');
-            $(selectElement).select2('close');
-            $(selectElement).select2('open');
-          });
-        }
-      })
-      // Prevent shake bug with multiple select
-      .on('select2:open select2:close', function() {
-        if ($(this).val() != null && $(this).val().length > 3) {
-          $(this).next().find('.select2-search__field')[0].disabled = true;
-        } else {
-          $(this).next().find('.select2-search__field')[0].disabled = false;
-        }
-      })
-      // Prevent opening window when deleteing selection
-      .on('select2:unselect', function() {
-        var resultWindow = $('.select2-container--open');
-        if (resultWindow.length === 0) {
-          $(this).select2('open');
-        }
-      })
-      // Fxied scroll bug
-      .on('select2:selecting select2:unselecting', function(e) {
-        $(e.currentTarget).data('scrolltop', $('.select2-results__options').scrollTop());
-        $('.select2-selection').scrollTo(0);
-      })
-      // Fxied scroll bug
-      .on('select2:select select2:unselect', function(e) {
-        $('.select2-selection').scrollTo(0);
-        $('.select2-results__options').scrollTop($(e.currentTarget).data('scrolltop'));
-        $(this).updateSingleName()
-      });
-  },
-  select2MultipleClearAll: function() {
-    $(this).val([]).trigger('change');
-  },
-  updateSingleName: function() {
-    var selectElement=this
-    var selectedOptions=selectElement.next().find('.select2-selection__choice')
-    var optionsCounter=selectedOptions.length
-    var allOptionsSelected= this.find('option').length == optionsCounter
-    var optionText=allOptionsSelected ? this[0].dataset.selectMultipleAllSelected : optionsCounter+" "+this[0].dataset.selectMultipleName
-    if (optionsCounter > 1){
-      selectedOptions.remove()
-      template='<li class="select2-selection__choice">'+
-                  '<span class="select2-selection__choice__remove" role="presentation">×</span>'+
-                    optionText+
-                '</li>'
-      $(template).prependTo(selectElement.next().find('.select2-selection__rendered')).find('.select2-selection__choice__remove')
-                 .click(function(){ selectElement.select2MultipleClearAll() })
-    }
-  }
-});
+// Common code
+
 
 Date.prototype.date_to_string = function() {
   return this.getFullYear() + '-' + (this.getMonth() + 1) + '-' + this.getDate();
 };
 
+/// GA code
+
+function GlobalActivitiesFiltersGetDates() {
+  var fromDate = $('#calendar-from-date').data('DateTimePicker').date()._d.date_to_string();
+  var toDate = $('#calendar-to-date').data('DateTimePicker').date()._d.date_to_string();
+  return { from: fromDate, to: toDate };
+}
+
+function GlobalActivitiesFilterPrepareArray() {
+  var teamFilter = ($('.ga-side .team-selector select').val() || [])
+    .map(e => { return parseInt(e, 10); });
+  var userFilter = ($('.ga-side .user-selector select').val() || [])
+    .map(e => { return parseInt(e, 10); });
+  var activityFilter = ($('.ga-side .activity-selector select').val() || [])
+    .map(e => { return parseInt(e, 10); });
+  var subjectFilter = {};
+  $.each(($('.ga-side .subject-selector select').val() || []), function(index, object) {
+    var splitObject = object.split('_');
+    if (subjectFilter[splitObject[0]] === undefined) subjectFilter[splitObject[0]] = [];
+    subjectFilter[splitObject[0]].push(parseInt(splitObject[1], 10));
+  });
+  return {
+    teams: JSON.stringify(teamFilter),
+    users: JSON.stringify(userFilter),
+    types: JSON.stringify(activityFilter),
+    subjects: JSON.stringify(subjectFilter),
+    from_date: GlobalActivitiesFiltersGetDates().from,
+    to_date: GlobalActivitiesFiltersGetDates().to
+  };
+}
+
+function GlobalActivitiesUpdateTopPaneTags(event) {
+  $('.ga-top .ga-tags').children().remove()
+
+  $('<li class="select2-selection__choice">'+
+      'Activity created: '+
+      $('.ga-side .date-selector.filter-block')[0].dataset.periodSelect+
+    '</li>').appendTo('.ga-top .ga-tags')
+  $.each($('.ga-side .select2-selection__choice'), function(index, tag){
+    var newTag = $(tag.outerHTML).appendTo('.ga-top .ga-tags')
+    var selectedValues = []
+    var parentSelector=$(tag).parents(".select2-container").prev()
+    var elementToDelete = null
+    newTag.find('.select2-selection__choice__remove')
+      .click(e => {
+        if (event && event.type === 'select2:select'){
+          // Adding remove action for native blocks
+          selectedValues=parentSelector.val()
+          elementToDelete= $(tag).find('span.select2-block-body')[0].dataset.selectId
+          selectedValues=$.grep(selectedValues, v => { return v != elementToDelete;});
+          parentSelector.val(selectedValues).change()
+        }else{
+          $(tag).find('.select2-selection__choice__remove').click()
+        }
+      })
+  })
+}
 
 $(function() {
   var selectors = ['team', 'activity', 'user'];
   // Ajax request for object search
   var subjectAjaxQuery = {
-    url: '/global_activities/test_query',
+    url: '/global_activities/search_subjects',
     dataType: 'json',
     data: function(params) {
       return {
-        search_query: params.term // search term
+        query: params.term // search term
       };
     },
     // preparing results
@@ -117,27 +98,44 @@ $(function() {
   };
   // Common selection intialize
   $.each(selectors, (index, e) => {
-    $('.global-activities__side .' + e + '-selector select').select2Multiple({ singleDisplay: true});
-    $('.global-activities__side .' + e + '-selector .clear').click(function() {
-      $('.global-activities__side .' + e + '-selector select').select2MultipleClearAll();
+    $('.ga-side .' + e + '-selector select').select2Multiple({ singleDisplay: true})
+      .on('change', function(e){GlobalActivitiesUpdateTopPaneTags()});
+    $('.ga-side .' + e + '-selector .clear').click(function() {
+      $('.ga-side .' + e + '-selector select').select2MultipleClearAll();
     });
   });
   // Object selection intialize
-  $('.global-activities__side .subject-selector select').select2Multiple({ ajax: subjectAjaxQuery, customSelection: subjectCustomDisplay});
-  $('.global-activities__side .subject-selector .clear').click(function() {
-    $('.global-activities__side .subject-selector select').select2MultipleClearAll();
+  $('.ga-side .subject-selector select').select2Multiple({ ajax: subjectAjaxQuery, customSelection: subjectCustomDisplay})
+    .on('change select2:select', function(e){GlobalActivitiesUpdateTopPaneTags(e)});
+  $('.ga-side .subject-selector .clear').click(function() {
+    $('.ga-side .subject-selector select').select2MultipleClearAll();
   });
+
+  $('.ga-tags-container .clear-container span').click(function(){
+    $.each(selectors, (index, e) => {$('.ga-side .' + e + '-selector select').select2MultipleClearAll();})
+    $('.ga-side .subject-selector select').select2MultipleClearAll();
+  })
 
   $('#calendar-from-date').on('dp.change', function(e) {
     $('#calendar-to-date').data('DateTimePicker').minDate(e.date);
-  });
+    var dateContainer = $('.ga-side .date-selector.filter-block')
+    dateContainer[0].dataset.periodSelect=$('#calendar-from-date').val()+' - '+$('#calendar-to-date').val()
+    GlobalActivitiesUpdateTopPaneTags()
+  })
+  
   $('#calendar-to-date').on('dp.change', function(e) {
     $('#calendar-from-date').data('DateTimePicker').maxDate(e.date);
-  });
+    var dateContainer = $('.ga-side .date-selector.filter-block')
+    dateContainer[0].dataset.periodSelect=$('#calendar-from-date').val()+' - '+$('#calendar-to-date').val()
+    GlobalActivitiesUpdateTopPaneTags()
+  })
+
+  GlobalActivitiesUpdateTopPaneTags()
 });
 
 $('.date-selector .hot-button').click(function() {
   var selectPeriod = this.dataset.period;
+  var dateContainer = $('.ga-side .date-selector.filter-block')
   var fromDate = $('#calendar-from-date').data('DateTimePicker');
   var toDate = $('#calendar-to-date').data('DateTimePicker');
   var today = new Date();
@@ -168,33 +166,7 @@ $('.date-selector .hot-button').click(function() {
     toDate.date(today);
     fromDate.date(lastMonth);
   }
+  dateContainer[0].dataset.periodSelect=this.innerHTML
+  GlobalActivitiesUpdateTopPaneTags()
 });
 
-function GlobalActivitiesFiltersGetDates() {
-  var fromDate = $('#calendar-from-date').data('DateTimePicker').date()._d.date_to_string();
-  var toDate = $('#calendar-to-date').data('DateTimePicker').date()._d.date_to_string();
-  return { from: fromDate, to: toDate };
-}
-
-function GlobalActivitiesFilterPrepareArray() {
-  var teamFilter = ($('.global-activities__side .team-selector select').val() || [])
-    .map(e => { return parseInt(e, 10); });
-  var userFilter = ($('.global-activities__side .user-selector select').val() || [])
-    .map(e => { return parseInt(e, 10); });
-  var activityFilter = ($('.global-activities__side .activity-selector select').val() || [])
-    .map(e => { return parseInt(e, 10); });
-  var subjectFilter = {};
-  $.each(($('.global-activities__side .subject-selector select').val() || []), function(index, object) {
-    var splitObject = object.split('_');
-    if (subjectFilter[splitObject[0]] === undefined) subjectFilter[splitObject[0]] = [];
-    subjectFilter[splitObject[0]].push(parseInt(splitObject[1], 10));
-  });
-  return {
-    teams: JSON.stringify(teamFilter),
-    users: JSON.stringify(userFilter),
-    types: JSON.stringify(activityFilter),
-    subjects: JSON.stringify(subjectFilter),
-    from_date: GlobalActivitiesFiltersGetDates().from,
-    to_date: GlobalActivitiesFiltersGetDates().to
-  };
-}
