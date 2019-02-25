@@ -1,14 +1,16 @@
-<div class="team-selector filter-block">
+<div class="team-selector filter-block small-left">
   <h4 class="title"><strong>Team</strong></h4>
   <h6 class="clear">Clear</h6>
-  <%= select_tag "team", options_from_collection_for_select(@teams, :id, :name, current_user.current_team_id),{
-      'data-select-all-button': 'All teams',
-      'data-select-multiple-name': 'teams',
-      'data-select-multiple-all-selected': 'All teams'
-    } %>
+  <div class="select-container">
+    <%= select_tag "team", options_from_collection_for_select(@teams, :id, :name, current_user.current_team_id),{
+        'data-select-all-button': 'All teams',
+        'data-select-multiple-name': 'teams',
+        'data-select-multiple-all-selected': 'All teams'
+      } %>
+    </div>
 </div>
 
-<div class="date-selector filter-block" data-period-select="Today">
+<div class="date-selector filter-block small-right" data-period-select="Today">
   <h4 class="title"><strong>Activity created</strong></h4>
 
   <div class="date-selector">
@@ -30,30 +32,36 @@
   </div>
 </div>
 
-<div class="activity-selector filter-block">
+<div class="activity-selector filter-block small-left">
   <h4 class="title"><strong>Activity type</strong></h4>
   <h6 class="clear">Clear</h6>
-  <%= select_tag "activity", options_for_select(@activity_types.map{|i| [i[:name], i[:id]]}),{
+  <div class="select-container">
+    <%= select_tag "activity", options_for_select(@activity_types.map{|i| [i[:name], i[:id]]}),{
       'data-select-all-button': 'All activities', 
       'data-select-all': 'true',
       'data-select-multiple-name': 'activities',
       'data-select-multiple-all-selected': 'All activities'
     } %>
+  </div>
 </div>
 
-<div class="user-selector filter-block">
+<div class="user-selector filter-block small-left">
   <h4 class="title"><strong>User</strong></h4>
   <h6 class="clear">Clear</h6>
-  <%= select_tag "user", options_for_select(@users.map{|i| [i['full_name'], i['id']]}),{
+  <div class="select-container">
+    <%= select_tag "user", options_for_select(@users.map{|i| [i['full_name'], i['id']]}),{
       'data-select-all-button': 'All users', 
       'data-select-all': 'true',
       'data-select-multiple-name': 'users',
       'data-select-multiple-all-selected': 'All users'
     } %>
+  </div>
 </div>
 
-<div class="subject-selector filter-block">
+<div class="subject-selector filter-block small-left">
   <h4 class="title"><strong>Object</strong></h4>
   <h6 class="clear">Clear</h6>
-  <select name="subject" data-select-all="false"></select>
+  <div class="select-container">
+    <select name="subject" data-select-all="false"></select>
+  </div>
 </div>

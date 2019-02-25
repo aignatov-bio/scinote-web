@@ -1,20 +1,22 @@
-<div class="global-activities-container">
-  <br>
-  <div class="ga-top">
-   <%= render partial: "top_pane" %>
-  </div>
 
-  <div class="ga-main">
-    <div class="ga-activities-list">
-      <h2>list of activities</h2>
+<div class="global-activities-container container-flex">
+  <div class="row">
+    <div class="ga-top col-md-12">
+      <%= render partial: "top_pane" %>
+    </div>
+
+
+    <div class="ga-side col-lg-3 col-md-12 col-xl-2">
+      <%= render partial: "side_filters" %>
+    </div>
+
+    <div class="ga-main col-lg-9 col-md-12 col-xl-10">
+      <div class="ga-activities-list">
+        <h2>list of activities</h2>
+      </div>
     </div>
 
   </div>
-
-  <div class="ga-side">
-    <%= render partial: "side_filters" %>
-  </div>
-
 </div>
 
 <%= javascript_include_tag("global_activities/side_pane") %>
