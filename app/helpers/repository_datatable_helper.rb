@@ -91,10 +91,17 @@ module RepositoryDatatableHelper
         formats: :html
       }
     end
+<<<<<<< HEAD
     
     def self.repository_asset_value_text(cell, _team)
       cell.value.asset.file_name
     end
 
+=======
+
+    def self.repository_asset_value_text(cell, _team)
+      cell.value.asset.file_name
+    end
+>>>>>>> Add text method for assets
   end
 end
