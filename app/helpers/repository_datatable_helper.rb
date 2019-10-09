@@ -91,9 +91,10 @@ module RepositoryDatatableHelper
         formats: :html
       }
     end
-
+    
     def self.repository_asset_value_text(cell, _team)
       cell.value.asset.file_name
     end
+
   end
 end
