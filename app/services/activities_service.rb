@@ -25,7 +25,7 @@ class ActivitiesService
 
     query = query.where(owner_id: filters[:users]) if filters[:users]
     query = query.where(type_of: filters[:types]) if filters[:types]
-    query = query.where('created_at <= ?', Time.at(filters[:starting_timestamp].to_i)) if filters[:starting_timestamp]
+    query = query.where('created_at <= ?', Time.zone.at(filters[:starting_timestamp].to_i)) if filters[:starting_timestamp]
 
     activities =
       if filters[:from_date].present? && filters[:to_date].present?
@@ -52,10 +52,11 @@ class ActivitiesService
       children.each do |child|
         parent_model = subject_name.to_s.constantize
         child_model = parent_model.reflect_on_association(child).class_name.to_sym
-        child_id = parent_model.where(id: subjects[subject_name])
-                               .joins(child)
-                               .pluck("#{child}.id")
-        subjects[child_model] = (subjects[child_model] ||= []) + child_id
+        next if subjects[child_model]
+
+        subjects[child_model] = parent_model.where(id: subjects[subject_name])
+                                            .joins(child)
+                                            .pluck("#{child}.id")
       end
     end
 
