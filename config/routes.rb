@@ -423,11 +423,12 @@ Rails.application.routes.draw do
       resources :step_comments,
                 path: '/comments',
                 only: [:create, :index, :edit, :update, :destroy]
+
       member do
         post 'checklistitem_state'
         post 'toggle_step_state'
-        put 'move_down'
-        put 'move_up'
+        post 'move_down'
+        post 'move_up'
         post 'update_view_state'
         post 'update_asset_view_mode'
       end
@@ -473,6 +474,7 @@ Rails.application.routes.draw do
     resources :protocols, only: [:index, :edit, :create] do
       resources :steps, only: [:new, :create]
       member do
+        get 'steps_list'
         get 'linked_children', to: 'protocols#linked_children'
         post 'linked_children_datatable',
              to: 'protocols#linked_children_datatable'

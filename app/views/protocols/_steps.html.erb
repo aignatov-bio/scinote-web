@@ -22,10 +22,8 @@
     </div>
   </div>
 <% end %>
-<div id="steps">
-  <% @protocol.steps.order(:position).each do |step| %>
-    <%= render partial: "steps/step.html.erb", locals: { step: step } %>
-  <% end %>
+<div id="steps" data-url="<%= steps_list_protocol_path(@protocol) %>">
+  <Step v-for="step in steps" v-bind:key="step.id" :step="step"></Step>
 </div>
 <% if can_manage_protocol_in_module?(@protocol) || can_manage_protocol_in_repository?(@protocol) %>
   <div class="row">
@@ -45,6 +43,9 @@
 
 <!-- Libraries for formulas -->
 <%= render partial: "shared/formulas_libraries.html.erb" %>
+
+<%= javascript_pack_tag 'vue/steps' %>
+<%= stylesheet_pack_tag 'vue/steps' %>
 
 <%= javascript_include_tag "assets/wopi/create_wopi_file" %>
 <%= javascript_include_tag "protocols/steps" %>

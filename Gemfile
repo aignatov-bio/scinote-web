@@ -86,6 +86,7 @@ gem 'turbolinks', '~> 5.1.1'
 gem 'underscore-rails'
 gem 'wicked_pdf', '~> 1.4.0'
 gem 'wkhtmltopdf-heroku', '2.12.5'
+gem "js-routes"
 
 gem 'aws-sdk-rails'
 gem 'aws-sdk-s3'
