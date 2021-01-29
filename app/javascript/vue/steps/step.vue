@@ -18,6 +18,9 @@
     props: {
       step: Object
     },
+    ready: function() {
+      App.cable.subscriptions.create({ channel: "StepChannel", id: this.step.id})
+    },
     methods: {
       last_step: function() {
         let steps = this.$parent.steps

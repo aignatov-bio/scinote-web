@@ -360,6 +360,7 @@ class StepsController < ApplicationController
     respond_to do |format|
       format.json do
         @step.move_up
+        StepUpdateJob.perform_later(current_user, @step)
 
         render json: {
           steps_order: @protocol.steps.order(:position).select(:id, :position)
@@ -372,7 +373,7 @@ class StepsController < ApplicationController
     respond_to do |format|
       format.json do
         @step.move_down
-
+        StepUpdateJob.perform_later(current_user, @step)
         render json: {
           steps_order: @protocol.steps.order(:position).select(:id, :position)
         }
