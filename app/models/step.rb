@@ -6,6 +6,9 @@ class Step < ApplicationRecord
 
   enum assets_view_mode: { thumbnail: 0, list: 1, inline: 2 }
 
+  after_update :broadcast_step
+  after_create :broadcast_step_create
+
   auto_strip_attributes :name, :description, nullify: false
   validates :name,
             presence: true,
@@ -220,5 +223,14 @@ class Step < ApplicationRecord
         end
       end
     end
+  end
+
+  def broadcast_step
+    return if self.position == -1
+    StepUpdateJob.perform_now(self)
+  end
+
+  def broadcast_step_create
+    StepCreateJob.perform_now(self)
   end
 end

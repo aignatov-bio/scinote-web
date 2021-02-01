@@ -23,6 +23,7 @@ class ProtocolsController < ApplicationController
     linked_children
     linked_children_datatable
     steps_list
+    create_step
   )
   before_action :switch_team_with_param, only: :index
   before_action :check_view_all_permissions, only: %i(
@@ -93,6 +94,16 @@ class ProtocolsController < ApplicationController
 
   def steps_list
     render json: @protocol.steps.order(:position)
+  end
+
+  def create_step
+    @protocol.steps.create(
+      name: 'New Step',
+      completed: false,
+      position: @protocol.number_of_steps,
+      user: current_user,
+      last_modified_by: current_user
+    )
   end
 
   def preview

@@ -5,7 +5,7 @@ class StepsController < ApplicationController
   include MarvinJsActions
 
   before_action :load_vars, only: %i(edit update destroy show toggle_step_state checklistitem_state update_view_state
-                                     move_up move_down update_asset_view_mode)
+                                     move_up move_down update_asset_view_mode update_name)
   before_action :load_vars_nested, only:  %i(new create)
   before_action :convert_table_contents_to_utf8, only: %i(create update)
 
@@ -125,6 +125,12 @@ class StepsController < ApplicationController
         status: :ok
       end
     end
+  end
+
+  def update_name
+    @step.update(name: params[:inline][:name])
+
+    render json: {status: :ok}
   end
 
   def update
@@ -274,12 +280,6 @@ class StepsController < ApplicationController
         step: (@step.position_plus_one).to_s
       )
     end
-
-    if @protocol.in_module?
-      redirect_to protocols_my_module_path(@step.my_module)
-    else
-      redirect_to edit_protocol_path(@protocol)
-    end
   end
 
   # Responds to checkbox toggling in steps view
@@ -360,8 +360,6 @@ class StepsController < ApplicationController
     respond_to do |format|
       format.json do
         @step.move_up
-        StepUpdateJob.perform_later(current_user, @step)
-
         render json: {
           steps_order: @protocol.steps.order(:position).select(:id, :position)
         }
@@ -373,7 +371,6 @@ class StepsController < ApplicationController
     respond_to do |format|
       format.json do
         @step.move_down
-        StepUpdateJob.perform_later(current_user, @step)
         render json: {
           steps_order: @protocol.steps.order(:position).select(:id, :position)
         }

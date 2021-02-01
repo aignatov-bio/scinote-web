@@ -5,25 +5,31 @@ import Step from '../../vue/steps/step.vue'
 
 Vue.use(TurbolinksAdapter)
 
-document.addEventListener('turbolinks:load', () => {
-  var url = $('#steps').data('url')
-  const app = new Vue({
-    data: () => {
-      return {
-        steps: []
-      }
-    },
-    el: '#steps',
-    components: { Step },
-    methods: {
-      reorder: function() {
-        this.steps.sort((a,b) => a.position - b.position);
+var url = $('#steps').data('url');
+var createUrl = $('#steps').data('url');
+
+const app = new Vue({
+  data: () => {
+    return {
+      steps: []
+    }
+  },
+  el: '#steps',
+  components: { Step }
+})
+
+
+$.get(url, function(data) {
+  app.steps = data
+})
+
+App.cable.subscriptions.create(
+  { channel: "ProtocolChannel", id: $('#steps').data('protocol-id')},
+  {
+    received(result) {
+      if (result.action == 'create') {
+        app.steps.push(result.data)
       }
     }
-  })
-
-
-  $.get(url, function(data) {
-    app.steps = data
-  })
-})
+  }
+)

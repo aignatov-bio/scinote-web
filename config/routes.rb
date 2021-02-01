@@ -425,6 +425,7 @@ Rails.application.routes.draw do
                 only: [:create, :index, :edit, :update, :destroy]
 
       member do
+        put 'update_name'
         post 'checklistitem_state'
         post 'toggle_step_state'
         post 'move_down'
@@ -475,6 +476,7 @@ Rails.application.routes.draw do
       resources :steps, only: [:new, :create]
       member do
         get 'steps_list'
+        post 'create_step'
         get 'linked_children', to: 'protocols#linked_children'
         post 'linked_children_datatable',
              to: 'protocols#linked_children_datatable'

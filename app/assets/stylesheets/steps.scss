@@ -40,6 +40,9 @@
 }
 
 #steps {
+
+  display: flex;
+  flex-direction: column;
   // hack only for firefox
   @-moz-document url-prefix() {
     ul > li {

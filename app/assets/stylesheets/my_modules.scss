@@ -160,6 +160,9 @@
   }
 
   #steps {
+    display: flex;
+    flex-direction: column;
+
     .panel-heading {
       flex-wrap: wrap;
     }

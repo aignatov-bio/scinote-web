@@ -1,46 +1,63 @@
 <template>
-  <div class="step-container">
+  <div class="step-container" v-bind:style="`order:${step.position}`">
     <div class="header">
       <div class="position">
         {{ step.position + 1 }}
       </div>
       <div class="name">
-        {{ step.name }}
+        <InlineField
+          :initial_value="step.name"
+          :url="`/steps/${step.id}/update_name`"
+          :item_id="step.id"
+          field_to_update="name"
+        ></InlineField>
       </div>
-      <div v-if="step.position != 0" v-on:click="move_up" class="btn btn-secondary" >Up</div>
-      <div v-if="!last_step()" v-on:click="move_down" class="btn btn-secondary">Down</div>
+      <div class="actions">
+        <div v-if="step.position > 0" v-on:click="move_up" class="flex-left btn btn-light icon-btn" >
+          <span class="fas fa-arrow-up"></span>
+        </div>
+        <div v-if="!last_step()" v-on:click="move_down" class="btn btn-light icon-btn flex-right">
+          <span class="fas fa-arrow-down"></span>
+        </div>
+        <div class="btn btn-light icon-btn" v-bind:data-id="step.id" onclick="$.ajax({url: `/steps/${this.dataset.id}`,type: 'DELETE'})">
+            <span class="fas fa-trash-alt"></span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+  import InlineField from '../shared/inline_field.vue'
+
   export default {
     props: {
       step: Object
     },
-    ready: function() {
-      App.cable.subscriptions.create({ channel: "StepChannel", id: this.step.id})
+    components: { InlineField },
+    mounted() {
+      var component = this
+      App.cable.subscriptions.create(
+        { channel: "StepChannel", id: this.step.id},
+        {
+          received(data) {
+            component.$emit('update:step', data)
+          }
+        }
+      )
     },
     methods: {
       last_step: function() {
         let steps = this.$parent.steps
-        return steps[steps.length - 1].position === this.step.position
+        return steps.length - 1 === this.step.position
       },
 
       move_up: function() {
-        $.post(Routes.move_up_step_path(this.step.id), () => {
-          this.step.position -= 1;
-          this.$parent.steps[this.step.position].position += 1;
-          this.$parent.reorder();
-        })
+        $.post(Routes.move_up_step_path(this.step.id))
       },
 
       move_down: function() {
-        $.post(Routes.move_down_step_path(this.step.id), () => {
-          this.step.position += 1;
-          this.$parent.steps[this.step.position].position -= 1;
-          this.$parent.reorder();
-        })
+        $.post(Routes.move_down_step_path(this.step.id))
       }
     }
   }
@@ -48,16 +65,36 @@
 
 <style lang="scss" scoped>
   .step-container {
-    border: 1px solid black;
-    height: 40px;
+    border-radius: .5em;
+    border: 1px solid #d0d0d8;
+    margin-bottom: 2em;
 
     .header {
+      align-items: center;
       display: flex;
-      height: 20px;
+      min-height: 3em;
+      padding: .5em 1em;
 
-      .position,
+      .position {
+        font-size: 20px;
+        padding-right: 1em;
+      }
       .name {
-        margin-right: 2em
+        flex-grow: 1;
+      }
+
+      .actions {
+        display: flex;
+        flex-shrink: 0;
+        width: 8em;
+
+        .flex-right {
+          margin-left: auto;
+        }
+
+        .flex-left {
+          margin-right: auto;
+        }
       }
     }
   }

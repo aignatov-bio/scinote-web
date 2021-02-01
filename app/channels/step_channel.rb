@@ -1,6 +1,5 @@
 class StepChannel < ApplicationCable::Channel
   def subscribed
-    step = Step.find(params[:id])
-    stream_for step
+    stream_for Step.find(params[:id])
   end
 end
