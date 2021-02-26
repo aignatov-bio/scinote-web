@@ -35,7 +35,7 @@
         <%= render_new_element(false) %>
       <% end %>
     <% else %>
-      <%= render partial: "reports/elements/project_header_element", locals: { project: @project } %>
+      <%= render partial: "reports/elements/project_header_element", locals: { project: @project } if false %>
       <%= render partial: "reports/elements/new_element", locals: { initial: true } %>
     <% end %>
     </div>

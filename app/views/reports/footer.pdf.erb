@@ -6,8 +6,19 @@
   <%= wicked_pdf_stylesheet_link_tag "reports_pdf" %>
   <%= bootstrap_cdn_link_tag %>
   <%= font_awesome_cdn_link_tag %>
+
+  <script>
+    function number_pages() {
+      var vars={};
+      var x=document.location.search.substring(1).split('&');
+      for(var i in x) {var z=x[i].split('=',2);vars[z[0]] = decodeURIComponent(z[1]);}
+      if (vars.page == 1) {
+        document.getElementsByTagName("BODY")[0].style.display = 'none'
+      }
+    }
+  </script>
 </head>
-<body class="print-footer-body" style="height: 50px">
+<body class="print-footer-body" style="height: 50px" onload="number_pages()">
   <div class="print-footer">
     <p>
       <%= t('projects.reports.new.generate_PDF.generated_on', timestamp: current_time) %>

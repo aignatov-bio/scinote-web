@@ -31,6 +31,7 @@ module ReportActions
 
   def generate_project_contents_json
     res = []
+    res << generate_template
     if params.include? :modules
       module_ids = (params[:modules].select { |_, p| p == '1' }).keys.collect(&:to_i)
 
@@ -49,6 +50,34 @@ module ReportActions
     end
     res << generate_new_el(false)
     res
+  end
+
+  def generate_template
+    template = '
+      <table class="report-template">
+        <tr>
+          <td colspan=2>ANALYST WORKSHEET</td>
+          <td colspan=4>1. PRODUCT<br><b>{{product}}</b></td>
+          <td colspan=2>2. SAMPLE NUMBER<br><b>{{sample_number}}</b></td>
+        </tr>
+        <tr>
+          <td colspan=2>3. SEALS<br>
+            <input type="radio" name="seals" {% if seals == "none" %} checked {% endif %}> - None<br>
+            <input type="radio" name="seals" {% if seals == "intact" %} checked {% endif %}> - Intact<br>
+            <input type="radio" name="seals" {% if seals == "broken" %} checked {% endif %}> - Broken
+          </td>
+          <td colspan=2>4. DATE RECEIVED<br><b>{{date_recieved}}</b></td>
+          <td colspan=2>5. RECEIVED FROM<br><b>{{recieved_from}}</b></td>
+          <td colspan=2>6. DISTRICT OR LABORATORY<br><b>{{district}}</b></td>
+        </tr>
+        <tr style="height:80%">
+          <td colspan=8>7. DESCRIPTION OF SAMPLE<br>{{description}}</td>
+        </tr>
+      </table>
+      <div style="page-break-before: always"></div>
+    '
+    template = Liquid::Template.parse(template)
+    {html: template.render(params[:template].as_json), new_element: false}
   end
 
   def generate_experiment_contents_json(selected_modules)

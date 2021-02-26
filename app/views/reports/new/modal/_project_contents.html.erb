@@ -1,6 +1,30 @@
 <%= bootstrap_form_tag remote: true, url: project_contents_project_reports_path(project, format: :json), method: :post, html: { id: "add-contents-form" } do |f| %>
   <%= hidden_field_tag :id, project.id %>
   <div>
+    <p>
+      <%= text_field(:template, :product, placeholder: 'Product') %>
+    </p>
+    <p>
+      <%= text_field(:template, :sample_number, placeholder: 'Sample number') %>
+    </p>
+    <p>
+      <b>Seals:</b><br>
+      <%= radio_button(:template, :seals, :none) %> - None <br>
+      <%= radio_button(:template, :seals, :intact) %> - Intact <br>
+      <%= radio_button(:template, :seals, :broken) %> - Broken
+    </p>
+    <p>
+      <%= text_field(:template, :date_recieved, placeholder: 'Date recieved') %>
+    </p>
+    <p>
+      <%= text_field(:template, :recieved_from, placeholder: 'Recieved from') %>
+    </p>
+    <p>
+      <%= text_field(:template, :district, placeholder: 'District or laboratory') %>
+    </p>
+    <p>
+      <%= text_area(:template, :description, placeholder: 'Description of sample') %>
+    </p>
     <!-- Nav tabs -->
     <ul class="nav nav-tabs" role="tablist">
       <li role="presentation" class="active">
