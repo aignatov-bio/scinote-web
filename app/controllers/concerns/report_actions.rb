@@ -57,27 +57,26 @@ module ReportActions
       <table class="report-template">
         <tr>
           <td colspan=2>ANALYST WORKSHEET</td>
-          <td colspan=4>1. PRODUCT<br><b>{{product}}</b></td>
-          <td colspan=2>2. SAMPLE NUMBER<br><b>{{sample_number}}</b></td>
+          <td colspan=4>1. PRODUCT<br><b><%= t[:product] %></b></td>
+          <td colspan=2>2. SAMPLE NUMBER<br><b><%= t[:sample_number] %></b></td>
         </tr>
         <tr>
           <td colspan=2>3. SEALS<br>
-            <input type="radio" name="seals" {% if seals == "none" %} checked {% endif %}> - None<br>
-            <input type="radio" name="seals" {% if seals == "intact" %} checked {% endif %}> - Intact<br>
-            <input type="radio" name="seals" {% if seals == "broken" %} checked {% endif %}> - Broken
+            <input type="radio" name="seals" <%= \'checked\' if t[:seals] == "none" %>> - None<br>
+            <input type="radio" name="seals" <%= \'checked\' if t[:seals] == "intact" %>> - Intact<br>
+            <input type="radio" name="seals" <%= \'checked\' if t[:seals] == "broken" %>> - Broken
           </td>
-          <td colspan=2>4. DATE RECEIVED<br><b>{{date_recieved}}</b></td>
-          <td colspan=2>5. RECEIVED FROM<br><b>{{recieved_from}}</b></td>
-          <td colspan=2>6. DISTRICT OR LABORATORY<br><b>{{district}}</b></td>
+          <td colspan=2>4. DATE RECEIVED<br><b><%= t[:date_recieved] %></b></td>
+          <td colspan=2>5. RECEIVED FROM<br><b><%= t[:recieved_from] %></b></td>
+          <td colspan=2>6. DISTRICT OR LABORATORY<br><b><%= t[:district] %></b></td>
         </tr>
         <tr style="height:80%">
-          <td colspan=8>7. DESCRIPTION OF SAMPLE<br>{{description}}</td>
+          <td colspan=8>7. DESCRIPTION OF SAMPLE<br><%= t[:description] %></td>
         </tr>
       </table>
       <div style="page-break-before: always"></div>
     '
-    template = Liquid::Template.parse(template)
-    {html: template.render(params[:template].as_json), new_element: false}
+    {html: render_to_string(inline: template, locals: {t: params[:template]}), new_element: false}
   end
 
   def generate_experiment_contents_json(selected_modules)
