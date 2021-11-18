@@ -5,11 +5,13 @@ class Activity < ApplicationRecord
     assign_user_to_project
     change_user_role_on_project
     unassign_user_from_project
-    assign_user_to_module
-    unassign_user_from_module
+    designate_user_to_my_module
+    undesignate_user_from_my_module
     invite_user_to_team
     remove_user_from_team
     change_users_role_on_team
+    change_user_role_on_experiment
+    change_user_role_on_my_module
   ).freeze
 
   include ActivityValuesModel
