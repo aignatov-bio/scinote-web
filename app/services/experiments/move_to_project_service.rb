@@ -26,7 +26,7 @@ module Experiments
       ActiveRecord::Base.transaction do
         @exp.project = @project
         @exp.my_modules.each do |my_module|
-          raise unless can_manage_my_module?(@user, my_module)
+          raise unless can_move_my_module?(@user, my_module)
 
           sync_user_assignments(my_module)
           move_tags!(my_module)
@@ -97,6 +97,7 @@ module Experiments
 
       child_associations.each do |child_association|
         [subject.public_send(child_association)].flatten.each do |child_subject|
+          next unless child_subject
           move_activities!(child_subject)
         end
       end
@@ -105,6 +106,13 @@ module Experiments
     def sync_user_assignments(object)
       # remove user assignments where the user are not present on the project
       object.user_assignments.destroy_all
+
+      UserAssignment.create!(
+        user: @user,
+        assignable: object,
+        assigned: :automatically,
+        user_role: @project.user_assignments.find_by(user: @user).user_role
+      )
 
       UserAssignments::GenerateUserAssignmentsJob.perform_later(object, @user)
     end

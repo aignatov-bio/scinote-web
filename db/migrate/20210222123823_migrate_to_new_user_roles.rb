@@ -21,6 +21,8 @@ class MigrateToNewUserRoles < ActiveRecord::Migration[6.1]
       end
       dir.down do
         UserAssignment.joins(:user_role).where(user_role: { predefined: true }).delete_all
+        Project.where(default_public_user_role: UserRole.where(predefined: true))
+               .update_all(default_public_user_role_id: nil)
         UserRole.where(predefined: true).delete_all
       end
     end
@@ -28,9 +30,7 @@ class MigrateToNewUserRoles < ActiveRecord::Migration[6.1]
 
   private
 
-  def new_user_assignment(user, assignable, user_role, assigned = :manually, existing_assignments = {})
-    return if existing_assignments[[user.id, assignable.id, assignable.class.name]]
-
+  def new_user_assignment(user, assignable, user_role, assigned)
     UserAssignment.new(
       user: user,
       assignable: assignable,
@@ -69,11 +69,11 @@ class MigrateToNewUserRoles < ActiveRecord::Migration[6.1]
     user_projects.includes(:user, :project).find_in_batches(batch_size: 100) do |user_project_batch|
       user_assignments = []
       user_project_batch.each do |user_project|
-        user_assignments << new_user_assignment(user_project.user, user_project.project, user_role)
+        user_assignments << new_user_assignment(user_project.user, user_project.project, user_role, :manually)
         user_project.project.experiments.preload(:my_modules).each do |experiment|
-          user_assignments << new_user_assignment(user_project.user, experiment, user_role)
+          user_assignments << new_user_assignment(user_project.user, experiment, user_role, :automatically)
           experiment.my_modules.each do |my_module|
-            user_assignments << new_user_assignment(user_project.user, my_module, user_role)
+            user_assignments << new_user_assignment(user_project.user, my_module, user_role, :automatically)
           end
         end
       end
