@@ -6,6 +6,7 @@
         'only-time': mode == 'time',
       }"
       v-model="compDatetime"
+      @open="calendarOpened"
       :teleport="teleport"
       :text-input="true"
       :no-today="true"
@@ -183,6 +184,11 @@
       close() {
         this.$refs.datetimePicker.closeMenu();
       },
+      calendarOpened() {
+        if (!this.compDatetime) {
+          this.datetime = new Date();
+        }
+      }
     }
   }
 </script>

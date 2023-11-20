@@ -3,6 +3,10 @@
 .dp--menu-wrapper {
   font-weight: normal;
 
+  .dp__active_date {
+    color: var(--sn-white) !important;
+  }
+
   .dp__menu,
   &.dp__menu {
     border: 0;
