@@ -17,7 +17,7 @@
     <a :href="params.urls.show"
        :title="params.name"
        :class="{'pointer-events-none text-sn-grey': !params.urls.show}"
-       class="font-bold mb-4 text-sn-blue hover:no-underline line-clamp-3 hover:text-sn-blue h-14">
+       class="font-bold mb-4 text-sn-blue hover:no-underline line-clamp-3 hover:text-sn-blue h-16">
       {{ params.name }}
     </a>
     <div class="grid gap-x-2 gap-y-3 grid-cols-[90px_auto] mt-auto text-xs">
