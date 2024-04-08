@@ -100,15 +100,15 @@ class WopiController < ActionController::Base
         if @asset.lock == lock
           @asset.refresh_lock
           response.headers['X-WOPI-ItemVersion'] = @asset.version
-          return render body: nil, status: :ok
+          render body: nil, status: :ok
         else
           response.headers['X-WOPI-Lock'] = @asset.lock
-          return render body: nil, status: :conflict
+          render body: nil, status: :conflict
         end
       else
         @asset.lock_asset(lock)
         response.headers['X-WOPI-ItemVersion'] = @asset.version
-        return render body: nil, status: :ok
+        render body: nil, status: :ok
       end
     end
   end
@@ -126,14 +126,14 @@ class WopiController < ActionController::Base
           @asset.unlock
           @asset.lock_asset(lock)
           response.headers['X-WOPI-ItemVersion'] = @asset.version
-          return render body: nil, status: :ok
+          render body: nil, status: :ok
         else
           response.headers['X-WOPI-Lock'] = @asset.lock
-          return render body: nil, status: :conflict
+          render body: nil, status: :conflict
         end
       else
         response.headers['X-WOPI-Lock'] = ' '
-        return render body: nil, status: :conflict
+        render body: nil, status: :conflict
       end
     end
   end
@@ -151,15 +151,15 @@ class WopiController < ActionController::Base
           create_wopi_file_activity(@user, false)
 
           response.headers['X-WOPI-ItemVersion'] = @asset.version
-          return render body: nil, status: :ok
+          render body: nil, status: :ok
         else
           response.headers['X-WOPI-Lock'] = @asset.lock
-          return render body: nil, status: :conflict
+          render body: nil, status: :conflict
         end
       else
         logger.warn 'WOPI: tried to unlock non-locked file'
         response.headers['X-WOPI-Lock'] = ' '
-        return render body: nil, status: :conflict
+        render body: nil, status: :conflict
       end
     end
   end
@@ -174,14 +174,14 @@ class WopiController < ActionController::Base
           @asset.refresh_lock
           response.headers['X-WOPI-ItemVersion'] = @asset.version
           response.headers['X-WOPI-ItemVersion'] = @asset.version
-          return render body: nil, status: :ok
+          render body: nil, status: :ok
         else
           response.headers['X-WOPI-Lock'] = @asset.lock
-          return render body: nil, status: :conflict
+          render body: nil, status: :conflict
         end
       else
         response.headers['X-WOPI-Lock'] = ' '
-        return render body: nil, status: :conflict
+        render body: nil, status: :conflict
       end
     end
   end
@@ -189,7 +189,7 @@ class WopiController < ActionController::Base
   def get_lock
     @asset.with_lock do
       response.headers['X-WOPI-Lock'] = @asset.locked? ? @asset.lock : ' '
-      return render body: nil, status: :ok
+      render body: nil, status: :ok
     end
   end
 
@@ -201,8 +201,8 @@ class WopiController < ActionController::Base
           logger.warn 'WOPI: replacing file'
 
           @team.release_space(@asset.estimated_size)
-          @asset.update_contents(request.body)
           @asset.last_modified_by = @user
+          @asset.update_contents(request.body)
           @asset.save
 
           @team.take_space(@asset.estimated_size)
@@ -211,11 +211,11 @@ class WopiController < ActionController::Base
           @protocol&.update(updated_at: Time.now.utc)
 
           response.headers['X-WOPI-ItemVersion'] = @asset.version
-          return render body: nil, status: :ok
+          render body: nil, status: :ok
         else
           logger.warn 'WOPI: wrong lock used to try and modify file'
           response.headers['X-WOPI-Lock'] = @asset.lock
-          return render body: nil, status: :conflict
+          render body: nil, status: :conflict
         end
       elsif !@asset.file_size.nil? && @asset.file_size.zero?
         logger.warn 'WOPI: initializing empty file'
@@ -227,11 +227,11 @@ class WopiController < ActionController::Base
         @team.save
 
         response.headers['X-WOPI-ItemVersion'] = @asset.version
-        return render body: nil, status: :ok
+        render body: nil, status: :ok
       else
         logger.warn 'WOPI: trying to modify unlocked file'
         response.headers['X-WOPI-Lock'] = ' '
-        return render body: nil, status: :conflict
+        render body: nil, status: :conflict
       end
     end
   end
@@ -249,13 +249,13 @@ class WopiController < ActionController::Base
       @assoc = result_assoc unless result_assoc.nil?
       @assoc = repository_cell_assoc unless repository_cell_assoc.nil?
 
-      if @assoc.class == Step
+      if @assoc.instance_of?(Step)
         @protocol = @asset.step.protocol
         @team = @protocol.team
-      elsif @assoc.class == Result
+      elsif @assoc.instance_of?(Result)
         @my_module = @assoc.my_module
         @team = @my_module.experiment.project.team
-      elsif @assoc.class == RepositoryCell
+      elsif @assoc.instance_of?(RepositoryCell)
         @repository = @assoc.repository_column.repository
         @team = @repository.team
       end
@@ -278,11 +278,12 @@ class WopiController < ActionController::Base
 
     # This is what we get for settings permission methods with
     # current_user
+    @user.permission_team = @team
     @current_user = @user
-    if @assoc.class == Step
+    if @assoc.instance_of?(Step)
       if @protocol.in_module?
         @can_read = can_read_protocol_in_module?(@protocol)
-        @can_write = can_manage_protocol_in_module?(@protocol)
+        @can_write = can_manage_step?(@assoc)
         @close_url = protocols_my_module_url(@protocol.my_module, only_path: false, host: ENV['WOPI_USER_HOST'])
 
         project = @protocol.my_module.experiment.project
@@ -291,7 +292,7 @@ class WopiController < ActionController::Base
         @breadcrumb_folder_name = @protocol.my_module.name
       else
         @can_read = can_read_protocol_in_repository?(@protocol)
-        @can_write = can_manage_protocol_in_repository?(@protocol)
+        @can_write = can_manage_step?(@assoc)
         @close_url = protocols_url(only_path: false, host: ENV['WOPI_USER_HOST'])
 
         @breadcrump_brand_name = 'Projects'
@@ -299,11 +300,11 @@ class WopiController < ActionController::Base
         @breadcrumb_folder_name = 'Protocol managament'
       end
       @breadcrumb_folder_url = @close_url
-    elsif @assoc.class == Result
+    elsif @assoc.instance_of?(Result)
       @can_read = can_read_experiment?(@my_module.experiment)
-      @can_write = can_manage_module?(@my_module)
+      @can_write = can_manage_my_module?(@my_module)
 
-      @close_url = results_my_module_url(@my_module, only_path: false, host: ENV['WOPI_USER_HOST'])
+      @close_url = my_module_results_url(@my_module, only_path: false, host: ENV['WOPI_USER_HOST'])
 
       @breadcrumb_brand_name  = @my_module.experiment.project.name
       @breadcrumb_brand_url   = project_url(@my_module.experiment.project,
@@ -311,7 +312,7 @@ class WopiController < ActionController::Base
                                             host: ENV['WOPI_USER_HOST'])
       @breadcrumb_folder_name = @my_module.name
       @breadcrumb_folder_url  = @close_url
-    elsif @assoc.class == RepositoryCell
+    elsif @assoc.instance_of?(RepositoryCell)
       @can_read = can_read_repository?(@repository)
       @can_write = !@repository.is_a?(RepositorySnapshot) && can_edit_wopi_file_in_repository_rows?
 
@@ -334,7 +335,7 @@ class WopiController < ActionController::Base
     url = request.original_url.upcase.encode('utf-8')
 
     if convert_to_unix_timestamp(timestamp) + 20.minutes >= Time.now
-      if current_wopi_discovery.verify_proof(token, timestamp, signed_proof, signed_proof_old, url)
+      if wopi_verify_proof(token, timestamp, signed_proof, signed_proof_old, url)
         logger.warn 'WOPI: proof verification: successful'
       else
         logger.warn 'WOPI: proof verification: not verified'

@@ -1,0 +1,139 @@
+// scss-lint:disable IdSelector SelectorDepth NestingDepth ImportantRule
+
+#user_assignments_modal {
+
+  .btn-role-select {
+
+    &:focus {
+      box-shadow: none;
+      outline: none;
+    }
+
+    &.disabled {
+      color: $color-volcano;
+      opacity: 1;
+    }
+  }
+
+  .modal-body {
+    max-height: calc(100vh - 190px);
+    min-height: 370px;
+    overflow: auto;
+  }
+
+  .member-item {
+    border-bottom: 1px solid $color-concrete;
+    padding: .5em 0;
+  }
+
+  .user-assignment-role .dropdown-toggle,
+  .user-assignment-remove .btn {
+    border-width: 0;
+  }
+
+  .new-member-item .user-assignment-role .dropdown-toggle {
+    border-color: $color-volcano;
+    border-width: 1px;
+    width: 200px;
+
+    &.btn:focus {
+      box-shadow: none;
+      outline: none !important;
+   }
+  }
+
+  .member-item,
+  .user-assignment-info,
+  .user-assignment-controls {
+    align-items: center;
+    display: flex;
+
+    .text-muted {
+      color: $color-silver-chalice;
+    }
+  }
+
+  .user-assignment-controls {
+    margin-left: auto;
+
+    .caret {
+      margin-left: .75em;
+    }
+  }
+
+  .user-assignment-dropdown {
+    a {
+      padding: 8px 16px;
+    }
+  }
+
+  .global-avatar-container {
+    margin-right: 1em;
+  }
+
+  .user-assignment-remove {
+    margin-left: 1em;
+    min-width: 7em;
+  }
+
+  a,
+  .bootstrap-select > .dropdown-toggle.bs-placeholder {
+    color: $color-volcano;
+  }
+
+  .sci-checkbox-container {
+    margin-right: 1em;
+  }
+
+  .sci-input-container {
+    margin-top: 1em;
+
+    .fa-search {
+      color: $color-alto;
+    }
+  }
+
+  .user-assignments-description {
+    margin: 1em .5em;
+  }
+
+  hr {
+    margin: 1em 0;
+  }
+
+  .group-members-button {
+    cursor: pointer;
+  }
+
+  .group-members-content {
+    max-height: 180px;
+    min-width: 260px;
+    overflow: auto;
+    padding: .6em 1em;
+
+    .title {
+      @include font-small;
+      color: $color-silver-chalice;
+      padding-bottom: .5em;
+    }
+
+    .name {
+      @include font-button;
+      padding: .4em 0;
+    }
+
+    .no-members {
+      @include font-button;
+      font-style: italic;
+      padding: .4em 0;
+    }
+  }
+}
+
+.permission-object-tag {
+  @include font-small;
+  background: $color-concrete;
+  border-radius: $border-radius-tag;
+  cursor: pointer;
+  padding: .25em;
+}

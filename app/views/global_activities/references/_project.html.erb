@@ -1,9 +1,9 @@
-<%= render partial: "global_activities/references/team.html.erb",
-           locals: { team: team, subject: subject&.team, breadcrumbs: breadcrumbs, values: values, type_of: type_of } %>
+<%= render partial: "global_activities/references/team",
+           locals: { team: team, subject: team, breadcrumbs: breadcrumbs, values: values, type_of: type_of } %>
 <div class="ga-breadcrumb">
   <%= image_tag 'icon_small/project.svg' %>
   <% if subject %>
-    <% path = subject.archived? ? projects_path(team: team) : project_path(subject) %>
+    <% path = subject.archived? ? projects_path(team: team) : experiments_path(project_id: subject) %>
     <%= route_to_other_team(path,
                             team,
                             subject.name&.truncate(Constants::NAME_TRUNCATION_LENGTH),

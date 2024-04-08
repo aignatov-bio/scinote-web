@@ -8,6 +8,7 @@
           var $container = $(this).find('.hot');
           var data = null;
           var contents = $(this).find('.hot-contents');
+          var metadata = $(this).find('.hot-metadata').val() || {};
           if (contents.attr('value')) {
             data = JSON.parse(contents.attr('value')).data;
           }
@@ -21,8 +22,12 @@
             rowHeaders: true,
             colHeaders: true,
             contextMenu: true,
+            cell: metadata.cells || [],
             formulas: true,
-            preventOverflow: 'horizontal'
+            preventOverflow: 'horizontal',
+            afterChange: function() {
+              $container.addClass(GLOBAL_CONSTANTS.HAS_UNSAVED_DATA_CLASS_NAME);
+            }
           });
         });
       }
@@ -31,23 +36,59 @@
         $form.submit(function(){
           var hot = $('.hot').handsontable('getInstance');
           var contents = $('.hot-contents');
+          var metadata = $('.hot-metadata');
           var data = JSON.stringify({data: hot.getData()});
           contents.attr('value', data);
+          metadata.attr('value', JSON.stringify({cells: hot.getCellsMeta().map(
+            (x) => {
+              const {row, col} = x;
+              const plugins = hot.plugin;
+              const cellId = plugins.utils.translateCellCoords({row, col});
+              const calculated = plugins.matrix.getItem(cellId)?.value ||
+                hot.getDataAtCell(row, col) ||
+                null;
+
+              if (x) {
+                return {
+                  col: x.col,
+                  row: x.row,
+                  className: x.className || '',
+                  calculated: calculated
+                }
+              } else {
+                return null
+              }
+            }).filter(e => { return e !== null})
+          }))
           return true;
         });
       }
 
+      // Save result table callback
+      function newResultTableCallback() {
+        $('.new-result-tables-buttons .save-result').on('click', (event) => {
+          Results.processResult(event, Results.ResultTypeEnum.TABLE);
+        });
+      }
+
+      // Save result table callback
+      function saveResultTableCallback() {
+        $('.edit-result-tables-buttons .save-result').on('click', (event) => {
+          Results.processResult(event, Results.ResultTypeEnum.TABLE);
+        });
+      }
+
       // Apply ajax callback to form
-      function _formAjaxResultTable($form) {
+      function _formAjaxResultTable($form, $prevResult) {
         $form.on('ajax:success', function(e, data) {
           var $result;
+          if ($prevResult) $prevResult.remove();
           $form.after(data.html);
           $result = $(this).next();
           initFormSubmitLinks($result);
           $(this).remove();
 
           applyEditResultTableCallback();
-          Results.applyCollapseLinkCallBack();
           Results.initHandsOnTables($result);
           Results.toggleResultEditButtons(true);
           Results.expandResult($result);
@@ -62,20 +103,20 @@
 
       // Edit result table button behaviour
       function applyEditResultTableCallback() {
-        $('.edit-result-table').on('ajax:success', function(e, data) {
+        $('.edit-result-table').off('ajax:success ajax:error').on('ajax:success', function(e, data) {
           var $result = $(this).closest('.result');
           var $form = $(data.html);
           var $prevResult = $result;
           $result.after($form);
-          $result.remove();
+          $prevResult.hide();
 
-          _formAjaxResultTable($form);
+          _formAjaxResultTable($form, $prevResult);
           _initEditableHandsOnTable($form);
           _onSubmitExtractTable($form);
 
           // Cancel button
           $form.find('.cancel-edit').click(function () {
-            $form.after($prevResult);
+            $prevResult.show();
             $form.remove();
             applyEditResultTableCallback();
             Results.toggleResultEditButtons(true);
@@ -84,6 +125,7 @@
           Results.toggleResultEditButtons(false);
 
           $('#result_name').focus();
+          saveResultTableCallback();
         });
       }
 
@@ -110,6 +152,7 @@
               Results.initCancelFormButton($form, initNewResultTable);
               Results.toggleResultEditButtons(false);
               $('#result_name').focus();
+              newResultTableCallback();
             },
             error: function() {
               animateSpinner(null, false);

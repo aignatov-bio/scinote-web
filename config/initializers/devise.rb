@@ -8,6 +8,8 @@ Devise.setup do |config|
   # by default. You can change it below and use your own secret key.
   # config.secret_key = '8d3a7b1acfb05057553abeb1ee4709f9f2d7e2fa1e5e60e7f45ab2e9244c301adcf0d146ae7cf74ba03c39c5bf895f08606a9f98051478ac4c6a695cafb4007a'
 
+  Devise::Models::Authenticatable::BLACKLIST_FOR_SERIALIZATION.concat(%i(otp otp_recovery_codes otp_secret))
+
   # ==> Mailer Configuration
   # Configure the e-mail address which will be shown in Devise::Mailer,
   # note that it will be overwritten if you use your own mailer class
@@ -200,7 +202,11 @@ Devise.setup do |config|
   # ==> Configuration for :timeoutable
   # The time you want to timeout the user session without activity. After this
   # time the user will be asked for credentials again. Default is 30 minutes.
-  config.timeout_in = 3.hours
+  config.timeout_in = if ENV['SCINOTE_SESSION_TIMEOUTS_IN'].present?
+                        ENV['SCINOTE_SESSION_TIMEOUTS_IN'].to_i.seconds
+                      else
+                        3.hours
+                      end
 
   # If true, expires auth token on session timeout.
   # config.expire_auth_token_on_timeout = false
@@ -209,27 +215,27 @@ Devise.setup do |config|
   # Defines which strategy will be used to lock an account.
   # :failed_attempts = Locks an account after a number of failed attempts to sign in.
   # :none            = No lock strategy. You should handle locking by yourself.
-  # config.lock_strategy = :failed_attempts
+  config.lock_strategy = :failed_attempts
 
   # Defines which key will be used when locking and unlocking an account
-  # config.unlock_keys = [:email]
+  config.unlock_keys = [:email]
 
   # Defines which strategy will be used to unlock an account.
   # :email = Sends an unlock link to the user email
   # :time  = Re-enables login after a certain amount of time (see :unlock_in below)
   # :both  = Enables both strategies
   # :none  = No unlock strategy. You should handle unlocking by yourself.
-  # config.unlock_strategy = :both
+  config.unlock_strategy = :both
 
   # Number of authentication tries before locking an account if lock_strategy
   # is failed attempts.
-  # config.maximum_attempts = 20
+  config.maximum_attempts = 10
 
   # Time interval to unlock the account if :time is enabled as unlock_strategy.
-  # config.unlock_in = 1.hour
+  config.unlock_in = 1.hour
 
   # Warn on the last attempt before the account is locked.
-  # config.last_attempt_warning = true
+  config.last_attempt_warning = true
 
   # ==> Configuration for :recoverable
   #
@@ -243,7 +249,9 @@ Devise.setup do |config|
 
   # When set to false, does not sign a user in automatically after their password is
   # reset. Defaults to true, so a user is signed in automatically after a reset.
-  # config.sign_in_after_reset_password = true
+  #
+  # This setting has no effect, controller has been overriden at controllers/users/passwords_controller.rb
+  # config.sign_in_after_reset_password = false
 
   # ==> Configuration for :encryptable
   # Allow you to use another encryption algorithm besides bcrypt (default). You can use
@@ -290,6 +298,8 @@ Devise.setup do |config|
   if Rails.configuration.x.enable_user_registration
     config.omniauth :linkedin, ENV['LINKEDIN_KEY'], ENV['LINKEDIN_SECRET'], scope: 'r_liteprofile r_emailaddress'
   end
+
+  Rails.application.config.x.disable_local_passwords = ENV['DISABLE_LOCAL_PASSWORDS'] == 'true'
 
   # ==> Warden configuration
   # If you want to use other strategies, that are not supported by Devise, or

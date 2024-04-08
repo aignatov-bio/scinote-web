@@ -1,0 +1,184 @@
+// scss-lint:disable SelectorDepth
+// scss-lint:disable NestingDepth
+
+.repository-show {
+  .repository-toolbar {
+    background-color: $color-white;
+    display: flex;
+    flex-wrap: nowrap;
+    height: 3.5rem;
+    justify-content: space-between;
+    padding-bottom: 1rem;
+
+
+    .view-switch,
+    .filter-container {
+      display: inline-block;
+    }
+
+    .view-switch {
+      margin-left: auto;
+
+      .view-switch-button {
+        outline: 1px solid $color-alto;
+      }
+
+      .caret {
+        margin: 8px 0 8px 8px;
+      }
+
+      &.open {
+        .caret {
+          transform: rotateX(180deg);
+        }
+      }
+
+      .dropdown-menu {
+        @include font-button;
+        min-width: 100%;
+        padding: 0;
+
+        .divider-label {
+          @include font-small;
+          color: $color-silver-chalice;
+          padding: .25em 1em;
+        }
+
+        .divider {
+          margin: 0;
+        }
+
+        li {
+          cursor: pointer;
+          padding: .5em 1em;
+          white-space: nowrap;
+
+          .button-icon {
+            margin-right: .5em;
+          }
+
+          &:hover:not(.divider-label) {
+            background: $color-concrete;
+          }
+
+          .btn {
+            height: 36px;
+          }
+
+          a {
+            display: inline-block;
+            margin: -1em;
+            padding: .5em 1em;
+            width: calc(100% + 2em);
+
+            &.selected::after {
+              @include font-awesome;
+              content: $font-fas-check;
+              margin-left: auto;
+              position: absolute;
+              right: 1em;
+            }
+          }
+        }
+      }
+    }
+
+    .toolbar-left-block {
+      align-items: center;
+      display: flex;
+      gap: .25rem;
+
+      >* {
+        margin-left: .25em;
+
+        &:nth-child(1) {
+          margin-left: 0;
+        }
+      }
+
+      .view-only-label {
+        align-items: center;
+        margin: auto 0;
+      }
+    }
+
+    .toolbar-right-block {
+      display: flex;
+      flex-shrink: 0;
+      gap: .5rem;
+
+      .active-reminders-filter {
+        align-items: center;
+        cursor: pointer;
+        display: flex;
+
+        .sci-checkbox-container {
+          margin-right: .5em;
+        }
+
+        .active-reminders-short-label {
+          display: none;
+        }
+
+        @media(max-width:770px) {
+          .active-reminders-short-label {
+            display: inline;
+          }
+
+          .active-reminders-label {
+            display: none;
+          }
+        }
+      }
+    }
+
+    .repository-provisioning-notice {
+      color: $brand-info;
+    }
+
+    .archived-label {
+      color: $color-silver-chalice;
+      display: inline-block;
+      margin: 0 auto;
+      max-width: 400px;
+      padding: 0 1em;
+
+      table {
+        tr {
+          td {
+            padding: 0 .5em;
+
+            &:nth-child(1) {
+              text-align: right;
+            }
+
+            &:nth-child(2) {
+              color: $color-black;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @media (max-width: 1000px) {
+    .repository-toolbar {
+
+      .btn:not(.prevent-shrink) {
+        height: 40px;
+        padding: .5rem;
+        width: 40px;
+
+        .button-text {
+          display: none;
+        }
+      }
+
+      .auto-shrink-button {
+        .fas {
+          margin: 0;
+        }
+      }
+    }
+  }
+}

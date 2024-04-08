@@ -12,8 +12,12 @@ class Asset < ApplicationRecord
   # Lock duration set to 30 minutes
   LOCK_DURATION = 60 * 30
 
+  enum view_mode: { thumbnail: 0, list: 1, inline: 2 }
+
   # ActiveStorage configuration
   has_one_attached :file
+  has_one_attached :file_pdf_preview
+  has_one_attached :preview_image
 
   # Asset validation
   # This could cause some problems if you create empty asset and want to
@@ -22,28 +26,33 @@ class Asset < ApplicationRecord
   validate :wopi_filename_valid, on: :wopi_file_creation
   validate :check_file_size, on: :on_api_upload
 
-  belongs_to :created_by,
-             foreign_key: 'created_by_id',
-             class_name: 'User',
-             optional: true
-  belongs_to :last_modified_by,
-             foreign_key: 'last_modified_by_id',
-             class_name: 'User',
-             optional: true
+  belongs_to :created_by, class_name: 'User', optional: true
+  belongs_to :last_modified_by, class_name: 'User', optional: true
   belongs_to :team, optional: true
   has_one :step_asset, inverse_of: :asset, dependent: :destroy
-  has_one :step, through: :step_asset, dependent: :nullify
+  has_one :step, through: :step_asset, touch: true
   has_one :result_asset, inverse_of: :asset, dependent: :destroy
-  has_one :result, through: :result_asset, dependent: :nullify
+  has_one :result, through: :result_asset, touch: true
   has_one :repository_asset_value, inverse_of: :asset, dependent: :destroy
-  has_one :repository_cell, through: :repository_asset_value,
-    dependent: :nullify
+  has_one :repository_cell, through: :repository_asset_value
   has_many :report_elements, inverse_of: :asset, dependent: :destroy
   has_one :asset_text_datum, inverse_of: :asset, dependent: :destroy
+  has_many :asset_sync_tokens, dependent: :destroy
 
-  after_save { result&.touch; step&.touch }
+  scope :sort_assets, lambda { |sort_value = 'new'|
+    sort = case sort_value
+           when 'old' then { created_at: :asc }
+           when 'atoz' then { 'active_storage_blobs.filename': :asc }
+           when 'ztoa' then { 'active_storage_blobs.filename': :desc }
+           else { created_at: :desc }
+           end
 
-  attr_accessor :file_content, :file_info, :in_template
+    joins(file_attachment: :blob).order(sort)
+  }
+
+  attr_accessor :file_content, :file_info
+
+  before_save :reset_file_processing, if: -> { file.new_record? }
 
   def self.search(
     user,
@@ -104,7 +113,7 @@ class Asset < ApplicationRecord
 
       new_query = new_query.where(
         "(active_storage_blobs.filename #{like} ? " \
-        "OR asset_text_data.data_vector @@ to_tsquery(?))",
+        "OR asset_text_data.data_vector @@ plainto_tsquery(?))",
         a_query,
         s_query
       )
@@ -125,7 +134,7 @@ class Asset < ApplicationRecord
                      .tr('\'', '"')
       new_query = new_query.where(
         "(active_storage_blobs.filename #{like} ANY (array[?]) " \
-        "OR asset_text_data.data_vector @@ to_tsquery(?))",
+        "OR asset_text_data.data_vector @@ plainto_tsquery(?))",
         a_query,
         s_query
       )
@@ -137,9 +146,9 @@ class Asset < ApplicationRecord
                            .limit(Constants::SEARCH_LIMIT)
                            .offset((page - 1) * Constants::SEARCH_LIMIT)
       Asset.select(
-        "assets_search.*, ts_headline(assets_search.data, to_tsquery('" +
-        sanitize_sql_for_conditions(s_query) +
-        "'), 'StartSel=<mark>, StopSel=</mark>') AS headline"
+        "assets_search.*, " \
+        "ts_headline(assets_search.data, plainto_tsquery('#{sanitize_sql_for_conditions(s_query)}'), " \
+        "'StartSel=<mark>, StopSel=</mark>') AS headline"
       ).from(new_query, 'assets_search')
     else
       new_query
@@ -151,23 +160,41 @@ class Asset < ApplicationRecord
   end
 
   def previewable?
-    return false unless file.attached?
+    return false unless preview_image.attached? || file.attached?
 
     previewable_document?(blob) || previewable_image?
   end
 
+  def preview_attachment
+    preview_image.attached? ? preview_image : file
+  end
+
   def medium_preview
-    file.representation(resize_to_limit: Constants::MEDIUM_PIC_FORMAT)
+    preview_attachment.representation(resize_to_limit: Constants::MEDIUM_PIC_FORMAT)
   end
 
   def large_preview
-    file.representation(resize_to_limit: Constants::LARGE_PIC_FORMAT)
+    preview_attachment.representation(resize_to_limit: Constants::LARGE_PIC_FORMAT)
   end
 
   def file_name
     return '' unless file.attached?
 
     file.blob&.filename&.sanitized
+  end
+
+  def preview_image_file_name
+    return '' unless preview_image.attached?
+
+    preview_image.blob&.filename&.sanitized
+  end
+
+  def render_file_name
+    if file.attached? && file.metadata['asset_type']
+      file.metadata['name']
+    else
+      file_name
+    end
   end
 
   def file_size
@@ -196,10 +223,22 @@ class Asset < ApplicationRecord
     raise ArgumentError, 'Destination asset should be persisted first!' unless to_asset.persisted?
 
     file.blob.open do |tmp_file|
-      to_blob = ActiveStorage::Blob.create_after_upload!(io: tmp_file, filename: blob.filename, metadata: blob.metadata)
+      to_blob = ActiveStorage::Blob.create_and_upload!(io: tmp_file, filename: blob.filename)
       to_asset.file.attach(to_blob)
     end
-    to_asset.post_process_file(to_asset.team)
+
+    if preview_image.attached?
+      preview_image.blob.open do |tmp_preview_image|
+        to_blob = ActiveStorage::Blob.create_and_upload!(
+          io: tmp_preview_image,
+          filename: blob.filename,
+          metadata: blob.metadata
+        )
+        to_asset.preview_image.attach(to_blob)
+      end
+    end
+
+    to_asset.post_process_file
   end
 
   def image?
@@ -216,68 +255,38 @@ class Asset < ApplicationRecord
     file.metadata[:asset_type] == 'marvinjs'
   end
 
-  def post_process_file(team = nil)
-    # Extract asset text if it's of correct type
-    if text?
-      Rails.logger.info "Asset #{id}: Creating extract text job"
-      # The extract_asset_text also includes
-      # estimated size calculation
-      Asset.delay(queue: :assets, run_at: 20.minutes.from_now)
-           .extract_asset_text_delayed(id, in_template)
-    elsif marvinjs?
-      extract_asset_text
-    else
-      # Update asset's estimated size immediately
-      update_estimated_size(team)
-    end
+  def pdf_preview_ready?
+    return false if pdf_preview_processing
+
+    return true if file_pdf_preview.attached?
+
+    PdfPreviewJob.perform_later(id)
+    ActiveRecord::Base.no_touching { update(pdf_preview_processing: true) }
+    false
   end
 
-  def self.extract_asset_text_delayed(asset_id, in_template = false)
-    asset = find_by(id: asset_id)
-    return unless asset.present? && asset.file.attached?
-
-    asset.extract_asset_text(in_template)
+  def pdf?
+    content_type == 'application/pdf'
   end
 
-  def extract_asset_text(in_template = false)
-    self.in_template = in_template
+  def pdf_previewable?
+    pdf? || (previewable_document?(blob) && Rails.application.config.x.enable_pdf_previews)
+  end
 
-    if marvinjs?
-      mjs_doc = Nokogiri::XML(file.metadata[:description])
-      mjs_doc.remove_namespaces!
-      text_data = mjs_doc.search("//Field[@name='text']").collect(&:text).join(' ')
-    else
-      # Start Tika as a server
-      Yomu.server(:text) if !ENV['NO_TIKA_SERVER'] && Yomu.class_variable_get(:@@server_pid).nil?
-      blob.open do |tmp_file|
-        text_data = Yomu.new(tmp_file.path).text
-      end
+  def post_process_file
+    # Update asset's estimated size immediately
+    update_estimated_size unless text? || marvinjs?
+
+    if Rails.application.config.x.enable_pdf_previews && previewable_document?(blob)
+      PdfPreviewJob.perform_later(id)
+      ActiveRecord::Base.no_touching { update(pdf_preview_processing: true) }
     end
-
-    if asset_text_datum.present?
-      # Update existing text datum if it exists
-      asset_text_datum.update(data: text_data)
-    else
-      # Create new text datum
-      AssetTextDatum.create(data: text_data, asset: self)
-    end
-
-    Rails.logger.info "Asset #{id}: Asset file successfully extracted"
-
-    # Finally, update asset's estimated size to include
-    # the data vector
-    update_estimated_size(team)
-  rescue StandardError => e
-    Rails.logger.fatal(
-      "Asset #{id}: Error extracting contents from asset "\
-      "file #{file.blob.key}: #{e.message}"
-    )
   end
 
   # If team is provided, its space_taken
   # is updated as well
-  def update_estimated_size(team = nil)
-    return if file_size.blank? || in_template
+  def update_estimated_size
+    return if file_size.blank?
 
     es = file_size
     if asset_text_datum.present? && asset_text_datum.persisted?
@@ -318,7 +327,7 @@ class Asset < ApplicationRecord
     file_ext = file_name.split('.').last
     action = get_action(file_ext, action)
     if !action.nil?
-      action_url = action.urlsrc
+      action_url = action[:urlsrc]
       if ENV['WOPI_BUSINESS_USERS'] && ENV['WOPI_BUSINESS_USERS'] == 'true'
         action_url = action_url.gsub(/<IsLicensedUser=BUSINESS_USER&>/,
                                      'IsLicensedUser=1&')
@@ -352,7 +361,7 @@ class Asset < ApplicationRecord
   def favicon_url(action)
     file_ext = file_name.split('.').last
     action = get_action(file_ext, action)
-    action.wopi_app.icon if action.try(:wopi_app)
+    action[:icon] if action[:icon]
   end
 
   # locked?, lock_asset and refresh_lock rely on the asset
@@ -396,11 +405,19 @@ class Asset < ApplicationRecord
   end
 
   def editable_image?
-    !locked? && %r{^image/#{Regexp.union(Constants::WHITELISTED_IMAGE_TYPES_EDITABLE)}} =~ file.content_type
+    !locked? && (%r{^image/#{Regexp.union(Constants::WHITELISTED_IMAGE_TYPES_EDITABLE)}} =~ file.content_type).present?
   end
 
   def generate_base64(style)
     return convert_variant_to_base64(medium_preview) if style == :medium
+  end
+
+  def my_module
+    (result || step)&.my_module
+  end
+
+  def parent
+    step || result || repository_cell
   end
 
   private
@@ -410,7 +427,8 @@ class Asset < ApplicationRecord
   end
 
   def previewable_image?
-    file.blob&.content_type =~ %r{^image/#{Regexp.union(Constants::WHITELISTED_IMAGE_TYPES)}}
+    preview_image.attached? ||
+      file.blob&.content_type&.match?(%r{^image/#{Regexp.union(Constants::WHITELISTED_IMAGE_TYPES)}})
   end
 
   def step_or_result_or_repository_asset_value
@@ -452,5 +470,9 @@ class Asset < ApplicationRecord
         errors.add(:file, I18n.t('activerecord.errors.models.asset.attributes.file.too_big'))
       end
     end
+  end
+
+  def reset_file_processing
+    self.file_processing = false
   end
 end

@@ -1,7 +1,7 @@
 <div class="repository-versions-header">
   <h4><%= t('my_modules.repository.snapshots.full_view.header') %>
     <a id="collapseVersionsSidebar" class="pull-right sidebar-collapse-button" href="#">
-      <i class="fas fa-angle-double-right"></i>
+      <i class="sn-icon sn-icon sn-icon-double-navigate-after"></i>
     </a>
   </h4>
 </div>
@@ -10,7 +10,7 @@
     <a href="#" id="selectLiveVersionButton" class="list-group-item live-version-item version-button"
        data-id="<%= @repository.id %>"
        data-selected="<%= @repository_snapshots.select{ |s| s.selected == true }.blank? %>"
-       data-table-url="<%= full_view_table_my_module_repository_path(@my_module, @repository) %>"
+       data-table-url="<%= full_view_table_my_module_repository_path(@my_module, @repository, include_stock_consumption: @repository.has_stock_consumption?) %>"
     >
       <h2 class="list-group-item-heading">
         <%= t('my_modules.repository.snapshots.full_view.live') %>
@@ -22,7 +22,7 @@
   <% else %>
     <div class="list-group-item disabled">
       <h2 class="list-group-item-heading">
-        <i class="fas fa-minus-circle"></i>
+        <i class="sn-icon sn-icon-minus-circle"></i>
         <%= t('my_modules.repository.snapshots.full_view.live') %>
       </h2>
       <% if @repository %>
@@ -32,7 +32,7 @@
       <% end %>
     </div>
   <% end %>
-  <% if @repository.present? && live_items_present && can_create_my_module_repository_snapshot?(@my_module) %>
+  <% if @repository.present? && live_items_present && can_create_my_module_repository_snapshots?(@my_module) %>
     <div class="create-snapshot-item">
       <p class="info <%= 'hidden' unless @repository_snapshots.blank? %>">
         <%= t('my_modules.repository.snapshots.full_view.no_snapshots_label') %>

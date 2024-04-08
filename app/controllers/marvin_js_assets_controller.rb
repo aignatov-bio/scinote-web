@@ -15,30 +15,19 @@ class MarvinJsAssetsController < ApplicationController
 
     create_create_marvinjs_activity(result[:asset], current_user)
 
-    if result[:asset] && marvin_params[:object_type] == 'Step'
-      render json: {
-        html: render_to_string(
-          partial: 'steps/attachments/item.html.erb',
-             locals: { asset: result[:asset],
-                       i: 0,
-                       assets_count: 0,
-                       step: result[:object],
-                       order_atoz: 0,
-                       order_ztoa: 0 }
-        )
-      }
-    elsif result[:asset] && marvin_params[:object_type] == 'Result'
-      @my_module = result[:object].my_module
-      render json: {
-        html: render_to_string(
-          partial: 'my_modules/result.html.erb',
-            locals: { result: result[:object] }
-        )
-      }, status: :ok
-    elsif result[:asset]
-      render json: result[:asset]
+    if result[:asset]
+      if marvin_params[:object_type] == 'Step' || marvin_params[:object_type] == 'Result'
+        render json: {
+          html: render_to_string(partial: 'assets/asset', locals: {
+                                   asset: result[:asset],
+                                   gallery_view_id: marvin_params[:object_id]
+                                 })
+        }
+      else
+        render json: result[:asset]
+      end
     else
-      render json: result[:asset].errors, status: :unprocessable_entity
+      render json: result[:asset]&.errors, status: :unprocessable_entity
     end
   end
 
@@ -63,7 +52,7 @@ class MarvinJsAssetsController < ApplicationController
   private
 
   def load_vars
-    @asset = current_team.assets.find_by_id(params[:id])
+    @asset = current_team.assets.find_by(id: params[:id])
     return render_404 unless @asset
 
     @assoc ||= @asset.step
@@ -77,13 +66,13 @@ class MarvinJsAssetsController < ApplicationController
   end
 
   def load_create_vars
-    @assoc = Step.find_by_id(marvin_params[:object_id]) if marvin_params[:object_type] == 'Step'
-    @assoc = MyModule.find_by_id(params[:object_id]) if marvin_params[:object_type] == 'Result'
+    @assoc = Step.find_by(id: marvin_params[:object_id]) if marvin_params[:object_type] == 'Step'
+    @assoc = Result.find_by(id: params[:object_id]) if marvin_params[:object_type] == 'Result'
 
     if @assoc.class == Step
       @protocol = @assoc.protocol
-    elsif @assoc.class == MyModule
-      @my_module = @assoc
+    elsif @assoc.class == Result
+      @my_module = @assoc.my_module
     end
   end
 
@@ -91,7 +80,7 @@ class MarvinJsAssetsController < ApplicationController
     if @assoc.class == Step
       return render_403 unless can_read_protocol_in_module?(@protocol) ||
                                can_read_protocol_in_repository?(@protocol)
-    elsif @assoc.class == Result || @assoc.class == MyModule
+    elsif @assoc.class == Result
       return render_403 unless can_read_experiment?(@my_module.experiment)
     else
       render_403
@@ -100,10 +89,9 @@ class MarvinJsAssetsController < ApplicationController
 
   def check_edit_permission
     if @assoc.class == Step
-      return render_403 unless can_manage_protocol_in_module?(@protocol) ||
-                               can_manage_protocol_in_repository?(@protocol)
-    elsif @assoc.class == Result || @assoc.class == MyModule
-      return render_403 unless can_manage_module?(@my_module)
+      return render_403 unless can_manage_step?(@assoc)
+    elsif @assoc.class == Result
+      return render_403 unless can_manage_my_module?(@assoc.my_module)
     else
       render_403
     end

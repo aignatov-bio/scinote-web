@@ -7,19 +7,23 @@ describe RepositoriesController, type: :controller do
 
   let!(:user) { controller.current_user }
   let!(:team) { create :team, created_by: user }
-  let!(:user_team) { create :user_team, :admin, user: user, team: team }
   let(:action) { post :create, params: params, format: :json }
 
   describe 'index' do
-    let(:repository) { create :repository, team: team }
+    let(:repository) { create :repository, team: team, created_by: user }
     let(:action) { get :index, format: :json }
 
     it 'correct JSON format' do
       repository
+
       action
+
       parsed_response = JSON.parse(response.body)
-      expect(parsed_response[0].keys).to contain_exactly(
-        'DT_RowId', '1', '2', '3', '4', '5', '6', '7', '8', 'repositoryUrl', 'DT_RowAttr'
+      expect(parsed_response['data'][0].keys).to contain_exactly(
+        'id', 'type', 'attributes'
+      )
+      expect(parsed_response['data'][0]['attributes'].keys).to contain_exactly(
+        'name', 'code', 'nr_of_rows', 'shared', 'shared_label', 'ishared', 'team', 'created_at', 'created_by', 'archived_on', 'archived_by', 'urls', 'shared_read', 'shared_write', 'shareable_write'
       )
     end
   end
@@ -42,11 +46,12 @@ describe RepositoriesController, type: :controller do
   end
 
   describe 'DELETE destroy' do
-    let(:repository) { create :repository, team: team }
+    let(:repository) { create :repository, team: team, created_by: user }
     let(:params) { { id: repository.id, team_id: team.id } }
     let(:action) { delete :destroy, params: params }
 
     it 'calls create activity for deleting inventory' do
+      repository.archive!(user)
       expect(Activities::CreateActivityService)
         .to(receive(:call)
               .with(hash_including(activity_type: :delete_inventory)))
@@ -55,13 +60,14 @@ describe RepositoriesController, type: :controller do
     end
 
     it 'adds activity in DB' do
+      repository.archive!(user)
       expect { action }
         .to(change { Activity.count })
     end
   end
 
   describe 'PUT update' do
-    let(:repository) { create :repository, team: team }
+    let(:repository) { create :repository, team: team, created_by: user }
     let(:params) do
       { id: repository.id, team_id: team.id, repository: { name: 'new_name' } }
     end
@@ -82,7 +88,7 @@ describe RepositoriesController, type: :controller do
   end
 
   describe 'POST export_repository' do
-    let(:repository) { create :repository, team: team }
+    let(:repository) { create :repository, team: team, created_by: user }
     let(:repository_row) { create :repository_row, repository: repository }
     let(:repository_column) do
       create :repository_column, repository: repository
@@ -116,7 +122,7 @@ describe RepositoriesController, type: :controller do
   end
 
   describe 'POST import_records' do
-    let(:repository) { create :repository, team: team }
+    let(:repository) { create :repository, team: team, created_by: user }
     let(:mappings) do
       { '0': '-1', '1': '', '2': '', '3': '', '4': '', '5': '' }
     end
@@ -140,8 +146,7 @@ describe RepositoriesController, type: :controller do
     end
 
     it 'adds activity in DB' do
-      ImportRepository::ImportRecords.any_instance.stub(:import!)
-                                     .and_return(status: :ok)
+      allow_any_instance_of(ImportRepository::ImportRecords).to receive(:import!).and_return(status: :ok)
 
       expect { action }
         .to(change { Activity.count })

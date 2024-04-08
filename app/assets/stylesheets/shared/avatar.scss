@@ -1,8 +1,6 @@
 // scss-lint:disable SelectorDepth SelectorFormat QualifyingElement
 // scss-lint:disable NestingDepth ImportantRule
 
-@import "constants";
-@import "mixins";
 
 .global-avatar-container {
   border-radius: 15px;
@@ -13,18 +11,10 @@
   width: 30px;
 
   img {
-    border-radius: 15px;
+    border-radius: 50%;
     height: 100%;
     object-fit: cover;
     width: 100%;
-  }
-}
-
-.task-assigned-users .global-avatar-container {
-  margin: 2px;
-
-  img {
-    vertical-align: baseline;
   }
 }
 

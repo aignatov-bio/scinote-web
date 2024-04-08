@@ -13,48 +13,6 @@ module StepsActions
     end
   end
 
-  def fetch_new_checklists_data
-    checklists = []
-    new_checklists = step_params[:checklists_attributes]
-
-    if new_checklists
-      new_checklists.to_h.each do |e|
-        list = PreviousChecklist.new(
-          e.second[:id].to_i,
-          e.second[:name]
-        )
-        if e.second[:checklist_items_attributes]
-          e.second[:checklist_items_attributes].each do |el|
-            list.add_checklist(
-              PreviousChecklistItem.new(el.second[:id].to_i, el.second[:text])
-            )
-          end
-        end
-        checklists << list
-      end
-    end
-    checklists
-  end
-
-  def fetch_old_checklists_data(step)
-    checklists = []
-    if step.checklists
-      step.checklists.each do |e|
-        list = PreviousChecklist.new(
-          e.id,
-          e.name
-        )
-        e.checklist_items.each do |el|
-          list.add_checklist(
-            PreviousChecklistItem.new(el.id, el.text)
-          )
-        end
-        checklists << list
-      end
-    end
-    checklists
-  end
-
   # used for step update action it traverse through the input params and
   # generates notifications
   def update_annotation_notifications(step,
@@ -62,20 +20,19 @@ module StepsActions
                                       new_checklists,
                                       old_checklists)
     step_description_annotation(step, old_description)
-    new_checklists.each do |e|
+    new_checklists.each do |new_checklist|
       # generates smart annotaion if the checklist is new
-      add_new_checklist(step, e) if e.id.zero?
-      checklist_name_annotation(step, e) unless e.id
+      add_new_checklist(step, new_checklist) and next if new_checklist.id.zero?
       # else check if checklist is not deleted and generates
       # new notifications
-      next unless old_checklists.map(&:id).include?(e.id)
-      old_checklist = old_checklists.select { |i| i.id == e.id }.first
-      checklist_name_annotation(step, e, old_checklist.name)
-      e.items.each do |ci|
-        old_list = old_checklists.select { |i| i.id == e.id }.first
-        old_item = old_list.items.select { |i| i.id == ci.id }.first if old_list
-        text = old_item ? old_item.text : ''
-        checklist_item_annotation(step, ci, text)
+      next unless old_checklists.map(&:id).include?(new_checklist.id)
+
+      old_checklist = old_checklists.find { |i| i.id == new_checklist.id }
+      checklist_name_annotation(step, new_checklist, old_checklist.name)
+      new_checklist.items.each do |new_checklist_item|
+        old_checklist_item = old_checklist.items.find { |i| i.id == new_checklist_item.id } if old_checklist
+        text = old_checklist_item ? old_checklist_item.text : ''
+        checklist_item_annotation(step, new_checklist_item, text)
       end
     end
   end
@@ -91,7 +48,20 @@ module StepsActions
     smart_annotation_notification(
       old_text: old_text,
       new_text: checklist_item.text,
+      subject: step.protocol,
       title: t('notifications.checklist_title',
+               user: current_user.full_name,
+               step: step.name),
+      message: annotation_message(step)
+    )
+  end
+
+  def step_text_annotation(step, step_text, old_text = nil)
+    smart_annotation_notification(
+      old_text: old_text,
+      new_text: step_text.text,
+      subject: step.protocol,
+      title: t('notifications.step_text_title',
                user: current_user.full_name,
                step: step.name),
       message: annotation_message(step)
@@ -102,6 +72,7 @@ module StepsActions
     smart_annotation_notification(
       old_text: old_text,
       new_text: checklist.name,
+      subject: step.protocol,
       title: t('notifications.checklist_title',
                user: current_user.full_name,
                step: step.name),
@@ -113,6 +84,7 @@ module StepsActions
     smart_annotation_notification(
       old_text: old_text,
       new_text: step.description,
+      subject: step.protocol,
       title: t('notifications.step_description_title',
                user: current_user.full_name,
                step: step.name),
@@ -128,7 +100,7 @@ module StepsActions
              ),
              experiment: link_to(
                step.my_module.experiment.name,
-               canvas_experiment_url(step.my_module.experiment)
+               my_modules_experiment_url(step.my_module.experiment)
              ),
              my_module: link_to(
                step.my_module.name,

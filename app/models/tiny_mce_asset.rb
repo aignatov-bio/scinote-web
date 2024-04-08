@@ -4,6 +4,7 @@ class TinyMceAsset < ApplicationRecord
   extend ProtocolsExporter
   extend MarvinJsActions
   include ActiveStorageConcerns
+  include Canaid::Helpers::PermissionsHelper
 
   attr_accessor :reference
   before_create :set_reference
@@ -21,14 +22,26 @@ class TinyMceAsset < ApplicationRecord
   validates :estimated_size, presence: true
 
   def self.update_images(object, images, current_user)
-    images = JSON.parse(images)
+    text_field = object.public_send(Extends::RICH_TEXT_FIELD_MAPPINGS[object.class.name]) || ''
+    # image ids that are present in text
+    text_images = text_field.scan(/data-mce-token="([^"]+)"/).flatten
+    images = JSON.parse(images) + text_images
+
     current_images = object.tiny_mce_assets.pluck(:id)
     images_to_delete = current_images.reject do |x|
       (images.include? Base62.encode(x))
     end
+
     images.each do |image|
       image_to_update = find_by(id: Base62.decode(image))
-      next if image_to_update.object || image_to_update.team_id != Team.search_by_object(object).id
+
+      # if image was pasted from another object, check permission and create a copy
+      if image_to_update.object != object && image_to_update.can_read?(current_user)
+        image_to_update.clone_tinymce_asset(object)
+        image_to_update.reload
+      end
+
+      next if image_to_update.object
 
       image_to_update&.update(object: object, saved: true)
       create_create_marvinjs_activity(image_to_update, current_user)
@@ -39,22 +52,34 @@ class TinyMceAsset < ApplicationRecord
       image_to_delete.destroy
     end
 
-    object.delay(queue: :assets).copy_unknown_tiny_mce_images
+    object.delay(queue: :assets).copy_unknown_tiny_mce_images(current_user)
   rescue StandardError => e
     Rails.logger.error e.message
+    Rails.logger.error e.backtrace.join("\n")
   end
 
-  def self.generate_url(description, obj = nil)
+  def self.generate_url(description, obj = nil, is_shared_object: false)
     # Check tinymce for old format
     description = update_old_tinymce(description, obj)
 
     description = Nokogiri::HTML(description)
     tm_assets = description.css('img[data-mce-token]')
+
+    # Make same-page anchor links work properly with turbolinks
+    links = description.css('[href]')
+    links.each do |link|
+      link['data-turbolinks'] = false if link['href'].starts_with?('#')
+    end
+
     tm_assets.each do |tm_asset|
       asset_id = tm_asset.attr('data-mce-token')
       new_asset = obj.tiny_mce_assets.find_by(id: Base62.decode(asset_id))
       if new_asset&.image&.attached?
-        tm_asset.attributes['src'].value = Rails.application.routes.url_helpers.url_for(new_asset.image)
+        tm_asset.attributes['src'].value = if is_shared_object
+                                             new_asset.image.url(expires_in: Constants::URL_SHORT_EXPIRE_TIME.minutes)
+                                           else
+                                             Rails.application.routes.url_helpers.url_for(new_asset.image)
+                                           end
         tm_asset['class'] = 'img-responsive'
       end
     end
@@ -103,7 +128,7 @@ class TinyMceAsset < ApplicationRecord
     asset.team.save
   end
 
-  def self.update_old_tinymce(description, obj = nil)
+  def self.update_old_tinymce(description, obj = nil, import = false)
     return description unless description
 
     description.scan(/\[~tiny_mce_id:(\w+)\]/).flatten.each do |token|
@@ -131,7 +156,7 @@ class TinyMceAsset < ApplicationRecord
       order(:id).each do |tiny_mce_asset|
         asset_guid = get_guid(tiny_mce_asset.id)
         extension = tiny_mce_asset.image.blob.filename.extension
-        asset_file_name = if extension.empty?
+        asset_file_name = if extension.blank?
                             "rte-#{asset_guid}"
                           else
                             "rte-#{asset_guid}.#{tiny_mce_asset.image.blob.filename.extension}"
@@ -144,17 +169,7 @@ class TinyMceAsset < ApplicationRecord
   end
 
   def clone_tinymce_asset(obj)
-    begin
-      # It will trigger only for Step or ResultText
-      team_id = if obj.class.name == 'Step'
-                  obj.protocol.team_id
-                else
-                  obj.result.my_module.protocol.team_id
-                end
-    rescue StandardError => e
-      Rails.logger.error e.message
-      team_id = nil
-    end
+    team_id = Team.search_by_object(obj)&.id
 
     return false unless team_id
 
@@ -188,16 +203,45 @@ class TinyMceAsset < ApplicationRecord
     image&.blob
   end
 
+  def convert_to_base64
+    encoded_data = Base64.strict_encode64(image.download)
+    "data:#{image.blob.content_type};base64,#{encoded_data}"
+  rescue StandardError => e
+    Rails.logger.error e.message
+    "data:#{image.blob.content_type};base64,"
+  end
+
   def duplicate_file(to_asset)
     return unless image.attached?
 
     raise ArgumentError, 'Destination TinyMce asset should be persisted first!' unless to_asset.persisted?
 
     image.blob.open do |tmp_file|
-      to_blob = ActiveStorage::Blob.create_after_upload!(io: tmp_file, filename: blob.filename, metadata: blob.metadata)
+      to_blob = ActiveStorage::Blob.create_and_upload!(io: tmp_file, filename: blob.filename, metadata: blob.metadata)
       to_asset.image.attach(to_blob)
     end
     TinyMceAsset.update_estimated_size(to_asset.id)
+  end
+
+  def can_read?(user)
+    case object_type
+    when 'MyModule'
+      can_read_my_module?(user, object)
+    when 'Protocol'
+      can_read_protocol_in_module?(user, object) ||
+        can_read_protocol_in_repository?(user, object)
+    when 'ResultText'
+      can_read_result?(user, object.result)
+    when 'StepText'
+      protocol = object.step_orderable_element.step.protocol
+      can_read_protocol_in_module?(user, protocol) ||
+        can_read_protocol_in_repository?(user, protocol)
+    when 'Step'
+      can_read_protocol_in_module?(user, step.protocol) ||
+        can_read_protocol_in_repository?(user, step.protocol)
+    else
+      false
+    end
   end
 
   private

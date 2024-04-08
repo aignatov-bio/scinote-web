@@ -1,63 +1,15 @@
 class ResultAssetsController < ApplicationController
   include ResultsHelper
 
-  before_action :load_vars, only: [:edit, :update, :download]
-  before_action :load_vars_nested, only: [:new, :create]
+  before_action :load_vars, only: %i(edit update)
 
-  before_action :check_manage_permissions, only: %i(new create edit update)
+  before_action :check_manage_permissions, only: %i(edit update)
   before_action :check_archive_permissions, only: [:update]
 
-  def new
-    @asset = Asset.new
-    @result = Result.new(
-      user: current_user,
-      my_module: @my_module,
-      asset: @asset
-    )
-
-    respond_to do |format|
-      format.json do
-        render json: {
-          html: render_to_string(partial: 'new.html.erb')
-        }, status: :ok
-      end
-    end
-  end
-
-  def create
-    obj = create_multiple_results
-    respond_to do |format|
-      if obj.fetch(:status)
-        format.html do
-          flash[:success] = t('result_assets.create.success_flash',
-                              module: @my_module.name)
-          redirect_to results_my_module_path(@my_module)
-        end
-        format.json do
-          render json: {
-            html: render_to_string(
-              partial: 'my_modules/results.html.erb',
-                       locals: { results: obj.fetch(:results) }
-            )
-          }, status: :ok
-        end
-      else
-        flash[:error] = t('result_assets.error_flash')
-        format.json do
-          render json: {}, status: :bad_request
-        end
-      end
-    end
-  end
-
   def edit
-    respond_to do |format|
-      format.json do
-        render json: {
-          html: render_to_string(partial: 'edit.html.erb')
-        }, status: :ok
-      end
-    end
+    render json: {
+      html: render_to_string(partial: 'edit', formats: :html)
+    }
   end
 
   def update
@@ -71,6 +23,7 @@ class ResultAssetsController < ApplicationController
       if update_params.dig(:asset_attributes, :signed_blob_id)
         @result.asset.last_modified_by = current_user
         @result.asset.update(file: update_params[:asset_attributes][:signed_blob_id])
+        @result.asset.file_pdf_preview.purge if @result.asset.file_pdf_preview.attached?
         update_params.delete(:asset_attributes)
       end
 
@@ -107,7 +60,7 @@ class ResultAssetsController < ApplicationController
           team.save
 
           # Post process new file if neccesary
-          @result.asset.post_process_file(team) if asset_changed && @result.asset.present?
+          @result.asset.post_process_file if asset_changed && @result.asset.present?
 
           log_activity(:edit_result)
         end
@@ -123,9 +76,9 @@ class ResultAssetsController < ApplicationController
         format.json do
           render json: {
             html: render_to_string(
-              partial: 'my_modules/result.html.erb', locals: { result: @result }
+              partial: 'my_modules/result', locals: { result: @result }, formats: :html
             )
-          }, status: :ok
+          }
         end
       else
         format.json do
@@ -151,13 +104,8 @@ class ResultAssetsController < ApplicationController
     end
   end
 
-  def load_vars_nested
-    @my_module = MyModule.find_by_id(params[:my_module_id])
-    render_404 unless @my_module
-  end
-
   def check_manage_permissions
-    render_403 unless can_manage_module?(@my_module)
+    render_403 unless can_manage_result?(@result)
   end
 
   def check_archive_permissions
@@ -185,7 +133,7 @@ class ResultAssetsController < ApplicationController
                                 last_modified_by: current_user)
         results << result
         # Post process file here
-        asset.post_process_file(@my_module.experiment.project.team)
+        asset.post_process_file
         log_activity(:add_result, result)
       end
 
@@ -199,8 +147,8 @@ class ResultAssetsController < ApplicationController
       .call(activity_type: type_of,
             owner: current_user,
             subject: result,
-            team: @my_module.experiment.project.team,
-            project: @my_module.experiment.project,
+            team: @my_module.team,
+            project: @my_module.project,
             message_items: {
               result: result.id,
               type_of_result: t('activities.result_type.asset')

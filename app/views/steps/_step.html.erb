@@ -1,6 +1,6 @@
 <% preview = (defined?(preview) ? preview : false) %>
 <% import = (defined?(import) ? import : false) %>
-<div class ="step <%= step.completed? ? "completed" : "not-completed" %>">
+<div class ="step <%= "completed" if step.completed? %>" data-id="<%= step.id %>">
   <div class="panel panel-default">
     <div class="panel-heading step-heading">
       <div class="left-floats">
@@ -8,10 +8,10 @@
            href="#step-panel-<%= step.id || step.position %>"
            data-toggle="collapse"
            data-remote="true">
-          <span class="fas fa-caret-square-down collapse-step-icon"></span>
+          <span class="sn-icon sn-icon-right"></span>
         </a>
 
-        <span class="step-number"><%= step.position + 1 %></span>
+        <span class="step-number"><%= step.position + 1 %>.</span>
 
         <a class="step-panel-collapse-link step-name-link"
            href="#step-panel-<%= step.id || step.position %>"
@@ -20,61 +20,14 @@
           <span class="name-block"><strong><%= step.name %></strong></span>
           <% unless step.new_record? %>
             <span class="delimiter">|</span>
-            <span class="author-block"><%= sanitize_input t('protocols.steps.published_on',
-                                       timestamp: l(step.created_at, format: :full),
-                                       user: h(step.user.full_name)) %></span>
+            <span class="author-block">
+              <%= t('protocols.steps.published_on_html', timestamp: l(step.created_at, format: :full), user: step.user.full_name) %>
+            </span>
           <% end %>
         </a>
       </div>
-      <div class="panel-options pull-right">
-        <% if can_complete_or_checkbox_step?(@protocol) && !(preview) %>
-          <% if step.completed? %>
-            <div data-action="uncomplete-step"
-                 class="complete-step-btn"
-                 data-link-url="<%= toggle_step_state_step_path(step)%>">
-              <button class="btn btn-secondary btn-block">
-                <span class="fas fa-times"></span>
-                <%= t("protocols.steps.options.uncomplete_title") %>
-              </button>
-            </div>
-          <% else %>
-            <div data-action="complete-step"
-                 class="complete-step-btn"
-                 data-link-url="<%= toggle_step_state_step_path(step)%>">
-              <button class="btn btn-secondary btn-block">
-                <span class="fas fa-check"></span>
-                <%= t("protocols.steps.options.complete_title") %>
-              </button>
-            </div>
-          <% end %>
-        <% end %>
 
-        <% if (can_manage_protocol_in_module?(@protocol) ||
-                      can_manage_protocol_in_repository?(@protocol)) && !(preview) %>
-          <a data-action="move-step"
-             class="btn btn-light icon-btn"
-             href="<%= move_up_step_path(step, format: :json) %>"
-             title="<%= t("protocols.steps.options.up_arrow_title") %>"
-             data-remote="true">
-              <span class="fas fa-arrow-up"></span></a>
-          <a data-action="move-step"
-             class="btn btn-light icon-btn"
-             href="<%= move_down_step_path(step, format: :json) %>"
-             title="<%= t("protocols.steps.options.down_arrow_title") %>"
-             data-remote="true">
-            <span class="fas fa-arrow-down"></span></a>
-          <a data-action="edit-step"
-             class="btn btn-light icon-btn"
-             title="<%= t("protocols.steps.options.edit_title") %>"
-             href="<%= edit_step_path(step, format: :json) %>"
-             data-remote="true" >
-            <span class="fas fa-pencil-alt"></span>
-          </a>
-          <%= link_to(step_path(step), title: t("protocols.steps.options.delete_title"), method: "delete", class: "btn btn-light icon-btn",
-            data: {action: "delete-step", confirm: t("protocols.steps.destroy.confirm", step: step.name)}) do %>
-            <span class="fas fa-trash-alt"></span>
-          <% end %>
-        <% end %>
+      <div class="panel-options pull-right">
       </div>
     </div>
     <div class="panel-collapse collapse" id="step-panel-<%= step.id || step.position %>" role="tabpanel">
@@ -112,10 +65,10 @@
           <% end %>
 
           <% if import %>
-            <%= render partial: 'steps/attachments/preview_list.html.erb',
+            <%= render partial: 'steps/attachments/preview_list',
                        locals: {  attachments: steps_assets[step.position]} %>
           <% else %>
-            <%= render partial: 'steps/attachments/list.html.erb', locals: {  step: step, preview: preview } %>
+            <%= render partial: 'steps/attachments/list', locals: {  step: step, preview: preview } %>
           <% end %>
 
           <% unless step.checklists.blank? then %>
@@ -123,24 +76,18 @@
               <hr>
               <% step.checklists.asc.each do |checklist| %>
                 <strong><%= custom_auto_link(checklist.name, team: current_team) %></strong>
-                <% if checklist.checklist_items.empty? %>
+                <% if checklist.checklist_items.blank? %>
                   </br>
                   <%= t("protocols.steps.empty_checklist") %>
                   </br>
                 <% else %>
                   <% ordered_checklist_items(checklist).each do |checklist_item| %>
-                    <div class="checkbox" <%= @protocol.in_module? ? "data-action=check-item" : "" %>>
+                    <div class="checkbox">
                       <label>
-                        <% if @protocol.in_module? %>
-                          <input type="checkbox"
-                                 value=""
-                                 data-link-url="<%=checklistitem_state_step_path(step) %>"
-                                 data-id="<%= checklist_item.id %>" <%= "checked" if checklist_item.checked? %> />
-                        <% else %>
-                          <input type="checkbox"
-                                 value=""
-                                 disabled="disabled" />
-                        <% end %>
+                        <input type="checkbox"
+                               value=""
+                               disabled="disabled"
+                               <%= "checked" if checklist_item.checked? %> />
                         <%= custom_auto_link(checklist_item.text, team: current_team) %>
                       </label>
                     </div>
@@ -152,7 +99,7 @@
         </div>
         <% unless import %>
           <hr>
-          <%= render partial: 'steps/comments.html.erb', locals: {  comments: step.last_comments,
+          <%= render partial: 'steps/comments', locals: {  comments: step.last_comments,
                                                                     comments_count: step.step_comments.count,
                                                                     step: step } %>
         <% end %>

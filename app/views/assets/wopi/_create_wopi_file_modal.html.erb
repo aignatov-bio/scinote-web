@@ -1,14 +1,16 @@
 <div class="modal"
      id="new-office-file-modal"
      role="dialog"
+     tabindex="-1"
      aria-labelledby="new-office-file-modal-label">
-    <%= bootstrap_form_tag url: create_wopi_file_path(),
-                          method: :post, remote: true do |f| %>
+    <%= form_with url: create_wopi_file_path(),
+                  html: { novalidate: "novalidate" },
+                  method: :post, data: { remote: true } do |f| %>
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
+              <i class="sn-icon sn-icon-close"></i>
             </button>
 
             <h4 class="modal-title" id="new-office-file-modal-label">
@@ -20,27 +22,27 @@
             <%= hidden_field_tag :element_id, '' %>
             <%= hidden_field_tag :element_type, '' %>
 
-            <%= f.text_field :file_name,
-                             label: t('assets.create_wopi_file.text_field_label'),
-                             autofocus: true,
-                             placeholder: t('assets.create_wopi_file.text_field_placeholder'),
-                             id: 'new-wopi-file-name'%>
-
+            <div class="form-group">
+              <label class="control-label" for="new-wopi-file-name"><%= t('assets.create_wopi_file.text_field_label') %></label>
+              <input autofocus="autofocus" placeholder="<%= t('assets.create_wopi_file.text_field_placeholder') %>" id="new-wopi-file-name" class="form-control" name="file_name" type="text">
+              <div class="input-error-message"><%= t('general.text.not_blank') %></div>
+            </div>
+          <label><%= t('assets.create_wopi_file.type_select_label') %></label>
           <div class="btn-group btn-group-toggle btn-group-justified"
                data-toggle="buttons">
-            <label class="btn btn-default active" id="word-btn">
+            <label class="btn btn-secondary active" id="word-btn">
               <%= image_tag 'office/ms-word-active.svg', class: 'act' %>
               <%= image_tag 'office/ms-word-inactive.svg', class: 'inactive' %>
               <input type="radio" name="file_type" value='docx' checked>
               <span><%= t('assets.create_wopi_file.ms_word').html_safe %></span>
             </label>
-            <label class="btn btn-default" id="excel-btn">
+            <label class="btn btn-secondary" id="excel-btn">
               <%= image_tag 'office/ms-excel-active.svg', class: 'act' %>
               <%= image_tag 'office/ms-excel-inactive.svg', class: 'inactive' %>
               <input type="radio" name="file_type" value='xlsx'>
               <span><%= t('assets.create_wopi_file.ms_excel').html_safe %></span>
             </label>
-            <label class="btn btn-default" id='powerpoint-btn'>
+            <label class="btn btn-secondary" id='powerpoint-btn'>
               <%= image_tag 'office/ms-pwrpt-active.svg', class: 'act' %>
               <%= image_tag 'office/ms-pwrpt-inactive.svg', class: 'inactive' %>
               <input type="radio" name="file_type" value='pptx'>

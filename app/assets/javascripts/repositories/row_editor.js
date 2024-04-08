@@ -1,13 +1,14 @@
 /*
-  globals HelperModule animateSpinner SmartAnnotation AssetColumnHelper GLOBAL_CONSTANTS
+  globals HelperModule animateSpinner SmartAnnotation AssetColumnHelper GLOBAL_CONSTANTS I18n
 */
-/* eslint-disable no-unused-vars */
+/* eslint-disable no-alert no-unused-vars */
+/* eslint-disable no-alert */
 
 var RepositoryDatatableRowEditor = (function() {
   const NAME_COLUMN_ID = 'row-name';
   const TABLE_ROW = '<tr></tr>';
   const TABLE_CELL = '<td></td>';
-  const EDIT_FORM_CLASS_NAME = GLOBAL_CONSTANTS.REPOSITORY_ROW_EDITOR_FORM_CLASS_NAME;
+  const EDIT_FORM_CLASS_NAME = 'repository-row-edit-form';
 
   var TABLE;
 
@@ -15,17 +16,17 @@ var RepositoryDatatableRowEditor = (function() {
   function initSmartAnnotation($row) {
     $row.find('[data-object="repository_cell"]').each(function(el) {
       if (el.data('atwho')) {
-        SmartAnnotation.init(el);
+        SmartAnnotation.init(el, true);
       }
     });
   }
 
-  function validateAndSubmit($table) {
-    let $form = $table.find(`.${EDIT_FORM_CLASS_NAME}`);
-    let $row = $form.closest('tr');
+  function validateAndSubmit($table, $submitButton) {
+    let $forms = $table.find(`.${EDIT_FORM_CLASS_NAME}`);
+    let $row = $forms.closest('tr');
     let valid = true;
     let directUrl = $table.data('direct-upload-url');
-    let $files = $row.find('input[type=file]');
+    let $files = $table.find('input[type=file]');
     $row.find('.has-error').removeClass('has-error').find('span').remove();
 
     // Validations here
@@ -38,7 +39,7 @@ var RepositoryDatatableRowEditor = (function() {
     });
 
     if (!valid) return false;
-
+    $submitButton.attr('disabled', true);
     animateSpinner($table, true);
     // DirectUpload here
     let uploadPromise = AssetColumnHelper.uploadFiles($files, directUrl);
@@ -46,10 +47,14 @@ var RepositoryDatatableRowEditor = (function() {
     // Submission here
     uploadPromise
       .then(function() {
-        $form.submit();
+        $forms.submit();
+
         return false;
       }).catch((reason) => {
-        alert(reason);
+        if (reason.includes('Status: 403')) {
+          HelperModule.flashAlertMsg(I18n.t('activerecord.errors.storage.limit_reached'), 'danger');
+        } else alert(reason);
+        animateSpinner($table, false);
         return false;
       });
 
@@ -102,15 +107,10 @@ var RepositoryDatatableRowEditor = (function() {
     let $table = $(TABLE.table().node());
 
     $table.on('ajax:success', `.${EDIT_FORM_CLASS_NAME}`, function(ev, data) {
-      TABLE.ajax.reload(() => {
-        animateSpinner(null, false);
-        HelperModule.flashAlertMsg(data.flash, 'success');
-        $('html, body').animate({ scrollLeft: 0 }, 300);
-      });
+      HelperModule.flashAlertMsg(data.flash, 'success');
     });
 
     $table.on('ajax:error', `.${EDIT_FORM_CLASS_NAME}`, function(ev, data) {
-      animateSpinner(null, false);
       $(TABLE.nodes()).find('.spinner').remove();
       HelperModule.flashAlertMsg(data.responseJSON.flash, 'danger');
     });
@@ -118,14 +118,13 @@ var RepositoryDatatableRowEditor = (function() {
 
   function addNewRow(table) {
     TABLE = table;
-
     let $row = $(TABLE_ROW);
     const formId = 'repositoryNewRowForm';
     let actionUrl = $(TABLE.table().node()).data('createRecord');
     let rowForm = $(`
       <td>
         <form id="${formId}"
-              class="${EDIT_FORM_CLASS_NAME}"
+              class="${EDIT_FORM_CLASS_NAME} ${GLOBAL_CONSTANTS.HAS_UNSAVED_DATA_CLASS_NAME}"
               action="${actionUrl}"
               method="post"
               data-remote="true">
@@ -164,6 +163,13 @@ var RepositoryDatatableRowEditor = (function() {
     initSmartAnnotation($row);
     initAssetCellActions($row);
 
+    $(`#${formId}`).on('ajax:complete', function() {
+      $('html, body').animate({ scrollLeft: 0 }, 300);
+      TABLE.ajax.reload(() => {
+        animateSpinner(null, false);
+      }, false);
+    });
+
     TABLE.columns.adjust();
   }
 
@@ -174,10 +180,9 @@ var RepositoryDatatableRowEditor = (function() {
     let requestUrl = $(TABLE.table().node()).data('current-uri');
     let rowForm = $(`
       <form id="${formId}"
-            class="${EDIT_FORM_CLASS_NAME}"
+            class="${EDIT_FORM_CLASS_NAME} ${GLOBAL_CONSTANTS.HAS_UNSAVED_DATA_CLASS_NAME}"
             action="${row.data().recordUpdateUrl}"
             method="patch"
-            data-remote="true"
             data-row-id="${itemId}">
         <input name="id" type="hidden" value="${itemId}" />
         <input name="request_url" type="hidden" value="${requestUrl}" />

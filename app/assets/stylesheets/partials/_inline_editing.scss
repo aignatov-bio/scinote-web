@@ -1,12 +1,10 @@
-@import "constants";
-@import "mixins";
-
 .inline-editing-container {
   line-height: 32px;
   position: relative;
   width: 100%;
 
   .button-container {
+    font-size: 16px;
     height: 32px;
     line-height: 32px;
     overflow: hidden;
@@ -31,7 +29,7 @@
   }
 
   .error-block {
-    bottom: 3px;
+    bottom: 1px;
     color: $brand-danger;
     display: none;
     font-size: 11px;
@@ -49,33 +47,21 @@
     .input-field {
       font-size: 16px;
       line-height: 20px;
-      padding-bottom: 10px;
-      padding-top: 0;
-    }
-  }
-
-  &:hover input,
-  &:hover .view-mode {
-    border: 1px solid $color-silver;
-    border-radius: 3px;
-
-    &:disabled {
-      border: 1px solid $color-gainsboro;
+      outline: none;
+      padding-bottom: .5rem;
     }
   }
 
   .view-mode {
     border: 1px solid transparent;
-    cursor: pointer;
-    line-height: 26px;
-    margin-left: -5px;
-    min-height: 30px;
+    cursor: text;
+    height: 2rem;
+    min-height: 1.5rem;
     overflow: hidden;
-    padding: 2px 4px;
     padding-right: 36px;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: calc(100% - 32px);
+    width: 100%;
 
     &:empty:not(:focus):before {
       color: $color-silver-chalice;
@@ -85,15 +71,13 @@
   }
 
   input {
-    border: 1px solid $color-silver;
-    border-radius: $border-radius-small;
-    cursor: pointer;
+    border: 1px solid transparent;
+    cursor: initial;
     display: block;
-    line-height: 26px;
-    margin-left: -5px;
-    padding: 2px 4px;
+    height: 2rem;
+    padding-left: 0;
     padding-right: 36px;
-    width: calc(100% - 32px);
+    width: 100%;
 
     &::placeholder {
       color: $color-silver-chalice;
@@ -114,6 +98,12 @@
       + .button-container {
         display: none;
       }
+    }
+  }
+
+  @-moz-document url-prefix() {
+    input {
+      padding: 0 4px;
     }
   }
 }

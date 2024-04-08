@@ -1,21 +1,19 @@
 <% provide(:head_title, t("users.settings.account.connected_accounts.head_title")) %>
+<% provide(:container_class, "no-second-nav-container") %>
 
-<%= render partial: "users/settings/sidebar.html.erb" %>
-<div class="tab-content">
+<%= render partial: "users/settings/sidebar" %>
+<div class="tab-content user-account-connected-accounts">
   <div class="tab-pane tab-pane-settings active" role="tabpanel">
 
     <div class="row">
       <div class="col-xs-12 col-sm-12">
-        <h4><%= t('users.settings.account.connected_accounts.title') %></h4>
-
-        <% if @linked_accounts.any? %>
+        <h1 class="connected-accounts-title"><%= t('users.settings.account.connected_accounts.title') %></h1>
+        <% if @linked_accounts.present? %>
           <% @linked_accounts.each do |provider| %>
-            <% if Rails.configuration.x.azure_ad_apps.find { |_,value| value[:provider] == provider } %>
-              <% if lookup_context.exists?(provider, 'users/settings/account/connected_accounts', true) %>
-                <%= render partial: provider %>
-              <% else %>
-                <%= render partial: 'azure_ad', locals: { provider: provider } %>
-              <% end %>
+            <% if lookup_context.exists?(provider, 'users/settings/account/connected_accounts', true) %>
+              <%= render partial: provider, locals: { provider: provider } %>
+            <% elsif ApplicationSettings.instance.values['azure_ad_apps']&.find { |v| v['provider_name'] == provider } %>
+              <%= render partial: 'azure_ad', locals: { provider: provider } %>
             <% end %>
           <% end %>
         <% else %>

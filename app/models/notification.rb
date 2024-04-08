@@ -1,13 +1,17 @@
+# frozen_string_literal: true
+
 class Notification < ApplicationRecord
-  has_many :user_notifications, inverse_of: :notification, dependent: :destroy
-  has_many :users, through: :user_notifications
-  belongs_to :generator_user, class_name: 'User', optional: true
+  include Noticed::Model
 
-  enum type_of: Extends::NOTIFICATIONS_TYPES
+  belongs_to :recipient, polymorphic: true
 
-  def already_seen(user)
-    UserNotification.where(notification: self, user: user)
-                    .pluck(:checked)
-                    .first
+  scope :in_app, lambda {
+    where.not("notifications.params ? 'hide_in_app' AND notifications.params->'hide_in_app' = 'true'")
+  }
+
+  private
+
+  def can_send_to_user?(_user)
+    true # overridable send permission method
   end
 end

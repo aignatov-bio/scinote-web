@@ -1,10 +1,10 @@
-<%= render partial: "global_activities/references/experiment.html.erb",
+<%= render partial: "global_activities/references/experiment",
            locals: { team: team, subject: subject&.experiment, breadcrumbs: breadcrumbs, values: values, type_of: type_of  } %>
 <div class="ga-breadcrumb">
   <%= image_tag 'icon_small/task.svg' %>
   <% if subject&.navigable? %>
     <% if subject.archived?
-        path = module_archive_experiment_path(subject.experiment)
+        path = my_modules_experiment_path(subject.experiment, view_mode: :archived)
       else
         path = protocols_my_module_path(subject)
       end %>

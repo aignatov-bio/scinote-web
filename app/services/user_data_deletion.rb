@@ -1,7 +1,6 @@
 class UserDataDeletion
   def self.delete_team_data(team)
     ActiveRecord::Base.logger = Logger.new(STDOUT)
-    Step.skip_callback(:destroy, :after, :cascade_after_destroy)
     team.transaction do
       # Destroy tiny_mce_assets
       if team.tiny_mce_assets.present?
@@ -45,11 +44,11 @@ class UserDataDeletion
             my_module.my_module_repository_rows.destroy_all
             my_module.user_my_modules.destroy_all
             my_module.report_elements.destroy_all
-            my_module.sample_my_modules.destroy_all
             my_module.protocols.each { |p| p.update(parent_id: nil) }
             my_module.protocols.each do |protocol|
               destroy_protocol(protocol)
             end
+            my_module.user_assignments.destroy_all
             my_module.delete
           end
 
@@ -59,12 +58,14 @@ class UserDataDeletion
           experiment.activities.destroy_all
           experiment.report_elements.destroy_all
           experiment.my_module_groups.delete_all
+          experiment.user_assignments.destroy_all
           experiment.delete
         end
         project.user_projects.destroy_all
         project.tags.destroy_all
         project.project_comments.destroy_all
         project.report_elements.destroy_all
+        project.user_assignments.destroy_all
 
         project.delete
       end
@@ -72,21 +73,15 @@ class UserDataDeletion
       team.protocols.where(my_module: nil).each do |protocol|
         destroy_protocol(protocol)
       end
-      team.samples.destroy_all
-      team.samples_tables.destroy_all
-      team.sample_groups.destroy_all
-      team.sample_types.destroy_all
-      team.custom_fields.destroy_all
       team.protocol_keywords.destroy_all
-      team.user_teams.delete_all
       User.where(current_team_id: team).each do |user|
         user.update(current_team_id: nil)
       end
       team.reports.destroy_all
+      team.user_assignments.destroy_all
       team.destroy!
       # raise ActiveRecord::Rollback
     end
-    Step.set_callback(:destroy, :after, :cascade_after_destroy)
   end
 
   def self.destroy_protocol(protocol)
@@ -101,6 +96,7 @@ class UserDataDeletion
       # Destroy step
       step.tables.destroy_all
       step.step_tables.delete_all
+      step.step_texts.destroy_all
       step.report_elements.destroy_all
       step.step_comments.destroy_all
       step.step_assets.destroy_all
@@ -112,7 +108,7 @@ class UserDataDeletion
     # Destroy protocol
     protocol.protocol_protocol_keywords.destroy_all
     protocol.protocol_keywords.destroy_all
-    protocol.delete
+    protocol.destroy
   end
 
   def self.destroy_notifications(user)

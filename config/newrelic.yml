@@ -22,6 +22,10 @@ common: &default_settings
   # Logging level for log/newrelic_agent.log
   log_level: info
 
+  # Disable automatic browser agent
+  browser_monitoring:
+      auto_instrument: false
+
 
 # Environment-specific settings are in this section.
 # RAILS_ENV or RACK_ENV (as appropriate) is used to determine the environment.
@@ -45,3 +49,13 @@ staging:
 
 production:
   <<: *default_settings
+
+  log_level: error
+  error_collector:
+    enabled: true
+  analytics_events:
+    enabled: false
+  transaction_tracer:
+    enabled: false
+  slow_sql:
+    enabled: true

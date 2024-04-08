@@ -20,11 +20,32 @@ class RepositoryListValue < ApplicationRecord
                          end)
 
   SORTABLE_COLUMN_NAME = 'repository_list_items.data'
-  SORTABLE_VALUE_INCLUDE = { repository_list_value: :repository_list_item }.freeze
-  PRELOAD_INCLUDE = { repository_list_value: :repository_list_item }.freeze
+  EXTRA_SORTABLE_VALUE_INCLUDE = :repository_list_item
+  EXTRA_PRELOAD_INCLUDE = :repository_list_item
 
   def formatted
     data.to_s
+  end
+
+  def self.add_filter_condition(repository_rows, join_alias, filter_element)
+    items_join_alias = "#{join_alias}_status_items"
+    repository_rows =
+      repository_rows
+      .joins(
+        "LEFT OUTER JOIN \"repository_list_items\" AS \"#{items_join_alias}\" " \
+        "ON  \"#{join_alias}\".\"repository_list_item_id\" = \"#{items_join_alias}\".\"id\""
+      )
+    case filter_element.operator
+    when 'any_of'
+      repository_rows
+        .where("#{items_join_alias}.id = ANY(ARRAY[?]::bigint[])", filter_element.parameters['item_ids'])
+    when 'none_of'
+      repository_rows
+        .where("NOT #{items_join_alias}.id IN(?) OR #{items_join_alias}.id IS NULL",
+               filter_element.parameters['item_ids'])
+    else
+      raise ArgumentError, 'Wrong operator for RepositoryListValue!'
+    end
   end
 
   def data
@@ -32,7 +53,7 @@ class RepositoryListValue < ApplicationRecord
     repository_list_item.data
   end
 
-  def data_changed?(new_data)
+  def data_different?(new_data)
     new_data.to_i != repository_list_item_id
   end
 
@@ -61,11 +82,13 @@ class RepositoryListValue < ApplicationRecord
     value.repository_list_item = value.repository_cell
                                       .repository_column
                                       .repository_list_items
-                                      .find(payload)
+                                      .find_by(id: payload)
     value
   end
 
   def self.import_from_text(text, attributes, _options = {})
+    return nil if text.blank?
+
     value = new(attributes)
     column = attributes.dig(:repository_cell_attributes, :repository_column)
     list_item = column.repository_list_items.find { |item| item.data == text }

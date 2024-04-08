@@ -2,7 +2,7 @@
 
 var DataTableHelpers = (function() {
   return {
-    initLengthApearance: function(dataTableWraper) {
+    initLengthAppearance: function(dataTableWraper) {
       var tableLengthSelect = $(dataTableWraper).find('.dataTables_length select');
       if (tableLengthSelect.val() == null) {
         tableLengthSelect.val(10).change();
@@ -22,16 +22,35 @@ var DataTableHelpers = (function() {
       });
     },
 
-    initSearchField: function(dataTableWraper) {
+    initSearchField: function(dataTableWraper, searchText) {
+      $(dataTableWraper).find('.dataTables_filter').show();
       var tableFilterInput = $(dataTableWraper).find('.dataTables_filter input');
-      tableFilterInput.attr('placeholder', I18n.t('repositories.index.filter_inventory'))
-        .addClass('sci-input-field')
+      tableFilterInput.attr('placeholder', searchText)
+        .addClass('sci-input-field search-field')
+        .removeClass('form-control input-sm')
         .css('margin', 0);
       $('.dataTables_filter').append(`
-          <div class="sci-input-container left-icon">
-            <i class="fas fa-search"></i>
-          </div>`).find('.sci-input-container').prepend(tableFilterInput);
+          <button class="btn btn-light icon-btn search-icon btn-black"
+                  title="${I18n.t('repositories.show.button_tooltip.search')}">
+            <i class="sn-icon sn-icon-search"></i>
+          </button>
+          <div class="sci-input-container-v2 w-48 right-icon search-container">
+            <i class="sn-icon sn-icon-search"></i>
+          </div>`).find('.sci-input-container-v2').prepend(tableFilterInput);
       $('.dataTables_filter').find('label').remove();
+
+      $('.dataTables_filter').on('click', '.search-icon', function() {
+        $('.dataTables_filter').find('.search-container').addClass('expand');
+        $(this).addClass('collapsed');
+        $('.dataTables_filter .search-field').focus();
+      });
+
+      $('.dataTables_filter').on('focusout', '.search-field', function() {
+        if (this.value.length === 0) {
+          $('.dataTables_filter').find('.search-container').removeClass('expand');
+          $('.dataTables_filter .search-icon').removeClass('collapsed');
+        }
+      });
     }
   };
 }());
@@ -41,6 +60,7 @@ function DataTableCheckboxes(tableWrapper, config) {
   /* config = {
     checkboxSelector: selector for checkboxes,
     selectAllSelector: selector for select all checkbox
+    onChanged: callback when the state of the checkbox is changed
   }*/
 
   this.selectedRows = [];
@@ -91,7 +111,7 @@ DataTableCheckboxes.prototype.clearSelection = function() {
 DataTableCheckboxes.prototype.initCheckboxes = function() {
   this.tableWrapper.on('click', '.table tbody tr', (e) => {
     var checkbox = $(e.currentTarget).find(this.config.checkboxSelector);
-    if (checkbox.attr('disabled')) return;
+    if (checkbox.attr('disabled') || $(e.target).is('a') || $(e.target).attr('class') === 'dataTables_empty') return;
     checkbox.prop('checked', !checkbox.prop('checked'));
     this.selectRow(e.currentTarget);
   }).on('click', this.config.checkboxSelector, (e) => {
@@ -121,9 +141,8 @@ DataTableCheckboxes.prototype.initSelectAllCheckbox = function() {
       var checkbox = $(row).find(this.config.checkboxSelector);
       if (checkbox.prop('checked') === selectAllCheckbox.prop('checked') || checkbox.attr('disabled')) return;
 
-      checkbox.prop('checked', !checkbox.prop('checked'));
+      checkbox.prop('checked', selectAllCheckbox.prop('checked'));
       this.selectRow(row);
     });
   });
 };
-

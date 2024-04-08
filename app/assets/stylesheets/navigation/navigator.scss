@@ -1,0 +1,45 @@
+.sci--layout-navigation-navigator {
+  .handle-mr {
+    cursor: col-resize;
+    display: block !important;
+    height: 100%;
+    opacity: 0;
+    top: 0;
+    width: 10px;
+  }
+
+
+  .menu-item:not(.active):hover {
+    background-color: var(--sn-super-light-grey);
+
+    :not(.no-hover) {
+      color: var(--sn-blue);
+    }
+
+    .no-hover {
+      color: var(--sn-science-blue-hover);
+    }
+  }
+
+  .menu-item.active:hover {
+    :not(.no-hover) {
+      color: var(--sn-blue);
+    }
+
+    .no-hover {
+      color: var(--sn-science-blue-hover);
+    }
+  }
+
+  .menu-item,
+  .menu-item:not(.active):hover,
+  .menu-item.active:hover {
+    .disabled-link,
+    .disabled-link:not(.no-hover):hover,
+    .disabled-link.no-hover:hover {
+      color: var(--sn-grey);
+      pointer-events: none;
+      text-decoration: none;
+    }
+  }
+}

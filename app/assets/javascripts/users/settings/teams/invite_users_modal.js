@@ -1,3 +1,5 @@
+/* globals dropdownSelector animateSpinner */
+
 (function() {
   'use strict';
 
@@ -6,10 +8,6 @@
       grecaptcha.reset();
     }
   }
-
-  window.recaptchaCallback = function recaptchaCallback(response) {
-    $('#recaptcha-invite-modal').val(response);
-  };
 
   function initializeModal(modal) {
     var modalDialog = modal.find('.modal-dialog');
@@ -23,16 +21,68 @@
     var teamSelectorCheckbox = modal.find('[data-role=team-selector-checkbox]');
     var teamSelectorDropdown = modal.find('[data-role=team-selector-dropdown]');
     var teamSelectorDropdown2 = $();
-    var tagsInput = modal.find('[data-role=tags-input]');
+    var emailsInput = modal.find('.emails-input');
+    var teamsInput = modal.find('.teams-input');
+    var roleInput = modal.find('.role-input');
     var recaptchaErrorMsgDiv = modal.find('#recaptcha-error-msg');
     var recaptchaErrorText = modal.find('#recaptcha-error-msg>span');
 
-    // Set max tags
-    tagsInput.tagsinput({
-      maxTags: modal.data('max-tags')
+    dropdownSelector.init(emailsInput, {
+      delimiter: true,
+      optionClass: 'users-dropdown-list',
+      optionLabel: (data) => {
+        return `<img class="item-avatar" src="${data.params.avatar_url}"/>
+                ${data.label}
+                <span class="item-email pull-right">${data.params.email}</span>`;
+      },
+      tagLabel: (data) => {
+        if (data.params) {
+          return `<img class="item-avatar" src="${data.params.avatar_url}"/> ${data.label}`;
+        }
+        return data.label;
+      },
+      labelHTML: true,
+      tagClass: 'users-dropdown-list',
+      inputTagMode: true,
+      selectKeys: [13, 32, 44, 188],
+      customDropdownIcon: () => { return '<i class="sn-icon sn-icon-search right-icon"></i>'; },
+      onChange: () => {
+        let values = dropdownSelector.getValues(emailsInput);
+        if (values.length > 0) {
+          inviteBtn.attr('disabled', false);
+          inviteWithRoleBtn.attr('disabled', false);
+          $($('.search-field')[0]).val('');
+        } else {
+          inviteBtn.attr('disabled', 'disabled');
+          inviteWithRoleBtn.attr('disabled', 'disabled');
+        }
+      }
+    });
+
+    modal.find('.search-field').on('paste', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      let inputField = $(this);
+
+      $.each(event.originalEvent.clipboardData.getData('text').split(/[ ,]+/), function(_, value) {
+        inputField.val(value);
+        inputField.trigger($.Event('keypress', { keyCode: 13 }));
+      });
+    });
+
+    dropdownSelector.init(roleInput, {
+      noEmptyOption: true,
+      singleSelect: true,
+      closeOnSelect: true,
+      selectAppearance: 'simple',
+      disableSearch: true
     });
 
     modal.off('show.bs.modal').on('show.bs.modal', function() {
+      setTimeout(() => {
+        $('.modal-invite-users').find('.search-field')[0].focus();
+      }, 200);
       // This cannot be scoped outside this function
       // because it is generated via JS
       teamSelectorDropdown2 = teamSelectorDropdown.parent()
@@ -55,6 +105,10 @@
           inviteBtn.hide();
           inviteWithRoleDiv.show();
           break;
+        case 'invite_new_members':
+          inviteBtn.show();
+          inviteWithRoleDiv.hide();
+          break;
         default:
           break;
       }
@@ -66,7 +120,7 @@
       ) {
         teamSelectorCheckbox.on('change', function() {
           if ($(this).is(':checked')) {
-            teamSelectorDropdown.removeAttr('disabled');
+            teamSelectorDropdown.attr('disabled', false);
             teamSelectorDropdown2.removeClass('disabled');
             if (type === 'invite_with_team_selector') {
               inviteBtn.hide();
@@ -83,47 +137,38 @@
         });
       }
 
-      // Toggle depending on input tags
-      tagsInput.on('itemAdded', function() {
-        inviteBtn.removeAttr('disabled');
-        inviteWithRoleBtn.removeAttr('disabled');
-      }).on('itemRemoved', function() {
-        if ($(this).val() === null) {
-          inviteBtn.attr('disabled', 'disabled');
-          inviteWithRoleBtn.attr('disabled', 'disabled');
-        }
-      });
-
       // Click action
       modal.find('[data-action=invite]').off('click').on('click', function() {
         var data = {
-          emails: tagsInput.val(),
-          'g-recaptcha-response': $('#recaptcha-invite-modal').val()
+          emails: dropdownSelector.getValues(emailsInput),
+          team_ids: dropdownSelector.getValues(teamsInput),
+          role_id: dropdownSelector.getValues(roleInput),
+          'g-recaptcha-response': $('.g-recaptcha-response').val()
         };
 
         animateSpinner(modalDialog);
 
         switch (type) {
           case 'invite_to_team':
-            data.teamId = modal.attr('data-team-id');
-            data.role = $(this).attr('data-team-role');
+            data.team_ids = [modal.attr('data-team-id')];
+            data.role_id = $(this).attr('data-team-role-id');
             break;
           case 'invite_to_team_with_role':
-            data.teamId = modal.attr('data-team-id');
-            data.role = modal.attr('data-team-role');
+            data.team_ids = [modal.attr('data-team-id')];
             break;
           case 'invite':
+            data.team_ids = [];
             break;
           case 'invite_with_team_selector':
             if (teamSelectorCheckbox.is(':checked')) {
-              data.teamId = teamSelectorDropdown.val();
-              data.role = $(this).attr('data-team-role');
+              data.team_ids = [teamSelectorDropdown.val()];
+              data.role_id = $(this).attr('data-team-role-id');
             }
             break;
           case 'invite_with_team_selector_and_role':
             if (teamSelectorCheckbox.is(':checked')) {
-              data.teamId = teamSelectorDropdown.val();
-              data.role = modal.attr('data-team-role');
+              data.team_ids = [teamSelectorDropdown.val()];
+              data.role_id = modal.attr('data-team-role-id');
             }
             break;
           default:
@@ -158,17 +203,15 @@
         });
       });
     }).on('shown.bs.modal', function() {
-      var script = document.createElement('script');
-      tagsInput.tagsinput('focus');
-      recaptchaErrorMsgDiv.addClass('hidden');
-      script.type = 'text/javascript';
-      script.src = 'https://www.google.com/recaptcha/api.js?hl=en';
-      $(script).insertAfter('#recaptcha-service');
+      emailsInput.focus();
+      dropdownSelector.init(teamsInput, {
+        optionClass: 'checkbox-icon'
+      });
       // Remove 'data-invited="true"' status
       modal.removeAttr('data-invited');
     }).on('hide.bs.modal', function() {
       // 'Reset' modal state
-      tagsInput.tagsinput('removeAll');
+      dropdownSelector.clearData(emailsInput);
       teamSelectorCheckbox.prop('checked', false);
       inviteBtn.attr('disabled', 'disabled');
       inviteWithRoleBtn.attr('disabled', 'disabled');
@@ -179,7 +222,6 @@
 
       // Unbind event listeners
       teamSelectorCheckbox.off('change');
-      tagsInput.off('itemAdded itemRemoved');
       modal.find('[data-action=invite]').off('click');
 
       // Hide contents of the results <div>

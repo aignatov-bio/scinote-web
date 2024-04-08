@@ -5,9 +5,6 @@
 
 .dashboard-container .calendar-widget {
   --calendar-day-size: 32px;
-  grid-column: 10 / span 3;
-  grid-row: 1 / span 6;
-  min-height: 320px;
 
   .dashboard-calendar {
     height: 100%;
@@ -42,9 +39,9 @@
       flex-basis: calc(100% - 42px);
       flex-grow: 1;
       grid-column-gap: 6px;
-      grid-row-gap: 6px;
+      grid-row-gap: 2px;
       grid-template-columns: repeat(7, 1fr);
-      grid-template-rows: repeat(7, 1fr);
+      grid-template-rows: repeat(auto-fit, minmax(1em, 1fr));
       justify-items: center;
       padding: 6px;
 
@@ -88,16 +85,10 @@
             }
           }
 
-
           &::after {
-            background: $brand-danger;
-            border-radius: 50%;
-            content: "";
-            height: 4px;
-            left: calc((var(--calendar-day-size) / 2) - 2px);
-            position: absolute;
-            top: calc((var(--calendar-day-size) / 2) + 8px);
-            width: 4px;
+            @include red-dot;
+            right: calc((var(--calendar-day-size) / 2) - 4px);
+            top: calc((var(--calendar-day-size) / 2) + 6px);
           }
         }
 
@@ -106,8 +97,8 @@
 
           &.event {
             &::after {
-              left: 13px;
-              top: 23px;
+              left: 12px;
+              top: 21px;
             }
           }
         }
@@ -127,17 +118,8 @@
   }
 }
 
-@media (max-width: 1250px) {
+@media (max-width: 1600px) {
   .dashboard-container .calendar-widget {
-    grid-column: 9 / span 4;
-  }
-}
-
-@media (max-width: 1000px) {
-  .dashboard-container .calendar-widget {
-    grid-column: 1 / span 6;
-    grid-row: 5 / span 4;
-
     .clndr {
       .events-container {
         left: 0;
@@ -150,7 +132,5 @@
 @media (max-width: 700px) {
   .dashboard-container .calendar-widget {
     --calendar-day-size: 28px;
-    grid-column: 1 / span 12;
-    grid-row: 2;
   }
 }

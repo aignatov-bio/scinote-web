@@ -7,9 +7,11 @@ RSpec.describe RepositoryColumns::DateTimeColumnsController, type: :controller d
 
   let(:user) { subject.current_user }
   let(:team) { create :team, created_by: user }
-  let!(:user_team) { create :user_team, :admin, user: user, team: team }
   let(:repository) { create :repository, created_by: user, team: team }
   let(:repository_column) { create(:repository_column, :date_time_type, repository: repository) }
+  let!(:owner_role) { UserRole.find_by(name: I18n.t('user_roles.predefined.owner')) }
+  let!(:viewer_role) { create :viewer_role }
+  let!(:team_assignment) { create_user_assignment(team, owner_role, user) }
 
   describe 'POST repository_date_time_columns, #create' do
     let(:action) { post :create, params: params }
@@ -58,8 +60,7 @@ RSpec.describe RepositoryColumns::DateTimeColumnsController, type: :controller d
 
     context 'when user does not have permissions' do
       before do
-        user_team.role = :guest
-        user_team.save
+        repository.user_assignments.update(user_role: viewer_role)
       end
 
       it 'respons with status 403' do
@@ -135,8 +136,7 @@ RSpec.describe RepositoryColumns::DateTimeColumnsController, type: :controller d
 
     context 'when user does not have permissions' do
       before do
-        user_team.role = :guest
-        user_team.save
+        repository.user_assignments.update(user_role: viewer_role)
       end
 
       it 'respons with status 403' do
@@ -153,76 +153,6 @@ RSpec.describe RepositoryColumns::DateTimeColumnsController, type: :controller d
         allow(service).to(receive(:errors)).and_return({})
 
         allow_any_instance_of(RepositoryColumns::UpdateColumnService).to(receive(:call)).and_return(service)
-      end
-
-      it 'respons with status 422' do
-        action
-
-        expect(response).to(have_http_status(422))
-      end
-    end
-  end
-
-  describe 'DELETE repository_date_time_column, #delete' do
-    let(:action) { delete :destroy, params: params }
-
-    let(:params) do
-      {
-        repository_id: repository.id,
-        id: repository_column.id
-      }
-    end
-
-    before do
-      service = double('success_service')
-      allow(service).to(receive(:succeed?)).and_return(true)
-
-      allow_any_instance_of(RepositoryColumns::DeleteColumnService).to(receive(:call)).and_return(service)
-    end
-
-    context 'when column deleted' do
-      it 'respons with status 200' do
-        action
-
-        expect(response).to(have_http_status(200))
-      end
-    end
-
-    context 'when column is not found' do
-      let(:params) do
-        {
-          repository_id: repository.id,
-          id: -1
-        }
-      end
-
-      it 'respons with status 404' do
-        action
-
-        expect(response).to(have_http_status(404))
-      end
-    end
-
-    context 'when user does not have permissions' do
-      before do
-        user_team.role = :guest
-        user_team.save
-      end
-
-      it 'respons with status 403' do
-        action
-
-        expect(response).to(have_http_status(403))
-      end
-    end
-
-    context 'when column cannot be deleted fails' do
-      before do
-        service = double('failure_service')
-        allow(service).to(receive(:succeed?)).and_return(false)
-        allow(service).to(receive(:errors)).and_return({})
-
-        allow_any_instance_of(RepositoryColumns::DeleteColumnService).to(receive(:call)).and_return(service)
       end
 
       it 'respons with status 422' do

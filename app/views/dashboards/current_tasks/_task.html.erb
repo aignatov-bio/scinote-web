@@ -1,0 +1,24 @@
+<% task_date = current_task_date(task) %>
+<a class="current-task-item" href="<%= protocols_my_module_path(task.id) %>">
+  <div class="current-task-breadcrumbs"><%= task.project_name %>
+    <span class="slash">/</span>
+    <%= task.experiment_name %>
+    <span class="slash">/</span>
+    <%= task.code %>
+  </div>
+  <div class="task-name row-border">
+    <%= task.name %>
+  </div>
+  <div class="task-due-date row-border <%= task_date[:span_class]%>">
+    <% if task_date[:date] %>
+      <i class="sn-icon sn-icon-calendar-small"></i>
+      <%= t("dashboard.current_tasks.#{task_date[:translation_key]}", date: l(task_date[:date], format: :full_date)) %>
+    <% end %>
+  </div>
+  <div class="task-status-container row-border">
+    <span class="task-status <%= 'status-light' if task.my_module_status.light_color? %>"
+      style="background:<%= task.status_color %>">
+        <%= task.status_name %>
+    </span>
+  </div>
+</a>

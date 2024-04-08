@@ -11,9 +11,13 @@ class AppMailerPreview < ActionMailer::Preview
     AppMailer.invitation_instructions(fake_user, 'faketoken', {})
   end
 
+  def unlock_instructions
+    AppMailer.unlock_instructions(fake_user, 'faketoken', {})
+  end
+
   def assignment_notification
     AppMailer.notification(
-      fake_user,
+      fake_user.id,
       Notification.new(
         type_of: :assignment,
         title: I18n.t(
@@ -36,7 +40,7 @@ class AppMailerPreview < ActionMailer::Preview
     user = User.first
     user = fake_user if user.blank?
     AppMailer.notification(
-      user,
+      user.id,
       Notification.new(
         type_of: :recent_changes,
         title: I18n.t(
@@ -53,22 +57,9 @@ class AppMailerPreview < ActionMailer::Preview
     )
   end
 
-  # <b>DEPRECATED:</b> Please use <tt>system_notification</tt> instead.
-  def system_message_notification
-    AppMailer.notification(
-      fake_user,
-      Notification.new(
-        type_of: :system_message,
-        title: 'SciNote 9.1 released!',
-        message: '<a href="#" target="_blank">View release notes</a>',
-        created_at: Time.now
-      )
-    )
-  end
-
   def delivery_notification
     AppMailer.notification(
-      fake_user,
+      fake_user.id,
       Notification.new(
         type_of: :deliver,
         title: 'Your requested export package is ready!',
@@ -77,12 +68,6 @@ class AppMailerPreview < ActionMailer::Preview
         created_at: Time.now
       )
     )
-  end
-
-  def system_notification
-    sn = FactoryBot.build(:system_notification)
-    user = FactoryBot.build(:user)
-    AppMailer.system_notification(user, sn)
   end
 
   private

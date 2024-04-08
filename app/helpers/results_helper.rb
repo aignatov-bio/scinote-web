@@ -42,17 +42,6 @@ module ResultsHelper
   end
 
   def result_icon_class(result)
-    return 'fas fa-table' unless result
-
-    if result.is_asset
-      'fas fa-paperclip'
-    elsif result.is_text
-      'fas fa-font'
-    elsif result.is_table
-      'fas fa-table'
-    else
-      # just return table for any other result
-      'fas fa-table'
-    end
+    return 'sn-icon sn-icon-tables'
   end
 end

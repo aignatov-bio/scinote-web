@@ -24,11 +24,11 @@ class MarvinJsService
                           team_id: current_team.id)
       attach_file(asset.file, file, params)
       asset.save!
-      asset.post_process_file(current_team)
+      asset.post_process_file
       connect_asset(asset, params, current_user)
     end
 
-    def update_sketch(params, _current_user, current_team)
+    def update_sketch(params, current_user, current_team)
       if params[:object_type] == 'TinyMceAsset'
         asset = current_team.tiny_mce_assets.find(Base62.decode(params[:id]))
         attachment = asset&.image
@@ -39,27 +39,24 @@ class MarvinJsService
       return unless attachment
 
       file = generate_image(params)
+      asset.update(last_modified_by: current_user) if asset.is_a?(Asset)
       attach_file(attachment, file, params)
-      asset.post_process_file(current_team) if asset.class == Asset
+      asset.post_process_file if asset.instance_of?(Asset)
       asset
     end
 
     private
 
     def connect_asset(asset, params, current_user)
-      if params[:object_type] == 'Step'
-        object = params[:object_type].constantize.find(params[:object_id])
-        object.assets << asset
-      elsif params[:object_type] == 'Result'
-        my_module = MyModule.find_by(id: params[:object_id])
-        return unless my_module
+      object = case params[:object_type]
+               when 'Step'
+                 Step.find(params[:object_id])
+               when 'Result'
+                 Result.find(params[:object_id])
+               end
+      asset.update!(view_mode: object.assets_view_mode)
+      object.assets << asset
 
-        object = Result.create(user: current_user,
-                          my_module: my_module,
-                          name: prepare_name(params[:name]),
-                          asset: asset,
-                          last_modified_by: current_user)
-      end
       { asset: asset, object: object }
     end
 
@@ -81,7 +78,7 @@ class MarvinJsService
     end
 
     def prepare_name(sketch_name)
-      if !sketch_name.empty?
+      if !sketch_name.blank?
         sketch_name
       else
         I18n.t('marvinjs.new_sketch')

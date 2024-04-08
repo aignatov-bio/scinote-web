@@ -5,16 +5,14 @@ require 'rails_helper'
 describe TeamRepositoriesController, type: :controller do
   login_user
 
-  let(:user) { controller.current_user }
-  let(:team) { create :team, created_by: user }
-  let!(:user_team) { create :user_team, :admin, user: user, team: team }
-  let(:repository) { create :repository, team: team }
-  let(:target_team) { create :team }
+  include_context 'reference_project_structure'
+
+  let(:repository) { create :repository, team: team, created_by: user }
+  let(:target_team) { create :team, created_by: user }
 
   describe 'DELETE destroy' do
-    let(:second_team) { create :team }
-    let!(:second_user_team) { create :user_team, user: user, team: second_team }
-    let(:team_repository) { create :team_repository, :read, team: second_team, repository: repository }
+    let(:second_team) { create :team, created_by: user }
+    let(:team_repository) { create :team_shared_object, :read, team: second_team, shared_object: repository }
 
     context 'when resource can be deleted' do
       let(:action) do
@@ -49,12 +47,10 @@ describe TeamRepositoriesController, type: :controller do
     end
 
     context 'when user do not have access to inventory' do
-      let(:new_repository) { create :repository }
-
       it 'renders 404' do
-        delete :destroy, params: { repository_id: new_repository.id, team_id: team.id, id: team_repository.id }
-
-        expect(response).to have_http_status(404)
+        repository.user_assignments.update(user_role: viewer_role)
+        delete :destroy, params: { repository_id: repository.id, team_id: team.id, id: team_repository.id }
+        expect(response).to have_http_status(403)
       end
     end
   end

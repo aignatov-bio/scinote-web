@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SearchableModel
   extend ActiveSupport::Concern
 
@@ -24,7 +26,7 @@ module SearchableModel
       if options[:whole_word].to_s == 'true' ||
          options[:whole_phrase].to_s == 'true' ||
          options[:at_search].to_s == 'true'
-        unless attrs.empty?
+        unless attrs.blank?
           like = options[:match_case].to_s == 'true' ? '~' : '~*'
           like = 'SIMILAR TO' if options[:at_search].to_s == 'true'
 
@@ -43,6 +45,8 @@ module SearchableModel
             (attrs.map.with_index do |a, i|
               if %w(repository_rows.id repository_number_values.data).include?(a)
                 "((#{a})::text) #{like} :t#{i} OR "
+              elsif defined?(model::PREFIXED_ID_SQL) && a == model::PREFIXED_ID_SQL
+                "#{a} #{like} :t#{i} OR "
               else
                 col = options[:at_search].to_s == 'true' ? "lower(#{a})": a
                 "(trim_html_tags(#{col})) #{like} :t#{i} OR "
@@ -61,12 +65,14 @@ module SearchableModel
       like = options[:match_case].to_s == 'true' ? 'LIKE' : 'ILIKE'
 
       if query.count(' ') > 0
-        unless attrs.empty?
+        unless attrs.blank?
           a_query = query.split.map { |a| "%#{sanitize_sql_like(a)}%" }
           where_str =
             (attrs.map.with_index do |a, i|
               if %w(repository_rows.id repository_number_values.data).include?(a)
                 "((#{a})::text) #{like} ANY (array[:t#{i}]) OR "
+              elsif defined?(model::PREFIXED_ID_SQL) && a == model::PREFIXED_ID_SQL
+                "#{a} #{like} ANY (array[:t#{i}]) OR "
               else
                 "(trim_html_tags(#{a})) #{like} ANY (array[:t#{i}]) OR "
               end
@@ -81,11 +87,13 @@ module SearchableModel
           return where(where_str, vals)
         end
       else
-        unless attrs.empty?
+        unless attrs.blank?
           where_str =
             (attrs.map.with_index do |a, i|
               if %w(repository_rows.id repository_number_values.data).include?(a)
                 "((#{a})::text) #{like} :t#{i} OR "
+              elsif defined?(model::PREFIXED_ID_SQL) && a == model::PREFIXED_ID_SQL
+                "#{a} #{like} :t#{i} OR "
               else
                 "(trim_html_tags(#{a})) #{like} :t#{i} OR "
               end

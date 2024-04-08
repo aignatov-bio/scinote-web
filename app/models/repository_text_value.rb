@@ -14,14 +14,25 @@ class RepositoryTextValue < ApplicationRecord
   validates :data, presence: true, length: { maximum: Constants::TEXT_MAX_LENGTH }
 
   SORTABLE_COLUMN_NAME = 'repository_text_values.data'
-  SORTABLE_VALUE_INCLUDE = :repository_text_value
-  PRELOAD_INCLUDE = :repository_text_value
 
   def formatted
     data
   end
 
-  def data_changed?(new_data)
+  def self.add_filter_condition(repository_rows, join_alias, filter_element)
+    case filter_element.operator
+    when 'contains'
+      repository_rows
+        .where("#{join_alias}.data ILIKE ?", "%#{sanitize_sql_like(filter_element.parameters['text'])}%")
+    when 'doesnt_contain'
+      repository_rows
+        .where.not("#{join_alias}.data ILIKE ?", "%#{sanitize_sql_like(filter_element.parameters['text'])}%")
+    else
+      raise ArgumentError, 'Wrong operator for RepositoryTextValue!'
+    end
+  end
+
+  def data_different?(new_data)
     new_data != data
   end
 

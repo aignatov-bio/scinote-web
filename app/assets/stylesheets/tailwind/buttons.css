@@ -1,0 +1,158 @@
+@layer components {
+  .sci-btn-group {
+    @apply inline-flex items-center gap-2 relative;
+  }
+
+  .btn {
+    @apply relative inline-flex items-center text-sm shrink-0 gap-2 justify-center px-4 rounded border border-solid appearance-none whitespace-nowrap cursor-pointer h-[40px] focus:outline-none;
+    border-color: transparent;
+  }
+
+  .btn.icon-btn {
+    @apply px-2 ;
+  }
+
+  .btn.btn-lg {
+    @apply px-[1.125rem] text-base h-[44px];
+  }
+
+  .btn.btn-lg.icon-btn {
+    @apply px-2.5;
+  }
+
+  .btn.btn-sm {
+    @apply px-2.5 text-xs h-[36px];
+  }
+
+  .btn.btn-sm.icon-btn {
+    @apply px-1.5;
+  }
+
+  .btn.btn-xs {
+    @apply px-2.5 text-xs h-[30px];
+  }
+
+  .btn.btn-xs.icon-btn {
+    @apply px-0.5;
+  }
+
+  .btn:hover {
+    @apply no-underline;
+  }
+
+  .btn:focus {
+    @apply no-underline outline-none text-sn-white;
+  }
+
+  .btn:active {
+    box-shadow: none;
+  }
+
+  .btn:disabled,
+  .btn.disabled {
+    @apply cursor-not-allowed pointer-events-none;
+  }
+
+  .btn.btn-primary,
+  .btn.btn-success {
+    @apply bg-sn-blue text-sn-white;
+  }
+
+  .btn.btn-primary:hover,
+  .btn.btn-success:hover,
+  .btn.btn-primary:focus,
+  .btn.btn-success:focus{
+    @apply bg-sn-blue-hover text-sn-white;
+  }
+
+  .btn.btn-primary:disabled,
+  .btn.btn-primary.disabled,
+  .btn.btn-success:disabled,
+  .btn.btn-success.disabled {
+    @apply bg-sn-light-grey text-sn-sleepy-grey border-sn-light-grey;
+  }
+
+  .btn.btn-secondary,
+  .btn.btn-default {
+    @apply bg-sn-white text-sn-blue border-sn-light-grey;
+  }
+
+  .btn.btn-shared {
+    @apply bg-sn-science-blue text-sn-white border-sn-white;
+  }
+
+  .btn.btn-secondary:hover,
+  .btn.btn-default:hover,
+  .btn.btn-secondary:focus {
+    @apply  border-sn-blue-hover;
+  }
+
+  .btn.btn-shared:hover {
+    @apply border-sn-light-grey;
+  }
+
+  .btn.btn-secondary:disabled,
+  .btn.btn-secondary.disabled,
+  .btn.btn-default:disabled,
+  .btn.btn-default.disabled {
+    @apply bg-sn-white text-sn-sleepy-grey;
+  }
+
+  .btn.btn-shared:disabled,
+  .btn.btn-shared.disabled {
+    @apply bg-sn-white text-sn-sleepy-grey border-sn-light-grey;
+  }
+
+  .btn.btn-light {
+    @apply bg-transparent text-sn-blue border-transparent;
+  }
+
+  .btn.btn-light.btn-black {
+    @apply text-sn-black;
+  }
+
+  .btn.btn-light.btn-white {
+    @apply text-sn-white;
+  }
+
+  .btn.btn-light.btn-white:hover {
+    @apply bg-transparent;
+  }
+
+  .btn.btn-light:hover {
+    @apply bg-sn-super-light-grey;
+  }
+
+  .btn.btn-light:disabled,
+  .btn.btn-light.disabled {
+    @apply text-sn-sleepy-grey;
+  }
+
+  .btn.btn-danger {
+    @apply bg-sn-delete-red text-sn-white;
+  }
+
+  .btn.btn-danger:hover,
+  .btn.btn-danger:focus {
+    @apply bg-sn-delete-red-hover;
+  }
+
+  .btn.btn-danger:disabled,
+  .btn.btn-danger.disabled {
+    @apply bg-sn-delete-red-disabled;
+  }
+
+  .btn-text-link {
+    @apply text-sn-blue text-sm cursor-pointer
+  }
+
+  .btn-text-link:visited,
+  .btn-text-link:hover {
+    @apply text-sn-blue no-underline
+  }
+
+  .btn-text-link.disabled,
+  .btn-text-link:disabled {
+    @apply text-sn-sleepy-grey
+  }
+}

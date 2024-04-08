@@ -6,8 +6,10 @@ AllCops:
   Exclude:
     - "vendor/**/*"
     - "db/schema.rb"
+    - "spec/**/*"
+  NewCops: enable
   UseCache: false
-  TargetRubyVersion: 2.6
+  TargetRubyVersion: 3.1
 
 ##################### Style ####################################
 
@@ -30,9 +32,6 @@ Style/BarePercentLiterals:
 
 Style/BlockDelimiters:
   EnforcedStyle: line_count_based
-
-Style/BracesAroundHashParameters:
-  EnforcedStyle: no_braces
 
 Layout/CaseIndentation:
   EnforcedStyle: case
@@ -274,7 +273,7 @@ Style/SymbolArray:
   EnforcedStyle: percent
 
 Style/SymbolProc:
-  IgnoredMethods:
+  AllowedMethods:
     - respond_to
     - define_method
 
@@ -353,7 +352,7 @@ Metrics/AbcSize:
   Enabled: false
 
 Metrics/BlockLength:
-  ExcludedMethods: ['describe', 'context']
+  AllowedMethods: ['describe', 'context']
 
 Metrics/ClassLength:
   Enabled: false

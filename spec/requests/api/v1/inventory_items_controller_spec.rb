@@ -5,16 +5,17 @@ require 'rails_helper'
 RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
   before :all do
     @user = create(:user)
-    @teams = create_list(:team, 2, created_by: @user)
-    create(:user_team, user: @user, team: @teams.first, role: 2)
+    @another_user = create(:user)
+    @team1 = create(:team, created_by: @user)
+    @team2 = create(:team, created_by: @another_user)
 
     # valid_inventory
     @valid_inventory = create(:repository, name: Faker::Name.unique.name,
-                              created_by: @user, team: @teams.first)
+                              created_by: @user, team: @team1)
 
     # unaccessable_inventory
     create(:repository, name: Faker::Name.unique.name,
-                created_by: @user, team: @teams.second)
+                created_by: @another_user, team: @team2)
 
     text_column = create(:repository_column, name: Faker::Name.unique.name,
       repository: @valid_inventory, data_type: :RepositoryTextValue)
@@ -63,16 +64,18 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
     it 'Response with correct inventory items, default per page' do
       hash_body = nil
       get api_v1_team_inventory_items_path(
-        team_id: @teams.first.id,
-        inventory_id: @teams.first.repositories.first.id
+        team_id: @team1.id,
+        inventory_id: @team1.repositories.first.id
       ), headers: @valid_headers
       expect { hash_body = json }.not_to raise_exception
-      expect(hash_body[:data]).to match(
-        ActiveModelSerializers::SerializableResource
-          .new(@valid_inventory.repository_rows.limit(10),
-               each_serializer: Api::V1::InventoryItemSerializer,
-               include: :inventory_cells)
-          .as_json[:data]
+      expect(hash_body[:data]).to match_array(
+        JSON.parse(
+          ActiveModelSerializers::SerializableResource
+            .new(@valid_inventory.repository_rows.order(:id).limit(10),
+                 each_serializer: Api::V1::InventoryItemSerializer,
+                 include: :inventory_cells)
+            .to_json
+        )['data']
       )
       expect(hash_body).not_to include('included')
     end
@@ -80,40 +83,46 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
     it 'Response with correct inventory items, included cells' do
       hash_body = nil
       get api_v1_team_inventory_items_path(
-        team_id: @teams.first.id,
-        inventory_id: @teams.first.repositories.first.id,
+        team_id: @team1.id,
+        inventory_id: @team1.repositories.first.id,
         include: 'inventory_cells'
       ), headers: @valid_headers
       expect { hash_body = json }.not_to raise_exception
-      expect(hash_body[:data]).to match(
-        ActiveModelSerializers::SerializableResource
-          .new(@valid_inventory.repository_rows.limit(10),
-               each_serializer: Api::V1::InventoryItemSerializer,
-               include: :inventory_cells)
-          .as_json[:data]
+      expect(hash_body[:data]).to match_array(
+        JSON.parse(
+          ActiveModelSerializers::SerializableResource
+            .new(@valid_inventory.repository_rows.order(:id).limit(10),
+                 each_serializer: Api::V1::InventoryItemSerializer,
+                 include: :inventory_cells)
+            .to_json
+        )['data']
       )
-      expect(hash_body[:included]).to match(
-        ActiveModelSerializers::SerializableResource
-          .new(@valid_inventory.repository_rows.limit(10),
-               each_serializer: Api::V1::InventoryItemSerializer,
-               include: :inventory_cells)
-          .as_json[:included]
+      expect(hash_body[:included]).to match_array(
+        JSON.parse(
+          ActiveModelSerializers::SerializableResource
+            .new(@valid_inventory.repository_rows.order(:id).limit(10),
+                 each_serializer: Api::V1::InventoryItemSerializer,
+                 include: :inventory_cells)
+            .to_json
+        )['included']
       )
     end
 
     it 'Response with correct inventory items, 100 per page' do
       hash_body = nil
       get api_v1_team_inventory_items_path(
-        team_id: @teams.first.id,
-        inventory_id: @teams.first.repositories.first.id
+        team_id: @team1.id,
+        inventory_id: @team1.repositories.first.id
       ), params: { page: { size: 100 } }, headers: @valid_headers
       expect { hash_body = json }.not_to raise_exception
-      expect(hash_body[:data]).to match(
-        ActiveModelSerializers::SerializableResource
-          .new(@valid_inventory.repository_rows.limit(100),
-               each_serializer: Api::V1::InventoryItemSerializer,
-               include: :inventory_cells)
-          .as_json[:data]
+      expect(hash_body[:data]).to match_array(
+        JSON.parse(
+          ActiveModelSerializers::SerializableResource
+            .new(@valid_inventory.repository_rows.limit(100),
+                 each_serializer: Api::V1::InventoryItemSerializer,
+                 include: :inventory_cells)
+            .to_json
+        )['data']
       )
       expect(hash_body).not_to include('included')
     end
@@ -121,8 +130,8 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
     it 'When invalid request, user in not member of the team' do
       hash_body = nil
       get api_v1_team_inventory_items_path(
-        team_id: @teams.second.id,
-        inventory_id: @teams.second.repositories.first.id
+        team_id: @team2.id,
+        inventory_id: @team2.repositories.first.id
       ), headers: @valid_headers
       expect(response).to have_http_status(403)
       expect { hash_body = json }.not_to raise_exception
@@ -132,7 +141,7 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
     it 'When invalid request, non existing inventory' do
       hash_body = nil
       get api_v1_team_inventory_items_path(
-        team_id: @teams.first.id,
+        team_id: @team1.id,
         inventory_id: 123
       ), headers: @valid_headers
       expect(response).to have_http_status(404)
@@ -143,8 +152,8 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
     it 'When invalid request, repository from another team' do
       hash_body = nil
       get api_v1_team_inventory_items_path(
-        team_id: @teams.first.id,
-        inventory_id: @teams.second.repositories.first.id
+        team_id: @team1.id,
+        inventory_id: @team2.repositories.first.id
       ), headers: @valid_headers
       expect(response).to have_http_status(404)
       expect { hash_body = json }.not_to raise_exception
@@ -154,15 +163,15 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
     context 'when have some archived rows' do
       before do
         create(:repository_row, :archived,
-               name: Faker::Name.unique.name, created_by: @user, repository: @teams.first.repositories.first)
+               name: Faker::Name.unique.name, created_by: @user, repository: @team1.repositories.first)
       end
 
       it 'will ignore them' do
         hash_body = nil
 
         get api_v1_team_inventory_items_path(
-          team_id: @teams.first.id,
-          inventory_id: @teams.first.repositories.first.id
+          team_id: @team1.id,
+          inventory_id: @team1.repositories.first.id
         ), params: { page: { size: 200 } }, headers: @valid_headers
 
         expect { hash_body = json }.not_to raise_exception
@@ -173,11 +182,13 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
 
   describe 'DELETE inventory_items, #destroy' do
     it 'Destroys inventory item' do
-      deleted_id = @teams.first.repositories.first.repository_rows.last.id
+      row = @team1.repositories.first.repository_rows.last
+      row.archive!(@user)
+      deleted_id = row.id
       delete api_v1_team_inventory_item_path(
         id: deleted_id,
-        team_id: @teams.first.id,
-        inventory_id: @teams.first.repositories.first.id
+        team_id: @team1.id,
+        inventory_id: @team1.repositories.first.id
       ), headers: @valid_headers
       expect(response).to have_http_status(200)
       expect(RepositoryRow.where(id: deleted_id)).to_not exist
@@ -188,29 +199,29 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
       deleted_id = RepositoryRow.last.id + 1
       delete api_v1_team_inventory_item_path(
         id: deleted_id,
-        team_id: @teams.first.id,
-        inventory_id: @teams.first.repositories.first.id
+        team_id: @team1.id,
+        inventory_id: @team1.repositories.first.id
       ), headers: @valid_headers
       expect(response).to have_http_status(404)
     end
 
     it 'When invalid request, incorrect repository' do
-      deleted_id = @teams.first.repositories.first.repository_rows.last.id
+      deleted_id = @team1.repositories.first.repository_rows.last.id
       delete api_v1_team_inventory_item_path(
         id: deleted_id,
-        team_id: @teams.first.id,
-        inventory_id: @teams.second.repositories.first.id
+        team_id: @team1.id,
+        inventory_id: @team2.repositories.first.id
       ), headers: @valid_headers
       expect(response).to have_http_status(404)
       expect(RepositoryRow.where(id: deleted_id)).to exist
     end
 
     it 'When invalid request, repository from another team' do
-      deleted_id = @teams.first.repositories.first.repository_rows.last.id
+      deleted_id = @team1.repositories.first.repository_rows.last.id
       delete api_v1_team_inventory_item_path(
         id: deleted_id,
-        team_id: @teams.second.id,
-        inventory_id: @teams.first.repositories.first.id
+        team_id: @team2.id,
+        inventory_id: @team1.repositories.first.id
       ), headers: @valid_headers
       expect(response).to have_http_status(403)
       expect(RepositoryRow.where(id: deleted_id)).to exist
@@ -221,31 +232,31 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
     it 'Response with correct inventory item' do
       hash_body = nil
       post api_v1_team_inventory_items_path(
-        team_id: @teams.first.id,
+        team_id: @team1.id,
         inventory_id: @valid_inventory.id
       ), params: @valid_hash_body.to_json, headers: @valid_headers
       expect(response).to have_http_status 201
       expect { hash_body = json }.not_to raise_exception
       expect(hash_body[:data]).to match(
-        ActiveModelSerializers::SerializableResource
-          .new(RepositoryRow.last,
-               serializer: Api::V1::InventoryItemSerializer,
-               include: :inventory_cells)
-          .as_json[:data]
+        JSON.parse(
+          ActiveModelSerializers::SerializableResource
+            .new(RepositoryRow.last, serializer: Api::V1::InventoryItemSerializer, include: :inventory_cells)
+            .to_json
+        )['data']
       )
       expect(hash_body[:included]).to match(
-        ActiveModelSerializers::SerializableResource
-          .new(RepositoryRow.last,
-               serializer: Api::V1::InventoryItemSerializer,
-               include: :inventory_cells)
-          .as_json[:included]
+        JSON.parse(
+          ActiveModelSerializers::SerializableResource
+            .new(RepositoryRow.last, serializer: Api::V1::InventoryItemSerializer, include: :inventory_cells)
+            .to_json
+        )['included']
       )
     end
 
     it 'When invalid request, non existing inventory' do
       hash_body = nil
       post api_v1_team_inventory_items_path(
-        team_id: @teams.first.id,
+        team_id: @team1.id,
         inventory_id: -1
       ), params: @valid_hash_body.to_json, headers: @valid_headers
       expect(response).to have_http_status(404)
@@ -256,7 +267,7 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
     it 'When invalid request, user in not member of the team' do
       hash_body = nil
       post api_v1_team_inventory_items_path(
-        team_id: @teams.second.id,
+        team_id: @team2.id,
         inventory_id: @valid_inventory.id
       ), params: @valid_hash_body.to_json, headers: @valid_headers
       expect(response).to have_http_status(403)
@@ -267,8 +278,8 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
     it 'When invalid request, repository from another team' do
       hash_body = nil
       post api_v1_team_inventory_items_path(
-        team_id: @teams.first.id,
-        inventory_id: @teams.second.repositories.first.id
+        team_id: @team1.id,
+        inventory_id: @team2.repositories.first.id
       ), params: @valid_hash_body.to_json, headers: @valid_headers
       expect(response).to have_http_status(404)
       expect { hash_body = json }.not_to raise_exception
@@ -288,17 +299,17 @@ RSpec.describe 'Api::V1::InventoryItemsController', type: :request do
 
     it 'Response with correctly updated inventory item for name field' do
       hash_body = nil
-      updated_inventory_item = @inventory_item.as_json[:data]
-      updated_inventory_item[:attributes][:name] = Faker::Name.unique.name
+      updated_inventory_item = JSON.parse(@inventory_item.to_json)['data']
+      updated_inventory_item['attributes']['name'] = Faker::Name.unique.name
       patch api_v1_team_inventory_item_path(
         id: RepositoryRow.last.id,
-        team_id: @teams.first.id,
+        team_id: @team1.id,
         inventory_id: @valid_inventory.id
       ), params: { data: updated_inventory_item }.to_json,
       headers: @valid_headers
       expect(response).to have_http_status 200
       expect { hash_body = json }.not_to raise_exception
-      expect(hash_body[:data].to_json).to match(updated_inventory_item.to_json)
+      expect(hash_body['data']['attributes']['name']).to match(updated_inventory_item['attributes']['name'])
     end
   end
 end

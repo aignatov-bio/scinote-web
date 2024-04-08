@@ -2,7 +2,7 @@ version: '2'
 services:
   db:
     container_name: scinote_db_development
-    image: postgres:11
+    image: postgres:15
     volumes:
       - scinote_development_postgres:/var/lib/postgresql/data
     ports:
@@ -29,7 +29,6 @@ services:
                bundle exec rails s -b 0.0.0.0"
     environment:
       - RAILS_ENV=development
-      - WEBPACKER_DEV_SERVER_HOST=webpack
     volumes:
       - .:/usr/src/app
       - scinote_development_bundler:/usr/local/bundle/
@@ -44,13 +43,45 @@ services:
     container_name: scinote_webpack_development
     stdin_open: true
     tty: true
-    ports:
-      - "3035:3035"
     command: >
-      bash -c "./bin/webpack-dev-server"
+      bash -c "yarn install && yarn build --watch"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - .:/usr/src/app
+      - scinote_development_bundler:/usr/local/bundle/
+      - scinote_development_files:/usr/src/app/public/system
+
+  css_bundling:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: scinote_web_development
+    container_name: scinote_css_bundling_development
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "yarn build:css --watch"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - .:/usr/src/app
+      - scinote_development_bundler:/usr/local/bundle/
+      - scinote_development_files:/usr/src/app/public/system
+
+  tailwind:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: scinote_web_development
+    container_name: scinote_tailwind_development
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "rails tailwindcss:watch"
     environment:
       - RAILS_ENV=development
-      - WORKER=true
+      - NODE_ENV=development
     volumes:
       - .:/usr/src/app
       - scinote_development_bundler:/usr/local/bundle/

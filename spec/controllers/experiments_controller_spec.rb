@@ -4,14 +4,8 @@ require 'rails_helper'
 
 describe ExperimentsController, type: :controller do
   login_user
+  include_context 'reference_project_structure'
 
-  let!(:user) { controller.current_user }
-  let!(:team) { create :team, created_by: user, users: [user] }
-  let!(:project) { create :project, team: team }
-  let!(:user_project) do
-    create :user_project, :owner, user: user, project: project
-  end
-  let(:experiment) { create :experiment, project: project }
 
   describe 'POST create' do
     let(:action) { post :create, params: params, format: :json }
@@ -64,8 +58,9 @@ describe ExperimentsController, type: :controller do
         create :experiment,
                archived: true,
                archived_by: (create :user),
-               archived_on: Time.now,
-               project: project
+               archived_on: Time.zone.now,
+               project: project,
+               created_by: project.created_by
       end
 
       let(:params) do

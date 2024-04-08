@@ -2,16 +2,18 @@
 
 module Reports::Docx::DrawMyModuleRepository
   def draw_my_module_repository(subject)
-    my_module = MyModule.find_by(id: subject['id']['my_module_id'])
-    return unless my_module
+    my_module = subject.my_module
+    repository = subject.repository
+    repository = assigned_repository_or_snapshot(my_module, repository)
 
-    repository_id = subject['id']['repository_id']
-    repository = ::RepositoryBase.find(repository_id)
+    return unless repository && can_read_experiment?(@user, my_module.experiment) &&
+                  (repository.is_a?(RepositorySnapshot) || can_read_repository?(@user, repository))
+
     repository_data = my_module.repository_docx_json(repository)
 
-    return false unless repository_data[:rows].any?
+    return false unless repository_data[:rows].any? && can_read_repository?(@user, repository)
 
-    table = prepare_row_columns(repository_data)
+    table = prepare_row_columns(repository_data, my_module, repository)
 
     @docx.p
     @docx.p I18n.t('projects.reports.elements.module_repository.name',

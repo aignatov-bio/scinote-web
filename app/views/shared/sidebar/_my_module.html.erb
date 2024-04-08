@@ -1,0 +1,20 @@
+<ul class="sidebar-branch">
+  <li class="sidebar-leaf">
+    <%= link_to t('sidebar.my_module.back_button'), my_modules_experiment_path(experiment), class: 'sidebar-link back-button' %>
+  </li>
+  <% my_modules.each do |my_module| %>
+    <li class="sidebar-leaf">
+      <%= link_to my_module.name,
+                  protocols_my_module_url(my_module),
+                  title: my_module.name,
+                  class: "sidebar-link #{'selected' if my_module == current_my_module}",
+                  data: { module_id: my_module.id } %>
+    </li>
+  <% end %>
+  <li class="sidebar-leaf">
+    <%= link_to my_modules_experiment_path(experiment, view_mode: :archived), class: 'sidebar-link' do %>
+      <i class="sn-icon sn-icon-archive"></i>&nbsp;
+      <%= t('sidebar.my_modules.archived_button') %>
+    <% end%>
+  </li>
+</ul>

@@ -1,0 +1,105 @@
+@layer components {
+
+  .sci-label {
+    @apply text-sm font-medium text-sn-dark-grey;
+  }
+
+  .sci-label.error {
+    @apply text-sn-coral;
+  }
+
+  .sci-input-container-v2 {
+    @apply relative h-[2.75rem] flex items-center transition-all;
+  }
+
+  .sci-input-container-v2.input-sm {
+    @apply h-[2.25rem] bg-transparent p-0.5 outline-none;
+  }
+
+  .sci-input-container-v2 input {
+    @apply w-full h-full bg-transparent p-0.5 border rounded outline-none absolute top-0 pl-2 border-sn-sleepy-grey;
+  }
+
+  .sci-input-container-v2 input::placeholder {
+    @apply text-sn-sleepy-grey;
+  }
+
+  .sci-input-container-v2 .error {
+    @apply !border-sn-coral;
+  }
+
+  .sci-input-container-v2.error::before {
+    @apply !text-sn-coral;
+    @apply !text-xs;
+
+    bottom: -1rem;
+    content: attr(data-error-text);
+    left: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 100%;
+  }
+
+  .sci-input-container-v2 input:focus {
+    @apply border-sn-science-blue shadow-none;
+  }
+
+  .sci-input-container-v2 input:hover {
+    border-color: var(--sn-science-blue-hover);
+  }
+
+  .sci-input-container-v2 input:disabled {
+    background-color: var(--sn-super-light-grey);
+    color: var(--sn-grey);
+    border: 1px solid var(--sn-light-grey);
+  }
+
+  .sci-input-container-v2 .sn-icon {
+    @apply m-2 text-sn-black;
+  }
+
+  .sci-input-container-v2.right-icon .sn-icon {
+    @apply absolute right-0;
+  }
+
+  .sci-input-container-v2.left-icon input {
+    @apply pl-10;
+  }
+
+  .sci-input-container-v2.right-icon input {
+    @apply pr-10;
+  }
+
+  .sci-input-container-v2.left-icon input {
+    @apply pl-10;
+  }
+
+  .sci-input-container-v2.textarea-lg {
+    @apply h-[9rem];
+  }
+
+  .sci-input-container-v2 textarea {
+    @apply w-full h-full bg-transparent px-2 border rounded outline-none absolute top-0 border-sn-sleepy-grey;
+  }
+
+  .sci-input-container-v2 textarea::placeholder {
+    @apply text-sn-sleepy-grey;
+  }
+
+  .sci-input-container-v2 textarea:focus {
+    @apply border-sn-science-blue;
+  }
+
+  .sci-input-container-v2 .history-flyout li:hover {
+    @apply bg-sn-super-light-grey;
+  }
+
+  .sci-input-container-v2.error input {
+    @apply border-sn-alert-passion;
+  }
+
+  .sci-input-container-v2.error::after {
+    @apply absolute -bottom-5 text-sn-alert-passion text-xs;
+    content: attr(data-error);
+  }
+}

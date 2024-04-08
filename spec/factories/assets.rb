@@ -2,8 +2,9 @@
 
 FactoryBot.define do
   factory :asset do
-    file do
-      fixture_file_upload(Rails.root.join('spec', 'fixtures', 'files', 'test.jpg'), 'image/jpg')
+    team
+    after(:create) do |asset|
+      asset.file.attach(io: File.open(Rails.root.join('spec/fixtures/files/test.jpg')), filename: 'test.jpg')
     end
   end
 end

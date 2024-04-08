@@ -36,47 +36,44 @@ module ApplicationHelper
     end
   end
 
-  def sample_types_page_project?
-    controller_name == 'sample_types' &&
-      @my_module.nil? &&
-      @experiment.nil?
-  end
-
-  def sample_groups_page_project?
-    controller_name == 'sample_groups' &&
-      @my_module.nil? &&
-      @experiment.nil?
-  end
-
-  def sample_types_page_my_module?
-    controller_name == 'sample_types' && !@my_module.nil?
-  end
-
-  def sample_groups_page_my_module?
-    controller_name == 'sample_groups' && !@my_module.nil?
-  end
-
-  def sample_groups_page_experiment?
-    controller_name == 'sample_groups' &&
-      @my_module.nil? &&
-      !@experiment.nil?
-  end
-
-  def sample_types_page_expermient?
-    controller_name == 'sample_types' &&
-      @my_module.nil? &&
-      !@experiment.nil?
-  end
-
   def module_repository_page?
     controller_name == 'my_modules' && !@repository.nil?
+  end
+
+  def displayable_flash_type?(type)
+    %w(success warning alert error notice).include?(type)
+  end
+
+  def flash_alert_class(type)
+    case type
+    when 'success'
+      'alert-success'
+    when 'warning'
+      'alert-warning'
+    when 'error', 'alert'
+      'alert-danger'
+    else
+      'alert-info'
+    end
+  end
+
+  def flash_icon_class(type)
+    case type
+    when 'error', 'warning'
+      'fa-exclamation-triangle'
+    else
+      'fa-check-circle'
+    end
   end
 
   def smart_annotation_notification(options = {})
     title = options.fetch(:title) { :title_must_be_present }
     message = options.fetch(:message) { :message_must_be_present }
-    new_text = options.fetch(:new_text) { :new_text_must_be_present }
     old_text = options[:old_text] || ''
+    new_text = options[:new_text]
+    subject = options[:subject]
+    return if new_text.blank?
+
     sa_user = /\[\@(.*?)~([0-9a-zA-Z]+)\]/
     # fetch user ids from the previous text
     old_user_ids = []
@@ -100,51 +97,58 @@ module ApplicationHelper
       target_user = User.find_by_id(user_id)
       next unless target_user
 
-      generate_annotation_notification(target_user, title, message)
+      generate_annotation_notification(target_user, title, subject)
     end
   end
 
-  def generate_annotation_notification(target_user, title, message)
-    notification = Notification.create(
-      type_of: :assignment,
-      title: sanitize_input(title),
-      message: sanitize_input(message)
+  def generate_annotation_notification(target_user, title, subject)
+    GeneralNotification.send_notifications(
+      {
+        type: :smart_annotation_added,
+        title: sanitize_input(title),
+        subject_id: subject.id,
+        subject_class: subject.class.name,
+        subject_name: subject.respond_to?(:name) && subject.name,
+        user: target_user
+      }
     )
-    UserNotification.create(notification: notification, user: target_user) if target_user.assignments_notification
   end
 
-  def smart_annotation_parser(text, team = nil, base64_encoded_imgs = false)
+  def custom_link_open_new_tab(text)
+    text.gsub(/\<a /, '<a target=_blank ')
+  end
+
+  def smart_annotation_parser(text, team = nil, base64_encoded_imgs = false, preview_repository = false)
     # sometimes happens that the "team" param gets wrong data: "{nil, []}"
     # so we have to check if the "team" param is kind of Team object
-    team = nil unless team.is_a? Team
-    new_text = smart_annotation_filter_resources(text, team)
-    new_text = smart_annotation_filter_users(new_text, team, base64_encoded_imgs)
-    new_text
+    team = nil unless team.is_a?(Team)
+    new_text = smart_annotation_filter_resources(text, team, preview_repository: preview_repository)
+    smart_annotation_filter_users(new_text, team, base64_encoded_imgs: base64_encoded_imgs)
   end
 
   # Check if text have smart annotations of resources
   # and outputs a link to resource
-  def smart_annotation_filter_resources(text, team)
+  def smart_annotation_filter_resources(text, team, preview_repository: false)
     user = if !defined?(current_user) && @user
              @user
            else
              current_user
            end
-    SmartAnnotations::TagToHtml.new(user, team, text).html
+    team ||= defined?(current_team) ? current_team : nil
+    sanitize_input(SmartAnnotations::TagToHtml.new(user, team, text, preview_repository).html)
   end
 
   # Check if text have smart annotations of users
   # and outputs a popover with user information
-  def smart_annotation_filter_users(text, team, base64_encoded_imgs = false)
+  def smart_annotation_filter_users(text, team, base64_encoded_imgs: false)
     sa_user = /\[\@(.*?)~([0-9a-zA-Z]+)\]/
-    new_text = text.gsub(sa_user) do |el|
+    text.gsub(sa_user) do |el|
       match = el.match(sa_user)
       user = User.find_by_id(match[2].base62_decode)
       next unless user
 
       popover_for_user_name(user, team, false, false, base64_encoded_imgs)
     end
-    new_text
   end
 
   # Generate smart annotation link for one user object
@@ -153,52 +157,19 @@ module ApplicationHelper
                             skip_user_status = false,
                             skip_avatar = false,
                             base64_encoded_imgs = false)
-    user_still_in_team = user.teams.include?(team)
 
-    user_description = %(<div class='col-xs-4'>
-      <img src='#{user_avatar_absolute_url(user, :thumb, base64_encoded_imgs)}'
-       alt='thumb'></div><div class='col-xs-8'>
-      <div class='row'><div class='col-xs-9 text-left'><h5>
-      #{user.full_name}</h5></div><div class='col-xs-3 text-right'>
-      <span class='fas fa-times' aria-hidden='true'></span>
-      </div></div><div class='row'><div class='col-xs-12'>
-      <p class='silver'>#{user.email}</p>)
-    if user_still_in_team
-      user_t = user.user_teams
-                   .where('user_teams.team_id = ?', team)
-                   .first
-      user_description += %(<p>
-        #{I18n.t('atwho.users.popover_html',
-                 role: user_t.role.capitalize,
-                 team: user_t.team.name,
-                 time: I18n.l(user_t.created_at, format: :full_date))}
-        </p></div></div></div>)
-    else
-      user_description += %(<p></p></div></div></div>)
-    end
-
-    user_name = user.full_name
-
-    html = if skip_avatar
-             ''
-           else
-             raw("<span class=\"global-avatar-container smart-annotation\">" \
-                  "<img src='#{user_avatar_absolute_url(user, :icon_small, base64_encoded_imgs)}'" \
-                  "alt='avatar' class='atwho-user-img-popover'" \
-                  " ref='#{'missing-img' unless user.avatar.attached?}'></span>")
-           end
-
-    html =
-      raw(html) +
-      raw('<a onClick="$(this).popover(\'show\')" ' \
-        'class="atwho-user-popover" data-container="body" ' \
-        'data-html="true" tabindex="0" data-trigger="focus" ' \
-        'data-placement="top" data-toggle="popover" data-content="') +
-      raw(user_description) + raw('" >') + user_name + raw('</a>')
-
-    html << " #{I18n.t('atwho.res.removed')}" unless skip_user_status || user_still_in_team
-    html = '<span class="atwho-user-container">' + html + '</span>'
-    html
+    (defined?(controller) ? controller : ApplicationController.new)
+      .render_to_string(
+        partial: 'shared/atwho_user_container',
+        locals: {
+          user: user,
+          skip_avatar: skip_avatar,
+          skip_user_status: skip_user_status,
+          team: team,
+          base64_encoded_imgs: base64_encoded_imgs
+        },
+        formats: :html
+      )
   end
 
   # No more dirty hack
@@ -207,15 +178,72 @@ module ApplicationHelper
     if user.avatar.attached?
       return user.convert_variant_to_base64(avatar_link) if base64_encoded_imgs
 
-      avatar_link.processed.service_url(expires_in: Constants::URL_LONG_EXPIRE_TIME)
+      avatar_link.processed.url(expires_in: Constants::URL_LONG_EXPIRE_TIME)
+    elsif base64_encoded_imgs
+      file_path = Rails.root.join('app', 'assets', *avatar_link.split('/'))
+      encoded_data =
+        File.open(file_path) do |file|
+          Base64.strict_encode64(file.read)
+        end
+
+      "data:image/svg+xml;base64,#{encoded_data}"
     else
       avatar_link
     end
   rescue StandardError => e
     Rails.logger.error e.message
+    'icon_small/missing.svg'
+  end
+
+  def sso_enabled?
+    ENV['SSO_ENABLED'] == 'true'
+  end
+
+  def okta_configured?
+    ApplicationSettings.instance.values['okta'].present?
+  end
+
+  def azure_ad_configured?
+    ApplicationSettings.instance.values['azure_ad_apps'].present?
   end
 
   def wopi_enabled?
     ENV['WOPI_ENABLED'] == 'true'
+  end
+
+  # Check whether the wopi file can be edited and return appropriate response
+  def wopi_file_edit_button_status(asset)
+    file_ext = asset.file_name.split('.').last
+    if Constants::WOPI_EDITABLE_FORMATS.include?(file_ext)
+      edit_supported = true
+      title = ''
+    else
+      edit_supported = false
+      title = if Constants::FILE_TEXT_FORMATS.include?(file_ext)
+                I18n.t('assets.wopi_supported_text_formats_title')
+              elsif Constants::FILE_TABLE_FORMATS.include?(file_ext)
+                I18n.t('assets.wopi_supported_table_formats_title')
+              else
+                I18n.t('assets.wopi_supported_presentation_formats_title')
+              end
+    end
+    return edit_supported, title
+  end
+
+  def create_2fa_qr_code(user)
+    user.assign_2fa_token!
+    qr_code_url = ROTP::TOTP.new(user.otp_secret, issuer: 'SciNote').provisioning_uri(user.email)
+    RQRCode::QRCode.new(qr_code_url).as_svg(module_size: 4)
+  end
+
+  def login_disclaimer
+    # login_disclaimer: { title: "...", body: "...", action: "..." }
+    ApplicationSettings.instance.values['login_disclaimer']
+  end
+
+  def show_grey_background?
+    return false unless controller_name && action_name
+
+    Extends::COLORED_BACKGROUND_ACTIONS.include?("#{controller_name}/#{action_name}")
   end
 end

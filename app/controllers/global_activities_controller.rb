@@ -3,11 +3,13 @@
 class GlobalActivitiesController < ApplicationController
   include InputSanitizeHelper
 
+  before_action :check_create_activity_filter_permissions, only: :save_activity_filter
+
   def index
     # Preload filter format
     #   {
-    #     from_date: "YYYY-MM-DD",
     #     to_date: "YYYY-MM-DD",
+    #     from_date: "YYYY-MM-DD",
     #     teams: [*team_ids],
     #     types: [*activity_type_ids],
     #     users: [*user_ids],
@@ -19,8 +21,8 @@ class GlobalActivitiesController < ApplicationController
 
     # Example
     #   {
+    #     to_date: "2018-02-28",
     #     from_date: "2019-03-29",
-    #     to_date: "2019-03-29",
     #     teams: [1,2],
     #     types: [32,33,34],
     #     users: [1,2,3],
@@ -39,10 +41,6 @@ class GlobalActivitiesController < ApplicationController
                        @teams.order(name: :asc)
                      end
     @activity_types = Activity.activity_types_list
-    @user_list = User.where(id: UserTeam.where(team: current_user.teams).select(:user_id))
-                     .distinct
-                     .order(full_name: :asc)
-                     .pluck(:full_name, :id)
 
     activities = ActivitiesService.load_activities(current_user, selected_teams, activity_filters)
 
@@ -51,16 +49,12 @@ class GlobalActivitiesController < ApplicationController
     end
 
     @next_page = activities.next_page
-    @starting_timestamp = activities.first&.created_at.to_i
 
     respond_to do |format|
       format.json do
         render json: {
-          activities_html: render_to_string(
-            partial: 'activity_list.html.erb'
-          ),
-          next_page: @next_page,
-          starting_timestamp: @starting_timestamp
+          activities_html: render_to_string(partial: 'activity_list', formats: :html),
+          next_page: @next_page
         }
       end
       format.html do
@@ -69,13 +63,17 @@ class GlobalActivitiesController < ApplicationController
   end
 
   def team_filter
-    render json: current_user.teams.ordered.global_activity_filter(activity_filters, params[:query])
+    teams = current_user.teams.ordered.global_activity_filter(activity_filters, params[:query])
+    render json: teams.select(:id, :name)
+                      .map { |i| { value: i[:id], label: escape_input(i[:name]) } }
   end
 
   def user_filter
     filter = activity_filters
     filter = { subjects: { MyModule: [params[:my_module_id].to_i] } } if params[:my_module_id]
-    render json: current_user.global_activity_filter(filter, params[:query])
+    users = current_user.global_activity_filter(filter, params[:query])
+    render json: users.select(:full_name, :id)
+                      .map { |i| { label: escape_input(i[:full_name]), value: i[:id] } }
   end
 
   def project_filter
@@ -106,7 +104,20 @@ class GlobalActivitiesController < ApplicationController
     render json: get_objects(Report)
   end
 
+  def save_activity_filter
+    activity_filter = ActivityFilter.new(activity_filter_params)
+    if activity_filter.save
+      render json: { message: t('global_activities.index.activity_filter_saved') }
+    else
+      render json: { errors: activity_filter.errors.full_messages }, status: :unprocessable_entity
+    end
+  end
+
   private
+
+  def check_create_activity_filter_permissions
+    render_403 && return unless can_create_acitivity_filters?
+  end
 
   def get_objects(subject)
     query = subject_search_params[:query]
@@ -118,7 +129,7 @@ class GlobalActivitiesController < ApplicationController
       end
     filter_teams =
       if subject_search_params[:users].present?
-        User.where(id: subject_search_params[:users]).joins(:user_teams).group(:team_id).pluck(:team_id)
+        User.where(id: subject_search_params[:users]).joins(:teams).group(:team_id).pluck(:team_id)
       elsif subject_search_params[:teams].present?
         subject_search_params[:teams]
       else
@@ -130,17 +141,22 @@ class GlobalActivitiesController < ApplicationController
                      .order(name: :asc)
 
     selected_subject = subject_search_params[:subjects]
+    matched = matched.where(my_module: nil) if subject == Protocol
     matched = matched.where(project_id: selected_subject['Project']) if subject == Experiment
     matched = matched.where(experiment_id: selected_subject['Experiment']) if subject == MyModule
-    matched = matched.where(repository_id: selected_subject['Repository']) if subject == RepositoryRow
+    matched = matched.where(repository_id: selected_subject['RepositoryBase']) if subject == RepositoryRow
+    matched = matched.limit(Constants::SEARCH_LIMIT)
 
-    matched = matched.limit(Constants::SEARCH_LIMIT).pluck(:id, :name)
-    matched.map { |pr| { value: pr[0], label: escape_input(pr[1]) } }
+    matched.map { |pr| { value: pr.id, label: escape_input(pr.name) } }
+  end
+
+  def activity_filter_params
+    params.permit(:name, filter: {})
   end
 
   def activity_filters
     params.permit(
-      :page, :starting_timestamp, :from_date, :to_date, types: [], subjects: {}, users: [], teams: []
+      :page, :from_date, :to_date, types: [], subjects: {}, users: [], teams: []
     )
   end
 

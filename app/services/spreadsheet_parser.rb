@@ -35,12 +35,12 @@ class SpreadsheetParser
     end
   end
 
-  def self.first_two_rows(sheet)
+  def self.first_two_rows(sheet, date_format: nil)
     rows = spreadsheet_enumerator(sheet)
     header = []
     columns = []
     rows.take(2).each_with_index do |row_values, i|
-      row = parse_row(row_values, sheet, header: i.zero?)
+      row = parse_row(row_values, sheet, header: i.zero?, date_format: date_format)
       if row && i.zero?
         header = row
       else
@@ -51,11 +51,13 @@ class SpreadsheetParser
     return header, columns
   end
 
-  def self.parse_row(row, sheet, header: false)
+  def self.parse_row(row, sheet, header: false, date_format: nil)
     if sheet.is_a?(Roo::Excelx) && !header
       row.map do |cell|
         if cell.is_a?(Roo::Excelx::Cell::Number) && cell.format == 'General'
           cell&.value&.to_d
+        elsif date_format && cell&.value.is_a?(Date)
+          cell&.value&.strftime(date_format)
         else
           cell&.formatted_value
         end

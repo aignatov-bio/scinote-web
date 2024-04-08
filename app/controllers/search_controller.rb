@@ -1,5 +1,6 @@
 class SearchController < ApplicationController
   include IconsHelper
+  include ProjectFoldersHelper
   before_action :load_vars, only: :index
 
   def index
@@ -10,6 +11,7 @@ class SearchController < ApplicationController
     count_search_results
 
     search_projects if @search_category == :projects
+    search_project_folders if @search_category == :project_folders
     search_experiments if @search_category == :experiments
     search_modules if @search_category == :modules
     search_results if @search_category == :results
@@ -74,7 +76,7 @@ class SearchController < ApplicationController
           @search_query += "#{splited_query[i]} "
         end
       end
-      if @search_query.empty?
+      if @search_query.blank?
         flash[:error] = t('general.query.wrong_query',
                           min_length: Constants::NAME_MIN_LENGTH,
                           max_length: Constants::TEXT_MAX_LENGTH)
@@ -101,6 +103,7 @@ class SearchController < ApplicationController
                  match_case: @search_case,
                  whole_word: @search_whole_word,
                  whole_phrase: @search_whole_phrase)
+         .order(created_at: :desc)
   end
 
   def count_by_name(model)
@@ -166,6 +169,7 @@ class SearchController < ApplicationController
 
   def count_search_results
     @project_search_count = fetch_cached_count Project
+    @project_folder_search_count = fetch_cached_count ProjectFolder
     @experiment_search_count = fetch_cached_count Experiment
     @module_search_count = fetch_cached_count MyModule
     @result_search_count = fetch_cached_count Result
@@ -180,6 +184,7 @@ class SearchController < ApplicationController
     @comment_search_count = fetch_cached_count Comment
 
     @search_results_count = @project_search_count
+    @search_results_count += @project_folder_search_count
     @search_results_count += @experiment_search_count
     @search_results_count += @module_search_count
     @search_results_count += @result_search_count
@@ -205,67 +210,71 @@ class SearchController < ApplicationController
 
   def search_projects
     @project_results = []
-    @project_results = search_by_name(Project) if @project_search_count > 0
+    @project_results = search_by_name(Project) if @project_search_count.positive?
     @search_count = @project_search_count
+  end
+
+  def search_project_folders
+    @project_folder_results = []
+    @project_folder_results = search_by_name(ProjectFolder) if @project_folder_search_count.positive?
+    @search_count = @project_folder_search_count
   end
 
   def search_experiments
     @experiment_results = []
-    if @experiment_search_count > 0
-      @experiment_results = search_by_name(Experiment)
-    end
+    @experiment_results = search_by_name(Experiment) if @experiment_search_count.positive?
     @search_count = @experiment_search_count
   end
 
   def search_modules
     @module_results = []
-    @module_results = search_by_name(MyModule) if @module_search_count > 0
+    @module_results = search_by_name(MyModule) if @module_search_count.positive?
     @search_count = @module_search_count
   end
 
   def search_results
     @result_results = []
-    @result_results = search_by_name(Result) if @result_search_count > 0
+    @result_results = search_by_name(Result) if @result_search_count.positive?
     @search_count = @result_search_count
   end
 
   def search_tags
     @tag_results = []
-    @tag_results = search_by_name(Tag) if @tag_search_count > 0
+    @tag_results = search_by_name(Tag) if @tag_search_count.positive?
     @search_count = @tag_search_count
   end
 
   def search_reports
     @report_results = []
-    @report_results = search_by_name(Report) if @report_search_count > 0
+    @report_results = search_by_name(Report) if @report_search_count.positive?
     @search_count = @report_search_count
   end
 
   def search_protocols
     @protocol_results = []
-    @protocol_results = search_by_name(Protocol) if @protocol_search_count > 0
+    @protocol_results = search_by_name(Protocol) if @protocol_search_count.positive?
     @search_count = @protocol_search_count
   end
 
   def search_steps
     @step_results = []
-    @step_results = search_by_name(Step) if @step_search_count > 0
+    @step_results = search_by_name(Step) if @step_search_count.positive?
     @search_count = @step_search_count
   end
 
   def search_checklists
     @checklist_results = []
-    if @checklist_search_count > 0
-      @checklist_results = search_by_name(Checklist)
-    end
+    @checklist_results = search_by_name(Checklist) if @checklist_search_count.positive?
     @search_count = @checklist_search_count
   end
 
   def search_repository
-    @repository = Repository.find_by_id(params[:repository])
-    render_403 unless can_read_repository?(@repository)
+    @repository = Repository.find_by(id: params[:repository])
+    unless current_user.teams.include?(@repository.team) || @repository.private_shared_with?(current_user.teams)
+      render_403
+    end
     @repository_results = []
-    if @repository_search_count_total > 0
+    if @repository_search_count_total.positive?
       @repository_results =
         Repository.search(current_user, @search_query, @search_page,
                           @repository,
@@ -278,19 +287,19 @@ class SearchController < ApplicationController
 
   def search_assets
     @asset_results = []
-    @asset_results = search_by_name(Asset) if @asset_search_count > 0
+    @asset_results = search_by_name(Asset) if @asset_search_count.positive?
     @search_count = @asset_search_count
   end
 
   def search_tables
     @table_results = []
-    @table_results = search_by_name(Table) if @table_search_count > 0
+    @table_results = search_by_name(Table) if @table_search_count.positive?
     @search_count = @table_search_count
   end
 
   def search_comments
     @comment_results = []
-    @comment_results = search_by_name(Comment) if @comment_search_count > 0
+    @comment_results = search_by_name(Comment) if @comment_search_count.positive?
     @search_count = @comment_search_count
   end
 end

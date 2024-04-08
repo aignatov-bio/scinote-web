@@ -1,0 +1,21 @@
+<div class="content-header my-module-header">
+  <div class="my-module-title-row title-row">
+    <i class="sn-icon sn-icon-navigator sci--layout--navigator-open cursor-pointer p-1.5 border rounded border-sn-light-grey mr-4"></i>
+    <h1 class="my_module-name" data-toggle="tooltip" data-placement="bottom" title="<%= @my_module.name %>">
+      <% if @my_module.archived_branch? %>
+        <span class="whitespace-nowrap"><%= t('labels.archived')%></span>&nbsp;
+      <% end %>
+      <% if @inline_editable_title_config.present? %>
+              <%= render partial: "shared/inline_editing",
+                         locals: {
+                            initial_value: @my_module.name,
+                            config: @inline_editable_title_config
+                         } %>
+      <% else %>
+        <div class="name-readonly-placeholder">
+          <%= @my_module.name %>
+        </div>
+      <% end %>
+    </h1>
+  </div>
+</div>

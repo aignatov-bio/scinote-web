@@ -12,21 +12,18 @@ module ProtocolImporters
         default_timeout CONSTANTS[:default_timeout]
         logger Rails.logger, CONSTANTS[:debug_level]
 
-        def initialize(token = nil)
-          # Currently we support public tokens only (no token needed for public data)
-          @auth = { token: token }
-
+        def initialize
           # Set default headers
-          self.class.headers('Authorization': "Bearer #{@auth[:token]}") if @auth[:token].present?
+          self.class.headers('Authorization' => "Bearer #{ENV.fetch('PROTOCOLS_IO_ACCESS_TOKEN')}")
         end
 
         # Query params available are:
-        #   filter (optional): {public|user_public|user_private|shared_with_user}
+        #   filter (required): {public|user_public|user_private|shared_with_user}
         #     Which type of protocols to filter.
         #     default is public and requires no auth token.
         #     user_public requires public token.
         #     user_private|shared_with_user require private auth token.
-        #   key (optional): string
+        #   key (required): string
         #     Search key to search for in protocol name, description, authors.
         #     default: ''
         #   order_field (optional): {activity|date|name|id}
@@ -40,7 +37,7 @@ module ProtocolImporters
         #     Default 10.
         #   page_id (optional): int (1..n)
         #     id of page.
-        #     Default is 1.
+        #     Default is 1. (the first page_id: 0)
         def protocol_list(query_params = {})
           local_sorting = false
           response = with_handle_network_errors do

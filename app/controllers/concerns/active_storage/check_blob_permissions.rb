@@ -11,68 +11,68 @@ module ActiveStorage
     private
 
     def check_read_permissions
-      case @blob.attachments.first.record_type
+      return render_404 if @blob.attachments.blank?
+
+      render_403 unless @blob.attachments.any? { |attachment| check_attachment_read_permissions(attachment) }
+    end
+
+    def check_attachment_read_permissions(attachment)
+      current_user.permission_team = attachment.record.team if attachment.record.respond_to?(:team)
+
+      return false if attachment.record.blank?
+
+      case attachment.record_type
       when 'Asset'
-        check_asset_read_permissions
+        check_asset_read_permissions(attachment.record)
       when 'TinyMceAsset'
-        check_tinymce_asset_read_permissions
+        check_tinymce_asset_read_permissions(attachment.record)
       when 'Experiment'
-        check_experiment_read_permissions
+        can_read_experiment?(attachment.record)
+      when 'Report'
+        can_read_project?(attachment.record.project)
       when 'User'
         # No read restrictions for avatars
         true
       when 'ZipExport', 'TeamZipExport'
-        check_zip_export_read_permissions
+        attachment.record.user == current_user
+      when 'TempFile'
+        attachment.record.session_id == request.session_options[:id].to_s
       else
-        render_403
+        false
       end
     end
 
-    def check_asset_read_permissions
-      asset = @blob.attachments.first.record
-      return render_403 unless asset
-
+    def check_asset_read_permissions(asset)
       if asset.step
         protocol = asset.step.protocol
-        render_403 unless can_read_protocol_in_module?(protocol) || can_read_protocol_in_repository?(protocol)
+        can_read_protocol_in_module?(protocol) || can_read_protocol_in_repository?(protocol)
       elsif asset.result
         experiment = asset.result.my_module.experiment
-        render_403 unless can_read_experiment?(experiment)
+        can_read_experiment?(experiment)
       elsif asset.repository_cell
         repository = asset.repository_cell.repository_column.repository
-        render_403 unless can_read_repository?(repository)
+        can_read_repository?(repository)
       else
-        render_403
+        false
       end
     end
 
-    def check_tinymce_asset_read_permissions
-      asset = @blob.attachments.first.record
-      return render_403 unless asset
-      return true if asset.object.nil? && asset.team == current_team
+    def check_tinymce_asset_read_permissions(asset)
+      return true if asset.object.nil? && can_read_team?(asset.team)
 
       case asset.object_type
       when 'MyModule'
-        render_403 unless can_read_experiment?(asset.object.experiment)
+        can_read_my_module?(asset.object)
       when 'Protocol'
-        render_403 unless can_read_protocol_in_module?(asset.object) ||
-                          can_read_protocol_in_repository?(asset.object)
+        can_read_protocol_in_module?(asset.object) || can_read_protocol_in_repository?(asset.object)
       when 'ResultText'
-        render_403 unless can_read_experiment?(asset.object.result.my_module.experiment)
-      when 'Step'
-        render_403 unless can_read_protocol_in_module?(asset.object.protocol) ||
-                          can_read_protocol_in_repository?(asset.object.protocol)
+        can_read_my_module?(asset.object.result.my_module)
+      when 'StepText'
+        can_read_protocol_in_module?(asset.object.step.protocol) ||
+          can_read_protocol_in_repository?(asset.object.step.protocol)
       else
-        render_403
+        false
       end
-    end
-
-    def check_experiment_read_permissions
-      render_403 && return unless can_read_experiment?(@blob.attachments.first.record)
-    end
-
-    def check_zip_export_read_permissions
-      render_403 unless @blob.attachments.first.record.user == current_user
     end
   end
 end

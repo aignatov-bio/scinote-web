@@ -399,7 +399,7 @@ module ProtocolsIoHelper
     # (complex mapping with nested hashes) id 8 = software package,
     # id 9 = dataset, id 15 = command, id 18 = attached sub protocol
     # id 19= safety information ,
-    # id 20= regents (materials, like scinote samples kind of)
+    # id 20= regents (materials, like scinote inventories kind of)
 
     original_json['steps'] = protocols_io_guid_reorder_step_json(
       original_json['steps']
@@ -412,10 +412,10 @@ module ProtocolsIoHelper
       original_json
     )
     newj['0']['tables'] = protocolsio_string_to_table_element(
-      sanitize_input(unshortened_tables_string).html_safe
+      sanitize_input(unshortened_tables_string)
     )[0]
     table_str = protocolsio_string_to_table_element(
-      sanitize_input(shortened_string, Array('img')).html_safe
+      sanitize_input(shortened_string, Array('img'))
     )[1]
     newj['0']['description'] = table_str
     original_json['steps'].each_with_index do |step, pos_orig| # loop over steps
@@ -494,7 +494,7 @@ module ProtocolsIoHelper
       )[1]
       newj[i.to_s]['description'] = table_str
       newj[i.to_s]['tables'] = protocolsio_string_to_table_element(
-        sanitize_input(unshortened_step_table_string).html_safe
+        sanitize_input(unshortened_step_table_string)
       )[0]
     end # steps
     newj

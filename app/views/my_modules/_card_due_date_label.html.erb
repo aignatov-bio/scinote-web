@@ -2,7 +2,6 @@
   <%= t('my_modules.states.completed') %>
   <span class="due-date-label">
     <%= l(my_module.completed_on, format: :full_date) %>
-    <span class="fas fa-check"></span>
   </span>
 <% elsif my_module.is_one_day_prior? %>
   <%= t('my_modules.states.due_soon') %>
@@ -23,7 +22,7 @@
   </span>
 <% else %>
   <%= t('experiments.canvas.full_zoom.due_date') %>
-  <span class="due-date-label">
-    <em><%= t('experiments.canvas.full_zoom.no_due_date') %></em>
+  <span class="due-date-label empty-label">
+    <%= t('my_modules.details.no_due_date_placeholder') %>
   </span>
 <% end %>

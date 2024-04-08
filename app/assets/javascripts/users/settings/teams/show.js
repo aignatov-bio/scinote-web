@@ -1,4 +1,4 @@
-/* global TinyMCE I18n */
+/* global TinyMCE I18n HelperModule animateSpinner */
 (function() {
   'use strict';
 
@@ -25,7 +25,7 @@
           <'page-info'i>
           <'page-selector'p>
         >`,
-      order: [[1, 'asc']],
+      order: [[0, 'asc']],
       stateSave: true,
       buttons: [],
       processing: true,
@@ -112,7 +112,7 @@
         var modal = $('#destroy-user-team-modal');
         var modalHeading = modal.find('.modal-header').find('.modal-title');
         var modalBody = modal.find('.modal-body');
-        modalHeading.text(data.heading);
+        modalHeading.text($('<div>').html(data.heading).text());
         modalBody.html(data.html);
 
         // Show the modal
@@ -178,11 +178,71 @@
   function initNameUpdateEvent() {
     $('.settings-team-name').off('inlineEditing:fieldUpdated', '.inline-editing-container')
       .on('inlineEditing:fieldUpdated', '.inline-editing-container', function() {
-        var newName = $(this).find('.view-mode').html();
-        $('.breadcrumb-teams .active').html(newName);
+        var newName = $(this).find('.view-mode').text();
+        $('.breadcrumb-teams .active').text(newName);
         if ($('.settings-team-name').data('current-team')) {
-          $('#team-switch .selected-team').html(newName);
+          $('#team-switch .selected-team').text(newName);
         }
+      });
+  }
+
+  function initTeamSharePermission() {
+    function toogleCheckbox() {
+      var checkbox = $('.team-share-permission');
+      checkbox.prop('checked', !checkbox.prop('checked'));
+    }
+
+    $('.team-share-permission').on('click', function(e) {
+      animateSpinner();
+      e.preventDefault();
+      if (this.checked) {
+        $.ajax({
+          type: 'POST',
+          url: $(this).data('enableUrl'),
+          success: function() {
+            toogleCheckbox();
+            animateSpinner(null, false);
+            HelperModule.flashAlertMsg(
+              I18n.t('users.settings.teams.show.tasks_share.enable_success_message'),
+              'success'
+            );
+          },
+          error: function() {
+            animateSpinner(null, false);
+            HelperModule.flashAlertMsg(I18n.t('users.settings.teams.show.tasks_share.failure_message'), 'danger');
+          }
+        });
+      } else {
+        $.ajax({
+          type: 'GET',
+          url: $(this).data('disableUrl'),
+          success: function(data) {
+            animateSpinner(null, false);
+            if ($('#team-sharing-tasks').length) {
+              $('#team-sharing-tasks').replaceWith(data.html);
+            } else {
+              $('.team-settings-pane').append(data.html);
+            }
+
+            $('#team-sharing-tasks').modal('show');
+          },
+          error: function() {
+            animateSpinner(null, false);
+            HelperModule.flashAlertMsg(I18n.t('users.settings.teams.show.tasks_share.failure_message'), 'danger');
+          }
+        });
+      }
+    });
+
+    $(document)
+      .on('ajax:success', '.disable-team-tasks-sharing-form', function() {
+        $('#team-sharing-tasks').modal('hide');
+        toogleCheckbox();
+        HelperModule.flashAlertMsg(I18n.t('users.settings.teams.show.tasks_share.disable_success_message'), 'success');
+      })
+      .on('ajax:error', '.disable-team-tasks-sharing-form', function() {
+        $('#team-sharing-tasks').modal('hide');
+        HelperModule.flashAlertMsg(I18n.t('users.settings.teams.show.tasks_share.failure_message'), 'danger');
       });
   }
 
@@ -192,4 +252,5 @@
   initRemoveUsers();
   initReloadPageAfterInviteUsers();
   initNameUpdateEvent();
+  initTeamSharePermission();
 }());

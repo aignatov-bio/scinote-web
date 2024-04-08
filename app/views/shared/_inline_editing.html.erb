@@ -5,14 +5,14 @@
   data-item-id="<%= config[:item_id] %>"
   data-path-to-update="<%= config[:path_to_update] %>"
   data-original-name="<%= initial_value %>"
-  data-label-after='<%= config[:label_after]&.html_safe %>'
+  data-label-after='<%= config[:label_after] %>'
   data-placeholder='<%= config[:placeholder] %>'
 >
-  <div class="view-mode" data-placeholder="<%= config[:placeholder] %>"><%= initial_value %></div>
+  <div class="view-mode" data-placeholder="<%= config[:placeholder] %>" tabindex=0><%= initial_value %></div>
   <input placeholder="<%= config[:placeholder] %>" class="hidden input-field" type="text" value="<%= initial_value %>" disabled/>
-  <div class="button-container">
-    <span class="save-button"><i class="fas fa-check"></i></span>
-    <span class="cancel-button"><i class="fas fa-times"></i></span>
+  <div class="button-container hidden">
+    <span class="save-button"><i class="sn-icon sn-icon-check"></i></span>
+    <span class="cancel-button"><i class="sn-icon sn-icon-close"></i></span>
   </div>
   <span class="error-block"></span>
 </div>

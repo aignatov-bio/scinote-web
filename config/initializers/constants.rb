@@ -18,7 +18,7 @@ class Constants
   # Max characters for long text fields
   TEXT_MAX_LENGTH = 10000
   # Max characters for rich text fields (in html format)
-  RICH_TEXT_MAX_LENGTH = 50000
+  RICH_TEXT_MAX_LENGTH = 1000000
   # Max characters for color field (given in HEX format)
   COLOR_MAX_LENGTH = 7
   # Max characters for text in dropdown list element
@@ -41,7 +41,10 @@ class Constants
   EMAIL_MAX_LENGTH = 254
   # Some big value which is still supported by all databases, no matter what
   # data type is used
-  INFINITY = 2**32 / 2 - 1
+  INFINITY = ((2**32) / 2) - 1
+
+  # Prevents integer overflow for reminder delta seconds
+  MAX_NUMBER_OF_REMINDER_WEEKS = 816
 
   #=============================================================================
   # Query/display limits
@@ -61,9 +64,17 @@ class Constants
   # Maximum number of users that can be invited in a single action
   INVITE_USERS_LIMIT = 20
   # Maximum nr. of search results for atwho (smart annotations)
-  ATWHO_SEARCH_LIMIT = 5
+  ATWHO_SEARCH_LIMIT = 10
   # Max characters for repository name in Atwho modal
   ATWHO_REP_NAME_LIMIT = 16
+  # Results limited query/display elements for pages
+  RESULTS_PER_PAGE_LIMIT = 10
+  #Experiments more button appears
+  EXPERIMENT_LONG_DESCRIPTION = 80
+  # Infinite scroll default elements per page
+  DEFAULT_ELEMENTS_PER_PAGE = 20
+  # Default navigator width
+  DEFAULT_NAV_WIDTH = 208
 
   #=============================================================================
   # File and data memory size
@@ -73,6 +84,9 @@ class Constants
   TABLE_JSON_MAX_SIZE_MB = 20
   # Max uploaded user picture avatar size in MB
   AVATAR_MAX_SIZE_MB = 0.2
+  # PDF preview file limit in MB
+  PDF_PREVIEW_MAX_SIZE_MB = 10
+
 
   #=============================================================================
   # Application space
@@ -114,8 +128,9 @@ class Constants
   REPORT_DOCX_TABLE_BORDER_SIZE = 4
 
   # All font size in half points
-  REPORT_DOCX_EXPERIMENT_TITLE_SIZE = 28
-  REPORT_DOCX_MY_MODULE_TITLE_SIZE = 24
+  REPORT_DOCX_REPORT_TITLE_SIZE = 36
+  REPORT_DOCX_EXPERIMENT_TITLE_SIZE = 32
+  REPORT_DOCX_MY_MODULE_TITLE_SIZE = 28
   REPORT_DOCX_STEP_TITLE_SIZE = 22
   REPORT_DOCX_STEP_ELEMENTS_TITLE_SIZE = 20
 
@@ -159,25 +174,25 @@ class Constants
   # full syntax!
   #=============================================================================
 
-  TAG_COLORS = [
-    '#6C159E',
-    '#159B5E',
-    '#FF4500',
-    '#008B8B',
-    '#757575',
-    '#2CB72C',
-    '#F5AD00',
-    '#0ECDC0',
-    '#15369E',
-    '#FF69B4',
-    '#CD5C5C',
-    '#ADADAD',
-    '#6495ED',
-    '#DC143C',
-    '#FF8C00',
-    '#C71585',
-    '#000000'
-  ].freeze
+  TAG_COLORS = %i(
+    #C4D3A0
+    #5EC66F
+    #46C3C8
+    #A3CCE4
+    #3B99FD
+    #104DA9
+    #6F2DC1
+    #FF69B4
+    #DF3562
+    #AD0015
+    #FF5C00
+    #E9A845
+    #B06500
+    #663300
+    #1D2939
+    #98A2B3
+    #DCE0E7
+  ).freeze
 
   # Theme colors
   BRAND_PRIMARY = '#104da9'.freeze # $brand-primary
@@ -191,19 +206,44 @@ class Constants
   COLOR_BLACK = '#231f20'.freeze # $color-black
 
   # Fonts
-  FONT_FAMILY_BASE = 'Lato,"Open Sans",Arial,Helvetica,sans-serif;'.freeze # $font-family-base
+  FONT_FAMILY_BASE = 'Inter,"Open Sans",Arial,Helvetica,sans-serif;'.freeze # $font-family-base
 
   #=============================================================================
   # External URLs
   #=============================================================================
 
   HTTP = 'http://'.freeze
-  TUTORIALS_URL = (HTTP + 'goo.gl/YH3fXA').freeze
-  SUPPORT_URL = (HTTP + 'goo.gl/Jb9WXx').freeze
+  TUTORIALS_URL = ENV.fetch('VIDEO_TUTORIALS_URL', "#{HTTP}goo.gl/YH3fXA").freeze
+  SUPPORT_URL = ENV.fetch('KNOWLEDGE_CENTER_URL', 'https://scinote-3850750.hs-sites.com/en/knowledge').freeze
+  FREE_TRIAL_URL = 'https://www.scinote.net/free-trial/?utm_source=SciNoteShare&utm_medium=FreeTrialButton&utm_campaign=Q3_2023'.freeze
   # Default user picture avatar
-  DEFAULT_AVATAR_URL = '/images/:style/missing.png'.freeze
+  DEFAULT_AVATAR_URL = '/images/:style/missing.svg'.freeze
 
   ACADEMY_BL_LINK = 'https://scinote.net/academy/?utm_source=SciNote%20software%20BL&utm_medium=SciNote%20software%20BL'.freeze
+
+  PWA_URL = 'https://:pwa_domain/teams/:team_id/projects/:project_id/experiments/:experiment_id/tasks/:task_id/protocol/:protocol_id/:step_id?domain=:domain'.freeze
+
+  TWO_FACTOR_URL = {
+    google: {
+      android: 'https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2',
+      ios: 'https://apps.apple.com/us/app/google-authenticator/id388497605'
+    },
+    microsoft: {
+      android: 'https://play.google.com/store/apps/details?id=com.azure.authenticator',
+      ios: 'https://apps.apple.com/us/app/microsoft-authenticator/id983156458'
+    },
+    two_fa: {
+      android: 'https://play.google.com/store/apps/details?id=com.twofasapp',
+      ios: 'https://apps.apple.com/us/app/2fa-authenticator-2fas/id1217793794'
+    },
+  }
+
+  SCINOTE_FLUICS_URL = 'https://www.scinote.net/fluics/'.freeze
+  SCINOTE_ZEBRA_DOWNLOAD_URL = 'https://www.zebra.com/us/en/products/software/barcode-printers/link-os/browser-print.html'.freeze
+  SCINOTE_ZEBRA_BLOG_URL = 'https://www.scinote.net/blog/connect-zebra-printers/'.freeze
+  SCINOTE_ZEBRA_SUPPORT_URL = 'https://www.zebra.com/us/en/about-zebra/contact-zebra/contact-tech-support.html'.freeze
+  TWO_FACTOR_RECOVERY_CODE_COUNT = 6
+  TWO_FACTOR_RECOVERY_CODE_LENGTH = 12
 
   #=============================================================================
   # Protocol importers
@@ -235,13 +275,13 @@ class Constants
           order_field: :activity,
           order_dir: :desc,
           page_size: 50,
-          page_id: 1,
+          page_id: 0,
           fields: 'id,title,authors,created_on,uri,stats,published_on'
         }
       },
       publications: {
         default_query_params: {
-          latest: 50
+          latest: 20
         }
       }
     },
@@ -285,675 +325,45 @@ class Constants
   PREVIEWABLE_FILE_TYPES = TEXT_EXTRACT_FILE_TYPES
 
   WHITELISTED_IMAGE_TYPES = [
-    'gif', 'jpeg', 'pjpeg', 'png', 'x-png', 'svg+xml', 'bmp', 'tiff'
+    'gif', 'jpeg', 'pjpeg', 'png', 'x-png', 'svg+xml', 'bmp', 'tiff', 'jpg'
   ].freeze
 
   WHITELISTED_IMAGE_TYPES_EDITABLE = %w(
     jpeg pjpeg png
   ).freeze
 
-  WHITELISTED_TAGS = %w(
-    a b strong i em li ul ol h1 del ins h2 h3 h4 h5 h6 br sub sup p code hr div
-    span u s blockquote pre col colgroup table thead tbody th tr td img
-  ).freeze
+  config = Sanitize::Config::RELAXED.deep_dup
+  config[:attributes][:all] << 'id'
+  config[:attributes][:all] << 'contenteditable'
+  config[:attributes]['img'] << 'data-mce-token'
+  config[:attributes]['img'] << 'data-source-type'
+  config[:attributes]['a'] << 'data-turbolinks'
+  config[:protocols]['img']['src'] << 'data'
+  INPUT_SANITIZE_CONFIG = Sanitize::Config.freeze_config(config)
 
-  WHITELISTED_ATTRIBUTES = [
-    'href', 'src', 'width', 'height', 'alt', 'cite', 'datetime', 'title',
-    'class', 'name', 'xml:lang', 'abbr', 'style', 'target', :data
-  ].freeze
+  REPOSITORY_DEFAULT_PAGE_SIZE = 10
+  REPOSITORY_LIST_ITEMS_PER_COLUMN = 500
+  REPOSITORY_CHECKLIST_ITEMS_PER_COLUMN = 50
+  REPOSITORY_STOCK_UNIT_ITEMS_PER_COLUMN = 50
+  REPOSITORY_NUMBER_TYPE_DEFAULT_DECIMALS = 2
+  REPOSITORY_NUMBER_TYPE_MAX_DECIMALS = 10
 
-  WHITELISTED_CSS_ATTRIBUTES = {
-    allow_comments: false,
-    allow_hacks: false,
-    at_rules_with_properties: %w[
-      bottom-center bottom-left bottom-left-corner bottom-right
-      bottom-right-corner font-face left-bottom left-middle left-top page
-      right-bottom right-middle right-top top-center top-left
-      top-left-corner top-right top-right-corner
-    ],
-    at_rules_with_styles: %w[
-      -moz-keyframes -o-keyframes -webkit-keyframes document
-      keyframes media supports
-    ],
-    protocols: ['http', 'https', :relative],
-    properties: %w[
-      -moz-appearance
-      -moz-background-inline-policy
-      -moz-box-sizing
-      -moz-column-count
-      -moz-column-fill
-      -moz-column-gap
-      -moz-column-rule
-      -moz-column-rule-color
-      -moz-column-rule-style
-      -moz-column-rule-width
-      -moz-column-width
-      -moz-font-feature-settings
-      -moz-font-language-override
-      -moz-hyphens
-      -moz-text-align-last
-      -moz-text-decoration-color
-      -moz-text-decoration-line
-      -moz-text-decoration-style
-      -moz-text-size-adjust
-      -ms-background-position-x
-      -ms-background-position-y
-      -ms-block-progression
-      -ms-content-zoom-chaining
-      -ms-content-zoom-limit
-      -ms-content-zoom-limit-max
-      -ms-content-zoom-limit-min
-      -ms-content-zoom-snap
-      -ms-content-zoom-snap-points
-      -ms-content-zoom-snap-type
-      -ms-content-zooming
-      -ms-filter
-      -ms-flex
-      -ms-flex-align
-      -ms-flex-direction
-      -ms-flex-order
-      -ms-flex-pack
-      -ms-flex-wrap
-      -ms-flow-from
-      -ms-flow-into
-      -ms-grid-column
-      -ms-grid-column-align
-      -ms-grid-column-span
-      -ms-grid-columns
-      -ms-grid-row
-      -ms-grid-row-align
-      -ms-grid-row-span
-      -ms-grid-rows
-      -ms-high-contrast-adjust
-      -ms-hyphenate-limit-chars
-      -ms-hyphenate-limit-lines
-      -ms-hyphenate-limit-zone
-      -ms-hyphens
-      -ms-ime-mode
-      -ms-interpolation-mode
-      -ms-layout-flow
-      -ms-layout-grid
-      -ms-layout-grid-char
-      -ms-layout-grid-line
-      -ms-layout-grid-mode
-      -ms-layout-grid-type
-      -ms-overflow-style
-      -ms-overflow-x
-      -ms-overflow-y
-      -ms-progress-appearance
-      -ms-scroll-chaining
-      -ms-scroll-limit
-      -ms-scroll-limit-x-max
-      -ms-scroll-limit-x-min
-      -ms-scroll-limit-y-max
-      -ms-scroll-limit-y-min
-      -ms-scroll-rails
-      -ms-scroll-snap-points-x
-      -ms-scroll-snap-points-y
-      -ms-scroll-snap-type
-      -ms-scroll-snap-x
-      -ms-scroll-snap-y
-      -ms-scroll-translation
-      -ms-scrollbar-arrow-color
-      -ms-scrollbar-base-color
-      -ms-scrollbar-darkshadow-color
-      -ms-scrollbar-face-color
-      -ms-scrollbar-highlight-color
-      -ms-scrollbar-shadow-color
-      -ms-scrollbar-track-color
-      -ms-text-align-last
-      -ms-text-autospace
-      -ms-text-justify
-      -ms-text-kashida-space
-      -ms-text-overflow
-      -ms-text-size-adjust
-      -ms-text-underline-position
-      -ms-touch-action
-      -ms-user-select
-      -ms-word-break
-      -ms-word-wrap
-      -ms-wrap-flow
-      -ms-wrap-margin
-      -ms-wrap-through
-      -ms-writing-mode
-      -ms-zoom
-      -webkit-align-content
-      -webkit-align-items
-      -webkit-align-self
-      -webkit-animation
-      -webkit-animation-delay
-      -webkit-animation-direction
-      -webkit-animation-duration
-      -webkit-animation-fill-mode
-      -webkit-animation-iteration-count
-      -webkit-animation-name
-      -webkit-animation-play-state
-      -webkit-animation-timing-function
-      -webkit-appearance
-      -webkit-backface-visibility
-      -webkit-background-blend-mode
-      -webkit-background-clip
-      -webkit-background-composite
-      -webkit-background-origin
-      -webkit-background-size
-      -webkit-blend-mode
-      -webkit-border-after
-      -webkit-border-after-color
-      -webkit-border-after-style
-      -webkit-border-after-width
-      -webkit-border-before
-      -webkit-border-before-color
-      -webkit-border-before-style
-      -webkit-border-before-width
-      -webkit-border-bottom-left-radius
-      -webkit-border-bottom-right-radius
-      -webkit-border-end
-      -webkit-border-end-color
-      -webkit-border-end-style
-      -webkit-border-end-width
-      -webkit-border-fit
-      -webkit-border-image
-      -webkit-border-radius
-      -webkit-border-start
-      -webkit-border-start-color
-      -webkit-border-start-style
-      -webkit-border-start-width
-      -webkit-border-top-left-radius
-      -webkit-border-top-right-radius
-      -webkit-box-align
-      -webkit-box-decoration-break
-      -webkit-box-flex
-      -webkit-box-flex-group
-      -webkit-box-lines
-      -webkit-box-ordinal-group
-      -webkit-box-orient
-      -webkit-box-pack
-      -webkit-box-reflect
-      -webkit-box-shadow
-      -webkit-box-sizing
-      -webkit-clip-path
-      -webkit-column-axis
-      -webkit-column-break-after
-      -webkit-column-break-before
-      -webkit-column-break-inside
-      -webkit-column-count
-      -webkit-column-gap
-      -webkit-column-progression
-      -webkit-column-rule
-      -webkit-column-rule-color
-      -webkit-column-rule-style
-      -webkit-column-rule-width
-      -webkit-column-span
-      -webkit-column-width
-      -webkit-columns
-      -webkit-filter
-      -webkit-flex
-      -webkit-flex-basis
-      -webkit-flex-direction
-      -webkit-flex-flow
-      -webkit-flex-grow
-      -webkit-flex-shrink
-      -webkit-flex-wrap
-      -webkit-flow-from
-      -webkit-flow-into
-      -webkit-font-size-delta
-      -webkit-font-smoothing
-      -webkit-grid-area
-      -webkit-grid-auto-columns
-      -webkit-grid-auto-flow
-      -webkit-grid-auto-rows
-      -webkit-grid-column
-      -webkit-grid-column-end
-      -webkit-grid-column-start
-      -webkit-grid-definition-columns
-      -webkit-grid-definition-rows
-      -webkit-grid-row
-      -webkit-grid-row-end
-      -webkit-grid-row-start
-      -webkit-justify-content
-      -webkit-line-clamp
-      -webkit-logical-height
-      -webkit-logical-width
-      -webkit-margin-after
-      -webkit-margin-after-collapse
-      -webkit-margin-before
-      -webkit-margin-before-collapse
-      -webkit-margin-bottom-collapse
-      -webkit-margin-collapse
-      -webkit-margin-end
-      -webkit-margin-start
-      -webkit-margin-top-collapse
-      -webkit-marquee
-      -webkit-marquee-direction
-      -webkit-marquee-increment
-      -webkit-marquee-repetition
-      -webkit-marquee-speed
-      -webkit-marquee-style
-      -webkit-mask
-      -webkit-mask-box-image
-      -webkit-mask-box-image-outset
-      -webkit-mask-box-image-repeat
-      -webkit-mask-box-image-slice
-      -webkit-mask-box-image-source
-      -webkit-mask-box-image-width
-      -webkit-mask-clip
-      -webkit-mask-composite
-      -webkit-mask-image
-      -webkit-mask-origin
-      -webkit-mask-position
-      -webkit-mask-position-x
-      -webkit-mask-position-y
-      -webkit-mask-repeat
-      -webkit-mask-repeat-x
-      -webkit-mask-repeat-y
-      -webkit-mask-size
-      -webkit-mask-source-type
-      -webkit-max-logical-height
-      -webkit-max-logical-width
-      -webkit-min-logical-height
-      -webkit-min-logical-width
-      -webkit-opacity
-      -webkit-order
-      -webkit-padding-after
-      -webkit-padding-before
-      -webkit-padding-end
-      -webkit-padding-start
-      -webkit-perspective
-      -webkit-perspective-origin
-      -webkit-perspective-origin-x
-      -webkit-perspective-origin-y
-      -webkit-region-break-after
-      -webkit-region-break-before
-      -webkit-region-break-inside
-      -webkit-region-fragment
-      -webkit-shape-inside
-      -webkit-shape-margin
-      -webkit-shape-outside
-      -webkit-shape-padding
-      -webkit-svg-shadow
-      -webkit-tap-highlight-color
-      -webkit-text-decoration
-      -webkit-text-decoration-color
-      -webkit-text-decoration-line
-      -webkit-text-decoration-style
-      -webkit-text-size-adjust
-      -webkit-touch-callout
-      -webkit-transform
-      -webkit-transform-origin
-      -webkit-transform-origin-x
-      -webkit-transform-origin-y
-      -webkit-transform-origin-z
-      -webkit-transform-style
-      -webkit-transition
-      -webkit-transition-delay
-      -webkit-transition-duration
-      -webkit-transition-property
-      -webkit-transition-timing-function
-      -webkit-user-drag
-      -webkit-wrap-flow
-      -webkit-wrap-through
-      align-content
-      align-items
-      align-self
-      alignment-adjust
-      alignment-baseline
-      all
-      anchor-point
-      animation
-      animation-delay
-      animation-direction
-      animation-duration
-      animation-fill-mode
-      animation-iteration-count
-      animation-name
-      animation-play-state
-      animation-timing-function
-      azimuth
-      backface-visibility
-      background
-      background-attachment
-      background-clip
-      background-color
-      background-image
-      background-origin
-      background-position
-      background-repeat
-      background-size
-      baseline-shift
-      binding
-      bleed
-      bookmark-label
-      bookmark-level
-      bookmark-state
-      border
-      border-bottom
-      border-bottom-color
-      border-bottom-left-radius
-      border-bottom-right-radius
-      border-bottom-style
-      border-bottom-width
-      border-collapse
-      border-color
-      border-image
-      border-image-outset
-      border-image-repeat
-      border-image-slice
-      border-image-source
-      border-image-width
-      border-left
-      border-left-color
-      border-left-style
-      border-left-width
-      border-radius
-      border-right
-      border-right-color
-      border-right-style
-      border-right-width
-      border-spacing
-      border-style
-      border-top
-      border-top-color
-      border-top-left-radius
-      border-top-right-radius
-      border-top-style
-      border-top-width
-      border-width
-      bottom
-      box-decoration-break
-      box-shadow
-      box-sizing
-      box-snap
-      box-suppress
-      break-after
-      break-before
-      break-inside
-      caption-side
-      chains
-      clear
-      clip
-      clip-path
-      clip-rule
-      color
-      color-interpolation-filters
-      column-count
-      column-fill
-      column-gap
-      column-rule
-      column-rule-color
-      column-rule-style
-      column-rule-width
-      column-span
-      column-width
-      columns
-      contain
-      content
-      counter-increment
-      counter-reset
-      counter-set
-      crop
-      cue
-      cue-after
-      cue-before
-      cursor
-      direction
-      display
-      display-inside
-      display-list
-      display-outside
-      dominant-baseline
-      elevation
-      empty-cells
-      filter
-      flex
-      flex-basis
-      flex-direction
-      flex-flow
-      flex-grow
-      flex-shrink
-      flex-wrap
-      float
-      float-offset
-      flood-color
-      flood-opacity
-      flow-from
-      flow-into
-      font
-      font-family
-      font-feature-settings
-      font-kerning
-      font-language-override
-      font-size
-      font-size-adjust
-      font-stretch
-      font-style
-      font-synthesis
-      font-variant
-      font-variant-alternates
-      font-variant-caps
-      font-variant-east-asian
-      font-variant-ligatures
-      font-variant-numeric
-      font-variant-position
-      font-weight
-      grid
-      grid-area
-      grid-auto-columns
-      grid-auto-flow
-      grid-auto-rows
-      grid-column
-      grid-column-end
-      grid-column-start
-      grid-row
-      grid-row-end
-      grid-row-start
-      grid-template
-      grid-template-areas
-      grid-template-columns
-      grid-template-rows
-      hanging-punctuation
-      height
-      hyphens
-      icon
-      image-orientation
-      image-rendering
-      image-resolution
-      ime-mode
-      initial-letters
-      inline-box-align
-      justify-content
-      justify-items
-      justify-self
-      left
-      letter-spacing
-      lighting-color
-      line-box-contain
-      line-break
-      line-grid
-      line-height
-      line-snap
-      line-stacking
-      line-stacking-ruby
-      line-stacking-shift
-      line-stacking-strategy
-      list-style
-      list-style-image
-      list-style-position
-      list-style-type
-      margin
-      margin-bottom
-      margin-left
-      margin-right
-      margin-top
-      marker-offset
-      marker-side
-      marks
-      mask
-      mask-box
-      mask-box-outset
-      mask-box-repeat
-      mask-box-slice
-      mask-box-source
-      mask-box-width
-      mask-clip
-      mask-image
-      mask-origin
-      mask-position
-      mask-repeat
-      mask-size
-      mask-source-type
-      mask-type
-      max-height
-      max-lines
-      max-width
-      min-height
-      min-width
-      move-to
-      nav-down
-      nav-index
-      nav-left
-      nav-right
-      nav-up
-      object-fit
-      object-position
-      opacity
-      order
-      orphans
-      outline
-      outline-color
-      outline-offset
-      outline-style
-      outline-width
-      overflow
-      overflow-wrap
-      overflow-x
-      overflow-y
-      padding
-      padding-bottom
-      padding-left
-      padding-right
-      padding-top
-      page
-      page-break-after
-      page-break-before
-      page-break-inside
-      page-policy
-      pause
-      pause-after
-      pause-before
-      perspective
-      perspective-origin
-      pitch
-      pitch-range
-      play-during
-      position
-      presentation-level
-      quotes
-      region-fragment
-      resize
-      rest
-      rest-after
-      rest-before
-      richness
-      right
-      rotation
-      rotation-point
-      ruby-align
-      ruby-merge
-      ruby-position
-      shape-image-threshold
-      shape-margin
-      shape-outside
-      size
-      speak
-      speak-as
-      speak-header
-      speak-numeral
-      speak-punctuation
-      speech-rate
-      stress
-      string-set
-      tab-size
-      table-layout
-      text-align
-      text-align-last
-      text-combine-horizontal
-      text-combine-upright
-      text-decoration
-      text-decoration-color
-      text-decoration-line
-      text-decoration-skip
-      text-decoration-style
-      text-emphasis
-      text-emphasis-color
-      text-emphasis-position
-      text-emphasis-style
-      text-height
-      text-indent
-      text-justify
-      text-orientation
-      text-overflow
-      text-rendering
-      text-shadow
-      text-size-adjust
-      text-space-collapse
-      text-transform
-      text-underline-position
-      text-wrap
-      top
-      touch-action
-      transform
-      transform-origin
-      transform-style
-      transition
-      transition-delay
-      transition-duration
-      transition-property
-      transition-timing-function
-      unicode-bidi
-      unicode-range
-      vertical-align
-      visibility
-      voice-balance
-      voice-duration
-      voice-family
-      voice-pitch
-      voice-range
-      voice-rate
-      voice-stress
-      voice-volume
-      volume
-      white-space
-      widows
-      width
-      will-change
-      word-break
-      word-spacing
-      word-wrap
-      wrap-flow
-      wrap-through
-      writing-mode
-      z-index
-    ]
-  }.freeze
+  REPOSITORY_DATETIME_REMINDER_PRESET = 10
 
   # Repository default table state
   REPOSITORY_TABLE_DEFAULT_STATE = {
     'time' => 0,
     'start' => 0,
-    'length' => 8,
-    'order' => [[2, 'asc']], # Default sorting by 'ID' column
-    'search' => { 'search' => '',
-                  'smart' => true,
-                  'regex' => false,
-                  'caseInsensitive' => true },
+    'length' => REPOSITORY_DEFAULT_PAGE_SIZE,
+    'order' => [[3, 'asc']], # Default sorting by 'name' column
     'columns' => [],
     'assigned' => 'assigned',
-    'ColReorder' => [*0..7]
+    'ColReorder' => [*0..8]
   }
-  8.times do |i|
+  9.times do |i|
     REPOSITORY_TABLE_DEFAULT_STATE['columns'] << {
-      'visible' => (i < 6),
-      'searchable' => (i >= 1), # Checkboxes column is not searchable
+      'visible' => (i < 7 && i != 4), # relationship column is hidden by default
+      'searchable' => (i >= 1 && i != 4), # Checkboxes and relationship column is not searchable
       'search' => { 'search' => '',
                     'smart' => true,
                     'regex' => false,
@@ -966,12 +376,8 @@ class Constants
   REPOSITORY_SNAPSHOT_TABLE_DEFAULT_STATE = {
     'time' => 0,
     'start' => 0,
-    'length' => 5,
+    'length' => REPOSITORY_DEFAULT_PAGE_SIZE,
     'order' => [[1, 'asc']], # Default sorting by 'ID' column
-    'search' => { 'search' => '',
-                  'smart' => true,
-                  'regex' => false,
-                  'caseInsensitive' => true },
     'columns' => [],
     'assigned' => 'assigned',
     'ColReorder' => [*0..4]
@@ -988,12 +394,6 @@ class Constants
                                                 .freeze
 
   EXPORTABLE_ZIP_EXPIRATION_DAYS = 7
-
-  REPOSITORY_DEFAULT_PAGE_SIZE = 10
-  REPOSITORY_LIST_ITEMS_PER_COLUMN = 500
-  REPOSITORY_CHECKLIST_ITEMS_PER_COLUMN = 50
-  REPOSITORY_NUMBER_TYPE_DEFAULT_DECIMALS = 2
-  REPOSITORY_NUMBER_TYPE_MAX_DECIMALS = 10
 
   REPOSITORY_LIST_ITEMS_DELIMITERS_MAP = {
     return: "\n",
@@ -1023,6 +423,23 @@ class Constants
   DEFAULT_PRIVATE_TEAM_NAME = 'My projects'.freeze
 
   TEMPLATES_PROJECT_NAME = 'Templates'.freeze
+
+  # Interval time for polling status state
+  FAST_STATUS_POLLING_INTERVAL = 5000
+  SLOW_STATUS_POLLING_INTERVAL = 10000
+
+  # Interval time for polling asset changes when editing with SciNote Edit
+  ASSET_POLLING_INTERVAL = 5000
+
+  ASSET_SYNC_TOKEN_EXPIRATION = 1.year
+  ASSET_SYNC_URL = ENV['ASSET_SYNC_URL'].freeze
+
+  # Grover timeout in ms
+  GROVER_TIMEOUT_MS = 300000
+
+  # SciNote Edit supported versions
+  MIN_SCINOTE_EDIT_VERSION = ENV['MIN_SCINOTE_EDIT_VERSION'].freeze
+  MAX_SCINOTE_EDIT_VERSION = ENV['MAX_SCINOTE_EDIT_VERSION'].freeze
 
   #                             )       \   /      (
   #                            /|\      )\_/(     /|\

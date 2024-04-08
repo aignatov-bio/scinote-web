@@ -1,3 +1,7 @@
+# frozen_string_literal: true
+
+# rubocop:disable Metrics/BlockLength
+
 namespace :data do
   Rails.logger = Logger.new(STDOUT)
 
@@ -5,7 +9,6 @@ namespace :data do
   task clean_temp_files: :environment do
     Rails.logger.info "Cleaning temporary files older than 3 days"
     TempFile.where("created_at < ?", 3.days.ago).each do |tmp_file|
-
       TempFile.transaction do
         begin
           tmp_file.destroy!
@@ -24,16 +27,14 @@ namespace :data do
 
       User.transaction do
         begin
-          # Destroy user_team, and possibly team
+          # Destroy user team assignments, and possibly team
           if user.teams.count > 0
             oids = user.teams.pluck(:id)
             oids.each do |oid|
               team = Team.find(oid)
-              user_team = user.user_teams.where(team: team).first
+              team_assignment = user.user_assignments.where(assignable: team).take
               destroy_team = (team.users.count == 1 && team.created_by == user)
-              if !user_team.destroy(nil) then
-                raise Exception
-              end
+              team_assignment.destroy!
               team.destroy! if destroy_team
             end
           end
@@ -152,32 +153,81 @@ namespace :data do
     end
   end
 
-  desc 'Create demo project on existing users'
-  task :create_demo_project_on_existing_users,
-       %i(slice_size) => [:environment] do |_, args|
-    args.with_defaults(slice_size: 800)
+  desc 'Purge all experiment workflow images'
+  task purge_experiment_workflow_images: :environment do
+    ActiveStorage::Attachment.where(name: 'workflowimg').delete_all
+  end
 
-    require "#{Rails.root}/app/utilities/first_time_data_generator"
-    include FirstTimeDataGenerator
+  desc 'Purge all experiment workflow images'
+  task cleanup_blobs: :environment do
+    ActiveStorage::Blob.unattached.find_each(&:purge_later)
+  end
 
-    Rails.logger.info('Creating demo project on existing users')
-
-    Team.all.order(updated_at: :desc)
-        .each_slice(args[:slice_size]).with_index do |teams, i|
-      Rails.logger.info("Processing slice with index #{i}. " \
-                        "First team: #{teams.first.id}, " \
-                        "Last team: #{teams.last.id}.")
-
-      teams.each do |team|
-        owner_ut = team.user_teams.where(role: 2).first
-        next unless owner_ut
-
-        FirstTimeDataGenerator.delay(
-          run_at: i.hours.from_now,
-          queue: :new_demo_project,
-          priority: 10
-        ).seed_demo_data_with_id(owner_ut.user.id, team.id)
+  desc 'Reset to defaults all predefined user roles'
+  task reset_predefined_user_roles: :environment do
+    ActiveRecord::Base.transaction do
+      %i(owner_role normal_user_role technician_role viewer_role).each do |predefined_role|
+        reference_role = UserRole.public_send(predefined_role)
+        existing_role = UserRole.find_by(name: reference_role.name)
+        if existing_role.present?
+          # rubocop:disable Rails/SkipsModelValidations
+          existing_role.update_attribute(:permissions, reference_role.permissions)
+          # rubocop:enable Rails/SkipsModelValidations
+        else
+          reference_role.save!
+        end
       end
     end
   end
+
+  desc 'Reset repositories user assignments'
+  task reset_repositories_user_assignments: :environment do
+    ActiveRecord::Base.transaction do
+      Team.all.find_each do |team|
+        team.user_assignments.find_each do |team_user_assignment|
+          team.repositories.find_each do |repository|
+            new_user_assignment =
+              repository.automatic_user_assignments.find_or_initialize_by(user: team_user_assignment.user, team: team)
+            new_user_assignment.user_role = team_user_assignment.user_role
+            new_user_assignment.assigned_by = team_user_assignment.assigned_by
+            new_user_assignment.assigned = :automatically
+            new_user_assignment.save!
+          end
+        end
+      end
+    end
+  end
+
+  desc 'Reset protocols creator user assignments'
+  task reset_protocols_creator_user_assignments: :environment do
+    ActiveRecord::Base.transaction do
+      owner_role = UserRole.find_predefined_owner_role
+      protocols =
+        Protocol.where(protocol_type: Protocol::REPOSITORY_TYPES)
+                .joins('LEFT OUTER JOIN "user_assignments" ON "user_assignments"."assignable_type" = \'Protocol\' ' \
+                       'AND "user_assignments"."assignable_id" = "protocols"."id" ' \
+                       'AND "user_assignments"."assigned" = 1 ' \
+                       'AND "user_assignments"."user_id" = "protocols"."added_by_id"')
+                .where('"user_assignments"."id" IS NULL')
+                .distinct
+      protocols.find_each do |protocol|
+        new_user_assignment = protocol.user_assignments
+                                      .find_or_initialize_by(user: protocol.added_by, team: protocol.team)
+        new_user_assignment.user_role = owner_role
+        new_user_assignment.assigned_by = protocol.added_by
+        new_user_assignment.assigned = :manually
+        new_user_assignment.save!
+      end
+    end
+  end
+
+  desc 'Extract missing asset texts'
+  task extract_missing_asset_texts: :environment do
+    Asset.joins(:file_blob)
+         .where.missing(:asset_text_datum)
+         .where(file_blob: { content_type: Constants::TEXT_EXTRACT_FILE_TYPES })
+         .find_each(&:extract_asset_text)
+  end
 end
+
+# rubocop:enable Metrics/BlockLength

@@ -1,8 +1,6 @@
 <span class="due-date-label <%= get_task_alert_color(my_module) %>">
-  <% if my_module.completed? %>
-    <%= t('my_modules.states.completed') %>
-      <%= l(my_module.completed_on, format: :full) %>
-      <span class="fas fa-check"></span>
+  <% if (my_module.archived_branch? || my_module.completed? ) && my_module.due_date %>
+    <%= l(my_module.due_date, format: :full) %>
   <% elsif my_module.is_one_day_prior? %>
     <%= t('my_modules.states.due_soon') %>
       <%= l(my_module.due_date, format: :full) %>
@@ -13,7 +11,7 @@
       <span class="fas fa-exclamation-triangle"></span>
   <% elsif my_module.due_date %>
       <%= l(my_module.due_date, format: :full) %>
-  <% else %>
+  <% elsif due_date_editable %>
     <span class="empty-label">
       <%= t('my_modules.details.no_due_date_placeholder') %>
     </span>

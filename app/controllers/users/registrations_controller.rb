@@ -1,4 +1,6 @@
 class Users::RegistrationsController < Devise::RegistrationsController
+  include ::ApplicationHelper
+
   prepend_before_action :check_captcha, only: [:create]
   before_action :registration_enabled?,
                 only: %i(new create new_with_provider create_with_provider)
@@ -129,9 +131,6 @@ class Users::RegistrationsController < Devise::RegistrationsController
             @team.created_by = resource # set created_by for oraganization
             @team.save
 
-            # Add this user to the team as owner
-            UserTeam.create(user: resource, team: @team, role: :admin)
-
             # set current team to new user
             resource.current_team_id = @team.id
             resource.save
@@ -153,33 +152,59 @@ class Users::RegistrationsController < Devise::RegistrationsController
     end
   end
 
-  def new_with_provider; end
+  def new_with_provider
+    return render_403 unless current_user
+    return render_403 unless Rails.configuration.x.new_team_on_signup
+
+    @team = Team.new
+    render layout: 'sign_in_halt'
+  end
 
   def create_with_provider
-    @user = User.find_by_id(user_provider_params['user'])
+    return render_403 unless current_user
+    return render_403 unless Rails.configuration.x.new_team_on_signup
+
     # Create new team for the new user
     @team = Team.new(team_provider_params)
+    @team.created_by = current_user # set created_by for the team
 
-    if @team.valid? && @user && Rails.configuration.x.new_team_on_signup
-      # Set the confirmed_at == created_at IF not using email confirmations
-      unless Rails.configuration.x.enable_email_confirmations
-        @user.update!(confirmed_at: @user.created_at)
-      end
-
-      @team.created_by = @user # set created_by for team
-      @team.save!
-
-      # Add this user to the team as owner
-      UserTeam.create(user: @user, team: @team, role: :admin)
-
+    if @team.save
       # set current team to new user
-      @user.current_team_id = @team.id
-      @user.save!
-
-      sign_in_and_redirect @user
+      current_user.update(current_team_id: @team.id)
+      redirect_to root_path
     else
-      render :new_with_provider
+      render :new_with_provider, layout: 'sign_in_halt'
     end
+  end
+
+  def edit
+    @connected_devices = ConnectedDevice.for_user(current_user)
+    @user_statistics = current_user.statistics
+    super
+  end
+
+  def two_factor_enable
+    user = current_user || User.find_by(id: session[:otp_user_id])
+    if user.valid_otp?(params[:submit_code])
+      recovery_codes = user.enable_2fa!
+      sign_in(user) unless current_user
+      render json: { recovery_codes: recovery_codes }
+    else
+      render json: { error: t('users.registrations.edit.2fa_errors.wrong_submit_code') }, status: :unprocessable_entity
+    end
+  end
+
+  def two_factor_disable
+    if current_user.valid_password?(params[:password])
+      current_user.disable_2fa!
+      redirect_to edit_user_registration_path
+    else
+      render json: { error: t('users.registrations.edit.2fa_errors.wrong_password') }, status: :forbidden
+    end
+  end
+
+  def two_factor_qr_code
+    render json: { qr_code: create_2fa_qr_code(current_user) }
   end
 
   protected
@@ -191,7 +216,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def sign_up_params
     tmp = params.require(:user).permit(:full_name, :initials, :email, :password, :password_confirmation)
     initials = tmp[:full_name].titleize.scan(/[A-Z]+/).join()
-    initials = if initials.strip.empty?
+    initials = if initials.strip.blank?
                  'PLCH'
                else
                  initials[0..Constants::USER_INITIALS_MAX_LENGTH]
@@ -217,7 +242,8 @@ class Users::RegistrationsController < Devise::RegistrationsController
       :password_confirmation,
       :current_password,
       :change_password,
-      :change_avatar
+      :change_avatar,
+      :external_id
     )
   end
 

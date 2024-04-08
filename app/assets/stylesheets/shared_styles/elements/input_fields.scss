@@ -7,15 +7,16 @@
 
   label {
     @include font-small;
+    color: var(--sn-dark-grey);
     display: inline-block;
-    font-weight: bold;
-    margin-bottom: 5px;
+    font-weight: 400;
+    margin-bottom: .5rem;
   }
 
   .sci-input-field {
     @include font-button;
     animation-timing-function: $timing-function-sharp;
-    border: $border-secondary;
+    border: 1px solid var(--sn-light-grey);
     border-radius: $border-radius-default !important;
     box-shadow: none;
     height: 36px;
@@ -24,24 +25,49 @@
     transition: .3s;
     width: 100%;
 
+    &:hover {
+      border: 1px solid var(--sn-science-blue-hover);
+    }
+
     &:focus {
       border: $border-focus;
     }
 
     &:disabled {
-      background: transparent;
+      background-color: var(--sn-super-light-grey);
+      color: var(--sn-light-grey);
+      border: 1px solid var(--sn-light-grey);
     }
 
     &::placeholder {
       color: $color-alto;
     }
+
+    &.textarea {
+      height: unset;
+      min-height: 36px;
+      padding: 10px;
+      resize: vertical;
+    }
   }
 
-  .fas {
-    line-height: 36px;
+  .sci-input-field[type=password] {
+    font-family: "SN Inter", "Open Sans", Arial, Helvetica, sans-serif;
+    letter-spacing: .075em;
+
+    &::placeholder {
+      letter-spacing: initial;
+    }
+  }
+
+  input.sci-input-field {
+    height: 36px !important;
+  }
+
+  .sn-icon {
+    bottom: 6px;
     position: absolute;
     text-align: center;
-    bottom: 0;
     width: 25px;
   }
 
@@ -50,7 +76,7 @@
       padding: 0 0 0 30px;
     }
 
-    .fas {
+    .sn-icon {
       left: 5px;
     }
   }
@@ -60,7 +86,7 @@
       padding: 0 30px 0 10px;
     }
 
-    .fas {
+    .sn-icon {
       right: 5px;
     }
   }
@@ -69,17 +95,21 @@
   &.error {
     &::after {
       @include font-awesome;
-      top: 0;
-      line-height: 36px;
+      bottom: 6px;
       position: absolute;
       right: 5px;
       text-align: center;
+      top: 6px;
       width: 25px;
     }
   }
 
   &.error {
     padding-bottom: 6px;
+
+    label {
+      color: $brand-danger;
+    }
 
     .sci-input-field {
       border: $border-danger;
@@ -145,6 +175,46 @@
       &::placeholder {
         color: inherit;
       }
+    }
+  }
+
+  &.password-input-container {
+    .password-icon-wrapper {
+      position: relative;
+
+      input {
+        padding-right: 2.4em;
+      }
+    }
+
+    .sn-icon {
+      align-items: center;
+      display: flex;
+      height: 100%;
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+    }
+
+    .help-block {
+      left: 0;
+      position: absolute;
+      width: 100%;
+
+      &:nth-of-type(2) { top: 60px; }
+      &:nth-of-type(3) { top: 120px; }
+    }
+
+    &.error::before,
+    &.has-error {
+      padding-bottom: 0;
+    }
+
+    &.has-error {
+      margin-bottom: inherit;
+      padding-bottom: 2em;
     }
   }
 }

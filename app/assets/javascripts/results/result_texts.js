@@ -1,4 +1,4 @@
-/* global TinyMCE Results Comments animateSpinner initFormSubmitLinks */
+/* global TinyMCE Results Comments animateSpinner initFormSubmitLinks Prism */
 
 (function() {
   'use strict';
@@ -27,8 +27,16 @@
             formAjaxResultText($form);
             Results.initCancelFormButton($form, initNewReslutText);
             Results.toggleResultEditButtons(false);
-            TinyMCE.init('#result_text_attributes_textarea');
+            TinyMCE.init('#result_text_attributes_textarea', {
+              assignableMyModuleId: $('#result_text_attributes_textarea').data('my-module-id')
+            });
             $('#result_name').focus();
+            setTimeout(function() {
+              $('.edit-text-result').css('display', 'initial');
+            }, 600);
+            setTimeout(function() {
+              $('.edit-text-result').css('display', 'block');
+            }, 800)
           },
           error: function() {
             animateSpinner(null, false);
@@ -38,9 +46,15 @@
       });
     }
 
+    function initSaveReslutText() {
+      $('#results').on('click', '.edit-text-result .save-result', (event) => {
+        Results.processResult(event, Results.ResultTypeEnum.TEXT);
+      });
+    }
+
     // Edit result text button behaviour
     function applyEditResultTextCallback() {
-      $('.edit-result-text').off().on('ajax:success', function(e, data) {
+      $('.edit-result-text').off('ajax:success ajax:error').on('ajax:success', function(e, data) {
         var $result = $(this).closest('.result');
         var $form = $(data.html);
         var $prevResult = $result;
@@ -58,8 +72,16 @@
           Results.toggleResultEditButtons(true);
         });
         Results.toggleResultEditButtons(false);
-        TinyMCE.init('#result_text_attributes_textarea');
+        TinyMCE.init('#result_text_attributes_textarea', {
+          assignableMyModuleId: $('#result_text_attributes_textarea').data('my-module-id')
+        });
         $('#result_name').focus();
+        setTimeout(function() {
+          $('.edit-text-result').css('display', 'initial');
+        }, 600);
+        setTimeout(function() {
+          $('.edit-text-result').css('display', 'block');
+        }, 800)
       });
     }
 
@@ -73,18 +95,17 @@
         initFormSubmitLinks(newResult);
         $(this).remove();
         applyEditResultTextCallback();
-        Results.applyCollapseLinkCallBack();
         Results.toggleResultEditButtons(true);
         Results.expandResult(newResult);
         TinyMCE.destroyAll();
         Comments.init();
         initNewReslutText();
+        Prism.highlightAllUnder(newResult.get(0));
       });
       $form.on('ajax:error', function(e, xhr) {
         var data = xhr.responseJSON;
         var $el;
         $form.renderFormErrors('result', data);
-        TinyMCE.highlight();
         if (data['result_text.text']) {
           $el = $form.find(
             'textarea[name=result\\[result_text_attributes\\]\\[text\\]]'
@@ -98,6 +119,7 @@
 
     publicAPI = Object.freeze({
       initNewReslutText: initNewReslutText,
+      initSaveReslutText: initSaveReslutText,
       applyEditResultTextCallback: applyEditResultTextCallback
     });
 
@@ -105,5 +127,6 @@
   }());
 
   ResultText.initNewReslutText();
+  ResultText.initSaveReslutText();
   ResultText.applyEditResultTextCallback();
 }());

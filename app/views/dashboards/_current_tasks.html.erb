@@ -1,27 +1,44 @@
-<div class="current-tasks-widget basic-widget">
+<div class="current-tasks-widget basic-widget <%= widget[:size] %>" style="order: <%= widget[:position] %>">
   <div class="widget-header">
     <div class="widget-title"><%= t("dashboard.current_tasks.title") %></div>
     <div class="actions-container">
       <div class="filter-container dropdown">
-        <div class="btn btn-light icon-btn filter-button" data-toggle="dropdown"><i class="fas fa-filter"></i></div>
-        <div class="dropdown-menu curent-tasks-filters" role="menu">
+        <div class="btn btn-light btn-sm btn-black icon-btn filter-button" title="<%= t("filters_modal.title") %>" data-toggle="dropdown"><i class="sn-icon sn-icon-filter"></i></div>
+        <div class="dropdown-menu current-tasks-filters" role="menu" data-team-id="<%= current_team.id %>">
           <div class="header">
             <div class="title"><%= t("dashboard.current_tasks.filter.title") %></div>
-            <div class="btn btn-light clear-button"><i class="fas fa-times-circle"></i><%= t("dashboard.current_tasks.filter.clear") %></div>
+            <button type="button" class="close-dropdown close" aria-label="close">&times;</button>
           </div>
           <div class="select-block">
             <label><%= t("dashboard.current_tasks.filter.sort") %></label>
             <select class="sort-filter">
-              <option value="date_asc" ><%= t("dashboard.current_tasks.filter.date_asc") %></option>
-              <option value="atoz" ><%= t("dashboard.current_tasks.filter.atoz") %></option>
-              <option value="ztoa" ><%= t("dashboard.current_tasks.filter.ztoa") %></option>
+              <option value="due_first" selected ><%= t("dashboard.current_tasks.filter.due_first") %></option>
+              <option value="due_last"><%= t("dashboard.current_tasks.filter.due_last") %></option>
+              <option value="start_first"><%= t("dashboard.current_tasks.filter.start_first") %></option>
+              <option value="start_last"><%= t("dashboard.current_tasks.filter.start_last") %></option>
+              <option value="atoz"><%= t("dashboard.current_tasks.filter.atoz") %></option>
+              <option value="ztoa"><%= t("dashboard.current_tasks.filter.ztoa") %></option>
+              <option value="id_asc"><%= t("dashboard.current_tasks.filter.id_asc") %></option>
+              <option value="id_desc"><%= t("dashboard.current_tasks.filter.id_desc") %></option>
             </select>
           </div>
           <div class="select-block">
             <label><%= t("dashboard.current_tasks.filter.display") %></label>
-            <select class="view-filter">
-              <option value="uncompleted" ><%= t("dashboard.current_tasks.filter.uncompleted_tasks") %></option>
-              <option value="completed" ><%= t("dashboard.current_tasks.filter.completed_tasks") %></option>
+            <select class="view-filter"
+                    data-combine-tags="true"
+                    data-placeholder="<%= t("dashboard.current_tasks.filter.statuses.placeholder") %>"
+                    data-select-multiple-all-selected="<%= t("dashboard.current_tasks.filter.statuses.all_selected") %>"
+                    data-select-multiple-name="<%= t("dashboard.current_tasks.filter.statuses.selected") %>"
+                    multiple
+            >
+              <% @my_module_status_flows.each do |status_flow| %>
+                <% status_flow.my_module_statuses.each do |status| %>
+                  <option value="<%= status.id %>"
+                          data-completion-consequence="<%= status.my_module_status_consequences.any? { |c| c.type == 'MyModuleStatusConsequences::Completion'} %>">
+                    <%= status.name %>
+                  </option>
+                <% end %>
+              <% end %>
             </select>
           </div>
           <div class="select-block">
@@ -38,15 +55,16 @@
                     data-disable-placeholder="<%= t("dashboard.current_tasks.filter.select_experiment") %>"
                     data-placeholder="<%= t("dashboard.current_tasks.filter.select_experiment") %>"></select>
           </div>
-          <div class="footer">
-            <div class="btn btn-primary apply-filters"><%= t("dashboard.current_tasks.filter.apply") %></div>
+          <div class="footer center">
+            <div class="btn btn-secondary clear-button"><%= t("dashboard.current_tasks.filter.clear") %></div>
+            <div class="btn btn-primary apply-filters"><%= t("dashboard.current_tasks.filter.show_results") %></div>
           </div>
         </div>
       </div>
       <div class="search-container">
-        <div class="sci-input-container left-icon ">
-          <input type="text" class="sci-input-field task-search-field" placeholder="<%= t("dashboard.current_tasks.search") %>"></input>
-          <i class="fas fa-search"></i>
+        <div class="sci-input-container-v2 left-icon h-[2.25rem]">
+          <input type="text" class="sci-input-field task-search-field" placeholder="<%= t("dashboard.current_tasks.search") %>" />
+          <i class="sn-icon sn-icon-search"></i>
         </div>
       </div>
     </div>
@@ -58,8 +76,10 @@
   </div>
 
   <div class="widget-body">
-    <div class="current-tasks-list perfect-scrollbar"
-         data-tasks-list-url="<%= dashboard_current_tasks_path %>">
+    <div class="current-tasks-list-wrapper perfect-scrollbar">
+      <div class="current-tasks-list "
+           data-tasks-list-url="<%= dashboard_current_tasks_path %>">
+      </div>
     </div>
   </div>
 </div>
@@ -68,10 +88,7 @@
   <div class="widget-placeholder">
     <p class="widget-placeholder-title team"><%= I18n.t('dashboard.current_tasks.no_tasks.team_tasks.title') %></p>
     <p class="widget-placeholder-title assigned"><%= I18n.t('dashboard.current_tasks.no_tasks.assigned_tasks.title') %></p>
-    <% unless current_user.is_guest_of_team?(current_team) %>
-      <p class="widget-placeholder-description"><%= I18n.t('dashboard.current_tasks.no_tasks.assigned_tasks.description') %></p>
-      <i class="fas fa-angle-double-down"></i>
-    <% end %>
+    <p class="widget-placeholder-description"><%= I18n.t('dashboard.current_tasks.no_tasks.assigned_tasks.description') %></p>
   </div>
 </template>
 

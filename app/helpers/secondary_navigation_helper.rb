@@ -16,10 +16,6 @@ module SecondaryNavigationHelper
     action_name == 'show'
   end
 
-  def is_project_samples?
-    action_name == 'samples'
-  end
-
   def is_project_reports?
     controller_name == 'reports' && action_name == 'index'
   end
@@ -36,32 +32,20 @@ module SecondaryNavigationHelper
     action_name == 'module_archive'
   end
 
-  def is_experiment_samples?
-    action_name == 'samples'
-  end
-
   def is_module_info?
     action_name == 'show'
   end
 
   def is_module_protocols?
-    action_name == 'protocols'
+    %w(protocols protocol_show).include?(action_name)
   end
 
   def is_module_results?
-    action_name == 'results'
+    (%w(index).include?(action_name) && controller_name == 'results') || action_name == 'results_show'
   end
 
   def is_module_activities?
     action_name == 'activities'
-  end
-
-  def is_module_samples?
-    action_name == 'samples'
-  end
-
-  def is_module_archive?
-    action_name == 'archive'
   end
 
   def title_element

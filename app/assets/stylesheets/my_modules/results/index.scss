@@ -3,18 +3,113 @@
 // scss-lint:disable SelectorFormat
 // scss-lint:disable ImportantRule
 
-@import "constants";
-@import "mixins";
+
+
 
 #results-toolbar {
-  .add-result-toolbar {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
+  align-items: center;
+  display: flex;
+
+  .dropdown-menu {
+    z-index: 102;
   }
 
-  .add-result-text {
-    display: inline-block;
-    margin-right: 5px;
+  .dropdown-backdrop {
+    z-index: 101;
   }
+
+  .add-result-dropdown {
+    z-index: 200;
+
+    li {
+      cursor: pointer;
+      padding: .5em 1em;
+
+      .fas {
+        padding-right: .5em;
+        width: 1.75em;
+      }
+
+      .create-wopi-file-btn,
+      .new-marvinjs-upload-button {
+        padding: 0;
+      }
+    }
+  }
+
+  .collapse-expand-result {
+    margin-left: auto;
+  }
+
+  .sort-result-dropdown {
+    margin-left: .5em;
+
+    .dropdown-menu {
+      a {
+        @include font-button;
+        padding: .5em 1em;
+
+        &.selected::after {
+          @include font-awesome;
+          content: $font-fas-check;
+          float: right;
+        }
+      }
+    }
+  }
+}
+
+.well {
+  .align-right {
+    column-gap: 8px;
+    display: flex;
+    flex-direction: row-reverse;
+  }
+}
+
+.result {
+  .ql-editor {
+    overflow-x: auto;
+  }
+
+  .result-icon {
+    @include font-main;
+    background: $color-concrete;
+    border-radius: 50%;
+    float: left;
+    line-height: 3em;
+    text-align: center;
+    width: 3em;
+  }
+}
+
+.result-head-left {
+  .result-collapse-link {
+    &:not(.collapsed) {
+      transform: rotate(90deg);
+    }
+  }
+}
+
+.edit-text-result {
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.comments-counter {
+  align-items: center;
+  background: var(--sn-grey);
+  border-radius: .5rem;
+  color: $color-white;
+  display: flex;
+  font-size: 10px;
+  height: 16px;
+  justify-content: center;
+  margin: 2px;
+  min-width: 16px;
+  position: absolute;
+  right: 0;
+  top: 0;
 }

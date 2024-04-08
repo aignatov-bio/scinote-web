@@ -2,7 +2,7 @@
 // scss-lint:disable NestingDepth QualifyingElement
 
 .dataTables_wrapper {
-
+  --datatable-pagination-row: 68px;
   .main-actions {
     align-items: center;
     display: flex;
@@ -10,7 +10,32 @@
     padding: 1em 0;
 
     .toolbar {
+      align-items: center;
+      display: flex;
       flex-grow: 1;
+      gap: .25rem;
+    }
+  }
+
+  .dataTables_filter {
+    .search-icon {
+      display: none;
+    }
+
+    .search-icon:not(.collapsed) {
+      display: initial;
+    }
+
+    .search-container:not(.expand) {
+      display: none;
+    }
+
+    input {
+      width: 100% !important;
+    }
+
+    .sci-input-container-v2 .sn-icon {
+      margin-right: 10px !important;
     }
   }
 
@@ -18,18 +43,71 @@
     .dataTable {
       margin-top: 0 !important;
     }
+
+    thead {
+      .sci-checkbox-container {
+        margin-left: .25rem;
+      }
+    }
   }
 
   .pagination-row {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
-    min-height: 68px;
+    height: var(--datatable-pagination-row);
+    position: relative;
     width: 100%;
+    z-index: 101;
+
+    .actions-toolbar {
+      align-items: center;
+      background-color: $color-concrete;
+      border-bottom: 1px solid $color-alto;
+      display: none;
+      height: 70px;
+      overflow-x: auto;
+      padding: 0 1em;
+      position: absolute;
+      top: 0;
+      width: 100%;
+
+      .emptyPlaceholder {
+        color: $color-volcano;
+        margin-left: 12px;
+      }
+
+      .btn {
+        margin-right: .5em;
+      }
+
+      .btn:focus {
+        box-shadow: 0 0 0 3px $brand-focus;
+      }
+
+      .btn-light {
+        &:active {
+          background-color: $color-alto !important;
+        }
+
+        &:hover {
+          background: $color-white;
+        }
+      }
+    }
 
     .pagination-info,
     .pagination-actions {
       flex-grow: 1;
+
+      .pagination,
+      .dataTables_paginate {
+        align-items: center;
+        display: flex;
+        height: 36px;
+        justify-content: flex-end;
+        margin: 0;
+      }
     }
 
     .pagination-info {
@@ -48,8 +126,9 @@
       }
 
       .dataTables_length {
+        height: 2.25rem;
         margin-right: 24px;
-        width: 170px;
+        width: 180px;
 
         .dropdown-selector-container {
           width: inherit;
@@ -70,6 +149,7 @@
 
   tr[data-state]:not([data-state='']) {
     td.item-name::after {
+      @include font-small;
       background-color: $color-concrete;
       color: $color-silver-chalice;
       content: attr(data-state);
@@ -79,11 +159,49 @@
     }
   }
 
-  tr[data-shared=true] {
+  tr[data-shared=true],
+  tr[data-i-shared=true] {
     td.item-name::before {
       @include font-awesome;
       content: "\f0c0";
       margin-right: .5em;
     }
   }
+
+  table > tbody > tr:first-child > td {
+    border-top: 0;
+  }
+
+  &.show-actions {
+    --datatable-pagination-row: 139px;
+
+    .pagination-row {
+      padding-top: 71px;
+
+      .actions-toolbar {
+        display: flex;
+      }
+    }
+  }
+
+  @media (max-width: 1000px) {
+    .pagination-row .actions-toolbar {
+      .btn {
+        .button-text {
+          display: none;
+        }
+
+        .fas,
+        img {
+          margin: 0;
+        }
+      }
+    }
+  }
+}
+
+div.dataTables_wrapper div.dataTables_paginate ul.pagination {
+  align-items: center;
+  display: flex;
+  justify-content: end;
 }

@@ -46,7 +46,6 @@ describe User, type: :model do
   end
 
   describe 'Relations' do
-    it { should have_many :user_teams }
     it { should have_many :teams }
     it { should have_many :user_projects }
     it { should have_many :projects }
@@ -54,11 +53,8 @@ describe User, type: :model do
     it { should have_many :comments }
     it { should have_many :activities }
     it { should have_many :results }
-    it { should have_many :samples }
-    it { should have_many :samples_tables }
     it { should have_many :repository_table_states }
     it { should have_many :steps }
-    it { should have_many :custom_fields }
     it { should have_many :reports }
     it { should have_many :created_assets }
     it { should have_many :modified_assets }
@@ -67,7 +63,6 @@ describe User, type: :model do
     it { should have_many :created_checklist_items }
     it { should have_many :modified_checklist_items }
     it { should have_many :modified_comments }
-    it { should have_many :modified_custom_fields }
     it { should have_many :created_my_module_groups }
     it { should have_many :created_my_module_tags }
     it { should have_many :created_my_modules }
@@ -83,27 +78,20 @@ describe User, type: :model do
     it { should have_many :modified_reports }
     it { should have_many :archived_results }
     it { should have_many :restored_results }
-    it { should have_many :created_sample_groups }
-    it { should have_many :modified_sample_groups }
-    it { should have_many :assigned_sample_my_modules }
-    it { should have_many :created_sample_types }
-    it { should have_many :modified_sample_types }
-    it { should have_many :modified_samples }
     it { should have_many :created_tables }
     it { should have_many :modified_tables }
     it { should have_many :created_tags }
     it { should have_many :tokens }
     it { should have_many :modified_tags }
     it { should have_many :assigned_user_my_modules }
-    it { should have_many :assigned_user_teams }
     it { should have_many :assigned_user_projects }
     it { should have_many :added_protocols }
     it { should have_many :archived_protocols }
     it { should have_many :restored_protocols }
     it { should have_many :assigned_my_module_repository_rows }
-    it { should have_many :user_notifications }
     it { should have_many :notifications }
     it { should have_many :zip_exports }
+    it { should have_many(:shareable_links).dependent(:destroy) }
 
     it 'have many repositories' do
       table = User.reflect_on_association(:repositories)
@@ -159,28 +147,8 @@ describe User, type: :model do
     end
   end
 
-  describe 'teams_data should return a list of teams' do
-    #  needs persistence because is testing a sql query
-    let(:team) { create :team }
-    let(:user_one) do
-      create :user, email: 'user1@asdf.com', current_team_id: team.id
-    end
-    let(:user_two) { create :user, email: 'user2@asdf.com' }
-
-    it 'should return correct number of team members' do
-      create :user_team, team: team, user: user_one
-      create :user_team, team: team, user: user_two
-      expect(user_one.datatables_teams.first.members).to eq 2
-    end
-  end
-
   describe 'user settings' do
     it { is_expected.to respond_to(:time_zone) }
-    it { is_expected.to respond_to(:assignments_notification) }
-    it { is_expected.to respond_to(:assignments_email_notification) }
-    it { is_expected.to respond_to(:recent_notification) }
-    it { is_expected.to respond_to(:recent_email_notification) }
-    it { is_expected.to respond_to(:system_message_email_notification) }
   end
 
   describe 'user variables' do
@@ -328,7 +296,33 @@ describe User, type: :model do
     end
   end
 
-  describe 'Associations' do
-    it { is_expected.to have_many(:system_notifications) }
+  describe 'Email downcase' do
+    it 'downcases email before validating and saving user' do
+      user = User.new(email: 'Test@Email.com')
+      user.save
+      expect(user.email).to eq('test@email.com')
+    end
+  end
+
+  describe 'valid_otp?' do
+    let(:user) { create :user }
+    before do
+      user.assign_2fa_token!
+      allow_any_instance_of(ROTP::TOTP).to receive(:verify).and_return(nil)
+    end
+
+    context 'when user has set otp_secret' do
+      it 'returns nil' do
+        expect(user.valid_otp?('someString')).to be_nil
+      end
+    end
+
+    context 'when user does not have otp_secret' do
+      it 'raises an error' do
+        user.update_column(:otp_secret, nil)
+
+        expect { user.valid_otp?('someString') }.to raise_error(StandardError, 'Missing otp_secret')
+      end
+    end
   end
 end

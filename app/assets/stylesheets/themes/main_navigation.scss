@@ -1,9 +1,4 @@
-@import 'constants';
-@import "mixins";
 
-:root {
-  --navbar-height: 51px;
-}
 
 #main-nav {
   box-shadow: $flyout-shadow;
@@ -19,9 +14,8 @@
   }
 
   #count-notifications {
-    background-color: $brand-primary;
-    border-radius: 5px;
-    color: $color-concrete;
+    background-color: $brand-accent;
+    border-radius: 8px;
     display: none;
     font-size: 11px;
     font-weight: bold;
@@ -46,11 +40,19 @@
 .navbar-default .navbar-brand {
   align-items: center;
   display: flex;
-  padding: 0 15px;
+  padding: 0 .3em 0 .8em;
 
   #logo {
     max-height: 22px;
   }
+}
+
+.open-mobile-app-container {
+  display: none;
+}
+
+.open-mobile-app-button {
+  margin-top: 8px;
 }
 
 .dropdown-notifications {
@@ -91,7 +93,6 @@
     border-radius: 50%;
     color: $color-concrete;
     display: block;
-    font-size: $font-size-h3;
     height: 45px;
     padding-top: 5px;
     width: 45px;
@@ -102,7 +103,16 @@
     border-radius: 50%;
     color: $color-concrete;
     display: block;
-    font-size: $font-size-h3;
+    height: 45px;
+    padding-top: 5px;
+    width: 45px;
+  }
+
+  .deliver-error {
+    background-color: $brand-danger;
+    border-radius: 50%;
+    color: $color-concrete;
+    display: block;
     height: 45px;
     padding-top: 5px;
     width: 45px;
@@ -113,7 +123,6 @@
     border-radius: 50%;
     color: $color-concrete;
     display: block;
-    font-size: $font-size-h3;
     height: 45px;
     padding-top: 8px;
     width: 45px;
@@ -130,6 +139,10 @@
   }
 }
 
+.user-name {
+  margin-right: 15px;
+}
+
 .notification {
   padding-right: 8px;
   word-wrap: break-word;
@@ -140,7 +153,7 @@
 
   .nav {
     position: relative;
-    z-index: 1000;
+    z-index: 100;
   }
 }
 
@@ -213,7 +226,6 @@
   }
 
   .col-sm-4 {
-    padding-left: 5rem;
     padding-top: .5rem;
     word-break: break-word;
   }
@@ -306,7 +318,7 @@
     text-align: right;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: 250px;
+    width: 230px;
   }
 
   .btn-group {
@@ -405,9 +417,8 @@
   }
 
   #count-system-notifications {
-    background-color: $brand-primary;
+    background-color: $brand-accent;
     border-radius: 5px;
-    color: $color-concrete;
     display: none;
     font-size: 11px;
     font-weight: bold;
@@ -443,9 +454,5 @@
 
     }
 
-    a {
-      font-size: $font-size-small;
-      font-weight: $headings-font-weight;
-    }
   }
 }

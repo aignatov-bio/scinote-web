@@ -1,0 +1,31 @@
+<div class="modal"
+     id="print-protocol-modal"
+     tabindex="-1"
+     role="dialog"
+     aria-labelledby="print-protocol-modal-label">
+  <%= form_with url: print_protocol_path(protocol), method: :get, html: { class: 'print-protocol-form', id: "print-protocol-form", target: '_blank' }  do %>
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><i class="sn-icon sn-icon-close"></i></button>
+          <h4 class="modal-title" id="print-protocol-modal-label"><%= t("protocols.print.modal.title") %></h5>
+        </div>
+        <div class="modal-body">
+          <% if comments_enabled %>
+            <div class="sci-checkbox-container">
+              <%= check_box_tag :include_comments, 1, true, { class: "sci-checkbox" } %>
+              <span class="sci-checkbox-label"></span>
+            </div>
+            <small><%= t("protocols.print.modal.include_comments") %></small>
+          <% end %>
+        </div>
+        <div class="modal-footer">
+          <div class="pull-right">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal"><%=t "general.cancel" %></button>
+            <input type="submit" value="<%= t("protocols.print.title") %>", class="btn btn-primary">
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

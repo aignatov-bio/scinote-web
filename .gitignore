@@ -7,6 +7,10 @@
 # Ignore bundler config.
 /.bundle
 
+# Ignore addons
+
+/addons
+
 # Ignore the default SQLite database.
 /db/*.sqlite3
 /db/*.sqlite3-journal
@@ -34,6 +38,9 @@ ehthumbs.db
 
 # Ignore temporary files
 public/system/*
+
+# Ignore BioEddie installion in public folder
+public/bio_eddie/
 
 # Ignore ActiveStorage Disc service storage directory
 storage/
@@ -78,7 +85,13 @@ spec/addons
 # RVM/rbenv ruby version for local development
 .ruby-version
 
-#ignore marvinJs
+# Ignore marvinJs
 
 public/marvinjs
 public/marvin4js-license.cxl
+
+# Ignore JetBrains
+.idea/
+
+/app/assets/builds/*
+!/app/assets/builds/.keep

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class TeamUsersDatatable < CustomDatatable
   include InputSanitizeHelper
   include ActiveRecord::Sanitization::ClassMethods
@@ -16,9 +18,9 @@ class TeamUsersDatatable < CustomDatatable
     @sortable_columns ||= [
       'User.full_name',
       'User.email',
-      'UserTeam.created_at',
-      'User.confirmed_at',
-      'UserTeam.role'
+      'UserRole.name',
+      'UserAssignment.created_at',
+      'User.status'
     ]
   end
 
@@ -26,7 +28,7 @@ class TeamUsersDatatable < CustomDatatable
     @searchable_columns ||= [
       'User.full_name',
       'User.email',
-      'UserTeam.created_at'
+      'UserAssignment.created_at'
     ]
   end
 
@@ -40,7 +42,7 @@ class TeamUsersDatatable < CustomDatatable
       casted_column = ::Arel::Nodes::NamedFunction.new(
         'CAST',
         [Arel.sql(
-          "to_char( users.created_at, '#{formated_date}' ) AS VARCHAR"
+          "to_char( user_assignments.created_at, '#{formated_date}' ) AS VARCHAR"
         )]
       )
     else
@@ -54,20 +56,20 @@ class TeamUsersDatatable < CustomDatatable
 
   private
 
-  # Returns json of current samples (already paginated)
+  # Returns json of current items (already paginated)
   def data
     records.map do |record|
       {
         'DT_RowId': record.id,
         '0': escape_input(record.user.full_name),
         '1': escape_input(record.user.email),
-        '2': record.role_str,
+        '2': record.user_role.name,
         '3': I18n.l(record.created_at, format: :full_date),
         '4': record.user.active_status_str,
-        '5': ApplicationController.new.render_to_string(
-          partial: 'users/settings/teams/user_dropdown.html.erb',
+        '5': @view.controller.render_to_string(
+          partial: 'users/settings/teams/user_dropdown',
           locals: {
-            user_team: record,
+            user_assignment: record,
             update_role_path: update_user_team_path(record, format: :json),
             destroy_uo_link: link_to(
               I18n.t('users.settings.teams.edit.user_dropdown.remove_label'),
@@ -76,19 +78,39 @@ class TeamUsersDatatable < CustomDatatable
               data: { action: 'destroy-user-team' }
             ),
             user: @user
-          }
+          },
+          formats: :html
         )
       }
     end
   end
 
+  # Overwrite default pagination method as here
+  # we need to be able work also with arrays
+  def paginate_records(records)
+    records.to_a.drop(offset).first(per_page)
+  end
+
+  def load_paginator
+    self
+  end
+
   # Query database for records (this will be later paginated and filtered)
   # after that "data" function will return json
   def get_raw_records
-    UserTeam
-      .includes(:user)
-      .references(:user)
-      .where(team: @team)
-      .distinct
+    @team.user_assignments.joins(:user)
+  end
+
+  def sort_records(records)
+    case sort_column(order_params)
+    when 'users.status'
+      records = records.sort_by { |record| record.user.active_status_str }
+      order_params['dir'] == 'asc' ? records : records.reverse
+    when 'user_roles.name'
+      records = records.sort_by { |record| record.user_role.name }
+      order_params['dir'] == 'asc' ? records : records.reverse
+    else
+      super(records)
+    end
   end
 end

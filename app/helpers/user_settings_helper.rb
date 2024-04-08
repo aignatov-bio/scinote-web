@@ -15,12 +15,18 @@ module UserSettingsHelper
   end
 
   def on_settings_account_addons_page?
-    controller_name == 'addons'
+    controller_name == 'addons' ||
+      (controller_name == 'label_printers' && action_name == 'index_zebra')
   end
 
   def on_settings_team_page?
     controller_name.in?(%w(teams audits)) &&
       action_name.in?(%w(index new create show audits_index))
+  end
+
+  def on_settings_webhook_page?
+    controller_name.in?(%w(webhooks)) &&
+      action_name.in?(%w(index))
   end
 
   def on_settings_account_connected_accounts_page?

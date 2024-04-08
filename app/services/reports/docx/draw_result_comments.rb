@@ -1,12 +1,9 @@
 # frozen_string_literal: true
 
 module Reports::Docx::DrawResultComments
-  def draw_result_comments(subject)
-    result = Result.find_by_id(subject['id']['result_id'])
-    return unless result
-
-    comments = result.result_comments.order(created_at: subject['sort_order'])
-    return if comments.count.zero?
+  def draw_result_comments(result)
+    comments = result.result_comments.order(created_at: :desc)
+    return if comments.blank?
 
     @docx.p
     @docx.p I18n.t('projects.reports.elements.result_comments.name', result: result.name),
@@ -18,7 +15,8 @@ module Reports::Docx::DrawResultComments
                      date: I18n.l(comment_ts, format: :full_date),
                      time: I18n.l(comment_ts, format: :time)), italic: true
       html = custom_auto_link(comment.message, team: @report_team)
-      html_to_word_converter(html)
+      Reports::HtmlToWordConverter.new(@docx, { scinote_url: @scinote_url,
+                                                link_style: @link_style }).html_to_word_converter(html)
       @docx.p
     end
   end

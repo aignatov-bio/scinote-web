@@ -1,0 +1,21 @@
+<%= render partial: "global_activities/references/team",
+           locals: { team: team, subject: team, breadcrumbs: breadcrumbs, values: values, type_of: type_of } %>
+<div class="ga-breadcrumb">
+  <span class="sn-icon sn-icon-inventory"></span>
+  <% if subject %>
+    <%= route_to_other_team(repository_path(subject.repository.id, team: subject.repository.team.id),
+                            team,
+                            subject.repository.name&.truncate(Constants::NAME_TRUNCATION_LENGTH),
+                            title: subject.repository.name) %>
+  <% elsif type_of == 'delete_item_inventory' && values.dig('message_items', 'repository', 'id') %>
+    <% repository = Repository.find(values.dig('message_items', 'repository', 'id')) %>
+    <%= route_to_other_team(repository_path(repository.id, team: repository.team.id),
+                        team,
+                        repository.name&.truncate(Constants::NAME_TRUNCATION_LENGTH),
+                        title: repository.name) %>
+  <% else %>
+    <span title="<%= breadcrumbs['repository'] %>">
+      <%= breadcrumbs['repository']&.truncate(Constants::NAME_TRUNCATION_LENGTH) %>
+    </span>
+  <% end %>
+</div>

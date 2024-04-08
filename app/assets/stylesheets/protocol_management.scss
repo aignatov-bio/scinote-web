@@ -1,6 +1,5 @@
 // scss-lint:disable SelectorDepth, NestingDepth, SelectorFormat, ImportantRule, QualifyingElement, IdSelector
 
-@import "constants";
 
 .btn-open-file {
   overflow: hidden;
@@ -23,9 +22,43 @@
   }
 }
 
+.btn-beta-icon {
+  &::after {
+    background-color: var(--sn-coral);
+    border-radius: 1px;
+    color: var(--sn-white);
+    content: "BETA";
+    font-size: .5rem;
+    left: 7rem;
+    padding: .125rem .25rem;
+    position: absolute;
+    top: .1rem;
+  }
+}
+
+.dropdown-menu {
+  border: 0;
+}
+
+.import-protocols-io {
+  margin-bottom: 4px;
+  margin-top: 9px;
+}
+
 #protocols-index,
 #load-from-repository-modal {
-  padding: 0;
+
+  .load-warning-message {
+    margin-top: 20px;
+  }
+
+  tbody {
+    tr {
+      &:hover {
+        background-color: $color-concrete;
+      }
+    }
+  }
 
   .nav-tabs > li {
     text-transform: uppercase;
@@ -63,15 +96,16 @@
   }
 }
 
-.tab-pane.external_protocols {
+.tab-pane.protocolsio {
   padding-bottom: 0;
 }
 
-.external-protocols-tab {
+.protocolsio-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: calc(100vh - var(--navbar-height) - 180px);
   position: relative;
+
 
   .ps__rail-y {
     opacity: .6;
@@ -79,15 +113,14 @@
 
   .header {
     display: flex;
-    flex-wrap: wrap;
+    padding: 1em .5em 1em 0;
 
     .protocols-search-bar-panel {
       align-items: center;
       display: flex;
-      flex-basis: 500px;
       flex-direction: row;
+      flex-grow: 1;
       justify-content: space-between;
-      margin-bottom: 15px;
       padding-right: 0;
 
       .service-provider {
@@ -134,28 +167,35 @@
     }
 
     .protocol-sort {
-      padding-left: 7px;
+      padding-left: 1em;
 
-      span {
-        color: $color-silver-chalice;
-        font-size: 14px;
+      input {
+        display: none;
       }
 
-      .btn-group {
-        margin-bottom: 10px;
-        margin-top: 6px;
-        padding-left: 3px;
+      label {
+        @include font-button;
+        cursor: pointer;
+        display: inline-block;
+        font-weight: normal;
+        margin: 0;
+        padding: .5em 1em;
+        width: 100%;
 
-        label {
-          padding-bottom: 0;
-          padding-top: 0;
 
-          &.active {
-            background: $color-gainsboro;
-            border-radius: 5px !important;
-            color: $color-emperor;
-            outline: 0;
-          }
+      }
+
+      li:nth-child(2) label {
+        border-bottom: $border-default;
+      }
+
+      input:checked + label {
+        &::after {
+          @include font-awesome;
+          content: $font-fas-check;
+          margin-left: auto;
+          position: absolute;
+          right: 1em;
         }
       }
     }
@@ -169,10 +209,11 @@
     width: calc(100% + 30px);
   }
 
-  .protocol-list-side-panel {
+  .protocol-menu {
     background-color: $color-white;
     border-right: 1px solid $color-alto;
-    border-top: 1px solid $color-alto;
+    display: flex;
+    flex-direction: column;
     flex-grow: 1;
     max-width: 600px;
     min-width: 400px;
@@ -180,6 +221,12 @@
     padding-right: 0;
     position: relative;
     width: calc(100% / 3);
+  }
+
+  .protocol-list-side-panel {
+    height: 100%;
+    position: relative;
+
 
     .row {
       margin-left: 0;
@@ -244,7 +291,7 @@
       }
 
       &:hover {
-        background-color: $brand-primary-light;
+        background-color: $brand-focus-light;
       }
 
       .external-import-btn {
@@ -280,7 +327,6 @@
 
   .protocol-preview-panel {
     background-color: $color-concrete;
-    border-top: 1px solid $color-alto;
     flex-grow: 2;
     padding-left: 0;
     padding-right: 0;
@@ -315,6 +361,12 @@
         border: 1px solid $color-alto;
         width: 120px;
       }
+
+      .row-bottom {
+        bottom: 40px;
+        position: absolute;
+        width: 100%;
+      }
     }
 
     .full-preview-panel {
@@ -329,7 +381,7 @@
       color: $color-dove-gray;
       display: flex;
       font-size: 16px;
-      height: 40px;
+      height: 68px;
       padding-left: 21px;
 
       .txt-holder {
@@ -342,9 +394,8 @@
     }
 
     .preview-holder {
-      height: calc(100% - 40px);
+      height: calc(100% - 80px);
       margin: 0 21px 40px;
-      max-width: 900px;
       overflow: hidden;
       position: absolute;
       width: calc(100% - 42px);
@@ -368,7 +419,7 @@
 }
 
 @media (max-width: 900px) {
-  .external-protocols-tab {
+  .protocolsio-container {
     .header {
       .protocol-sort {
         padding-left: 0;
@@ -396,21 +447,6 @@
         height: calc(100% - 200px);
         position: relative;
         width: 100%;
-      }
-    }
-  }
-}
-
-@media (min-width: 1520px) {
-  .external-protocols-tab {
-
-    .main-protocol-panel {
-
-      .protocol-preview-panel {
-
-        .preview-holder {
-          margin: 0 calc(50% - 450px) 40px;
-        }
       }
     }
   }

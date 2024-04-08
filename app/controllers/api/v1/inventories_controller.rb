@@ -7,13 +7,15 @@ module Api
       before_action only: %i(show update destroy) do
         load_inventory(:id)
       end
-      before_action :check_manage_permissions, only: %i(update destroy)
+      before_action :check_manage_permissions, only: :update
+      before_action :check_delete_permissions, only: :destroy
 
       def index
-        inventories = @team.repositories
-                           .active
-                           .page(params.dig(:page, :number))
-                           .per(params.dig(:page, :size))
+        inventories =
+          timestamps_filter(@team.repositories).active
+                                               .page(params.dig(:page, :number))
+                                               .per(params.dig(:page, :size))
+
         render jsonapi: inventories, each_serializer: InventorySerializer
       end
 
@@ -37,11 +39,14 @@ module Api
 
       def update
         @inventory.attributes = update_inventory_params
-        if @inventory.changed? && @inventory.save!
-          render jsonapi: @inventory, serializer: InventorySerializer
-        else
-          render body: nil, status: :no_content
+
+        return render body: nil, status: :no_content unless @inventory.changed?
+
+        if @inventory.archived_changed?
+          @inventory.archived? ? @inventory.archive(current_user) : @inventory.restore(current_user)
         end
+        @inventory.save!
+        render jsonapi: @inventory, serializer: InventorySerializer
       end
 
       def destroy
@@ -52,9 +57,15 @@ module Api
       private
 
       def check_manage_permissions
-        unless can_manage_repository?(@inventory)
-          raise PermissionError.new(Repository, :manage)
+        if update_inventory_params.keys.excluding('archived').present?
+          raise PermissionError.new(Repository, :manage) unless can_manage_repository?(@inventory)
+        elsif update_inventory_params.key?('archived')
+          raise PermissionError.new(Repository, :archive) unless can_archive_repository?(@inventory)
         end
+      end
+
+      def check_delete_permissions
+        raise PermissionError.new(Repository, :delete) unless can_delete_repository?(@inventory)
       end
 
       def inventory_params
@@ -62,7 +73,7 @@ module Api
           raise TypeError
         end
         params.require(:data).require(:attributes)
-        params.permit(data: { attributes: %i(name) })[:data]
+        params.permit(data: { attributes: %i(name archived) })[:data]
       end
 
       def update_inventory_params

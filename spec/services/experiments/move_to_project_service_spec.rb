@@ -3,22 +3,27 @@
 require 'rails_helper'
 
 describe Experiments::MoveToProjectService do
-  let(:team) { create :team, :with_members }
+  let(:user) { create :user }
+  let(:team) { create :team, :change_user_team, created_by: user }
   let(:project) do
-    create :project, team: team, user_projects: []
+    create :project, team: team, created_by: user
   end
   let(:new_project) do
-    create :project, team: team, user_projects: [user_project2]
+    create :project, team: team, created_by: user
   end
   let(:experiment) do
     create :experiment, :with_tasks, name: 'MyExp', project: project
   end
-  let(:user) { create :user }
-  let(:user_project2) { create :user_project, :normal_user, user: user }
   let(:service_call) do
     Experiments::MoveToProjectService.call(experiment_id: experiment.id,
-                                    project_id: new_project.id,
-                                    user_id: user.id)
+                                           project_id: new_project.id,
+                                           user_id: user.id)
+  end
+
+  let(:service_call_invalid_user) do
+    Experiments::MoveToProjectService.call(experiment_id: experiment.id,
+                                           project_id: nil,
+                                           user_id: nil)
   end
 
   context 'when call with valid params' do
@@ -45,6 +50,7 @@ describe Experiments::MoveToProjectService do
 
     it 'sets new project tags to modules' do
       service_call
+      experiment.reload
       new_tags = experiment.my_modules.map { |m| m.tags.map { |t| t } }.flatten
       tags_project_id = new_tags.map(&:project_id).uniq.first
 
@@ -65,38 +71,31 @@ describe Experiments::MoveToProjectService do
 
   context 'when call with invalid params' do
     it 'returns an error when can\'t find user and project' do
-      allow(Project).to receive(:find).and_return(nil)
-      allow(User).to receive(:find).and_return(nil)
-
-      expect(service_call.errors).to have_key(:invalid_arguments)
+      expect(service_call_invalid_user.errors).to have_key(:invalid_arguments)
     end
 
     it 'returns an error on validate' do
-      FactoryBot.create :experiment, project: new_project, name: 'MyExp'
+      allow_any_instance_of(Experiment).to(receive(:movable_projects).and_return([]))
+
       expect(service_call.succeed?).to be_falsey
     end
 
     it 'returns an error on saving' do
-      expect_any_instance_of(Experiments::MoveToProjectService)
-        .to receive(:valid?)
-        .and_return(true)
-      FactoryBot.create :experiment, project: new_project, name: 'MyExp'
+      experiment.name = Faker::Lorem.characters(number: 300)
+      experiment.save(validate: false)
 
       expect(service_call.succeed?).to be_falsey
     end
 
     it 'rollbacks cloned tags after unsucessful save' do
-      expect_any_instance_of(Experiments::MoveToProjectService)
-        .to receive(:valid?)
-        .and_return(true)
-      FactoryBot.create :experiment, project: new_project, name: 'MyExp'
-      experiment
+      experiment.name = Faker::Lorem.characters(number: 300)
+      experiment.save(validate: false)
 
       expect { service_call }.not_to(change { Tag.count })
     end
 
     it 'returns error if teams is not the same' do
-      t = create :team, :with_members
+      t = create :team
       project.update(team: t)
 
       expect(service_call.errors).to have_key(:target_project_not_valid)

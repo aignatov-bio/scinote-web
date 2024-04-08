@@ -1,0 +1,11 @@
+// scss-lint:disable SelectorDepth
+// scss-lint:disable NestingDepth
+
+.sci-cursor-edit {
+  cursor: text;
+}
+
+.inline-edit-placeholder:empty::before {
+  content: attr(placeholder);
+  display: block;
+}

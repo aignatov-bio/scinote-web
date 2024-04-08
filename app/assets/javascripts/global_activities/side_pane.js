@@ -1,4 +1,4 @@
-/* global animateSpinner gaUrlQueryParams PerfectSb dropdownSelector */
+/* global animateSpinner PerfectSb dropdownSelector */
 /* eslint-disable no-extend-native, no-underscore-dangle, no-use-before-define */
 
 var globalActivities = (function() {
@@ -26,13 +26,13 @@ var globalActivities = (function() {
   };
 
   function GlobalActivitiesFiltersGetDates() {
-    var fromDate = $('#calendar-from-date').data('DateTimePicker').date();
-    var toDate = $('#calendar-to-date').data('DateTimePicker').date();
+    var fromDate = $('#calendar-from-date').data('dateTimePicker').$refs.vueDateTime.datetime;
+    var toDate = $('#calendar-to-date').data('dateTimePicker').$refs.vueDateTime.datetime;
     if (fromDate) {
-      fromDate = fromDate._d.date_to_string();
+      fromDate = fromDate.date_to_string();
     }
     if (toDate) {
-      toDate = toDate._d.date_to_string();
+      toDate = toDate.date_to_string();
     }
     return { from: fromDate, to: toDate };
   }
@@ -57,7 +57,7 @@ var globalActivities = (function() {
         Project: convertToInt(dropdownSelector.getValues(projectFilter) || []),
         Experiment: convertToInt(dropdownSelector.getValues(experimentFilter) || []),
         MyModule: convertToInt(dropdownSelector.getValues(taskFilter) || []),
-        Repository: convertToInt(dropdownSelector.getValues(inventoryFilter) || []),
+        RepositoryBase: convertToInt(dropdownSelector.getValues(inventoryFilter) || []),
         RepositoryRow: convertToInt(dropdownSelector.getValues(inventoryItemFilter) || []),
         Protocol: convertToInt(dropdownSelector.getValues(protocolFilter) || []),
         Report: convertToInt(dropdownSelector.getValues(reportFilter) || [])
@@ -108,8 +108,8 @@ var globalActivities = (function() {
 
     $('.date-selector .date.clear').click(() => {
       updateRunning = true;
-      $('#calendar-from-date').data('DateTimePicker').clear();
-      $('#calendar-to-date').data('DateTimePicker').clear();
+      $('#calendar-from-date').data('dateTimePicker').clearDate();
+      $('#calendar-to-date').data('dateTimePicker').clearDate();
       $('.ga-side .date-selector.filter-block')[0].dataset.periodSelect = '';
       resetHotButtonsBackgroundColor();
       updateRunning = false;
@@ -205,8 +205,8 @@ var globalActivities = (function() {
       var selectorsCount = $(projectFilter).length === 1 ? clearSelectors.length - 1 : 1;
       updateRunning = true;
 
-      $('#calendar-from-date').data('DateTimePicker').clear();
-      $('#calendar-to-date').data('DateTimePicker').clear();
+      $('#calendar-from-date').data('dateTimePicker').clearDate();
+      $('#calendar-to-date').data('dateTimePicker').clearDate();
       $('.ga-side .date-selector.filter-block')[0].dataset.periodSelect = '';
 
 
@@ -228,23 +228,27 @@ var globalActivities = (function() {
               ${dateContainer[0].dataset.periodLabel}
               ${$('.ga-side .date-selector.filter-block')[0].dataset.periodSelect}
             </div>
-            <i class="fas fa-times"></i>
+            <i class="sn-icon sn-icon-close-small"></i>
           </div>`).appendTo('.ga-top .ga-tags')
-          .find('.fa-times').click(() => {
+          .find('.sn-icon-close-small').click(() => {
             $('.date-selector .date.clear').click();
           });
       }
       $.each($('.ga-side .ds-tags'), function(index, tag) {
         var newTag = $(tag.outerHTML).appendTo('.ga-top .ga-tags');
-        newTag.find('.fa-times')
+        newTag.find('.sn-icon-close-small')
           .click(function() {
             newTag.addClass('closing');
-            $(tag).find('.fa-times').click();
+            $(tag).find('.sn-icon-close-small').click();
           });
       });
+
+      toggleClearButtons();
     }
 
     function preloadFilters(filters) {
+      if (!filters) return;
+
       updateRunning = true;
       if (filters.subject_labels) {
         $.each(filters.subject_labels, (i, subject) => {
@@ -283,7 +287,6 @@ var globalActivities = (function() {
           } else {
             noActivitiesMessage.addClass('hidden');
           }
-          $('.ga-activities-list').data('starting-timestamp', json.starting_timestamp);
           updateRunning = false;
           animateSpinner('.ga-main', false);
 
@@ -328,72 +331,59 @@ var globalActivities = (function() {
       });
     });
 
-    $('#calendar-to-date').on('dp.change', function(e) {
-      var dateContainer = $('.ga-side .date-selector.filter-block');
-      if (!updateRunning) {
-        $('#calendar-from-date').data('DateTimePicker').minDate(e.date);
-        dateContainer[0].dataset.periodSelect = $('#calendar-to-date').val() + ' - ' + $('#calendar-from-date').val();
-        GlobalActivitiesUpdateTopPaneTags();
-        reloadActivities();
-        toggleClearButtons();
-        resetHotButtonsBackgroundColor();
-      }
-    });
-
-    $('#calendar-from-date').on('dp.change', function(e) {
-      var dateContainer = $('.ga-side .date-selector.filter-block');
-      if (!updateRunning) {
-        $('#calendar-to-date').data('DateTimePicker').maxDate(e.date);
-        dateContainer[0].dataset.periodSelect = $('#calendar-to-date').val() + ' - ' + $('#calendar-from-date').val();
-        GlobalActivitiesUpdateTopPaneTags();
-        reloadActivities();
-        toggleClearButtons();
-        resetHotButtonsBackgroundColor();
+    $('.datetime-picker-container').on('dp:ready', function() {
+      $(this).find('.calendar-input').data('dateTimePicker').onChange = () => {
+        let dateContainer = $('.ga-side .date-selector.filter-block');
+        if (!updateRunning) {
+          let toDate = $('#calendar-to-date').data('dateTimePicker').$refs.vueDateTime.datetime;
+          let fromDate = $('#calendar-from-date').data('dateTimePicker').$refs.vueDateTime.datetime;
+          dateContainer[0].dataset.periodSelect = (toDate ? toDate?.date_to_string() : '') + ' - ' + (fromDate ? fromDate.date_to_string() : '');
+          GlobalActivitiesUpdateTopPaneTags();
+          reloadActivities();
+          toggleClearButtons();
+          resetHotButtonsBackgroundColor();
+        }
       }
     });
 
     GlobalActivitiesUpdateTopPaneTags();
 
-    if (typeof gaUrlQueryParams !== 'undefined' && gaUrlQueryParams) {
-      preloadFilters(gaUrlQueryParams);
-    }
+    preloadFilters($('#filters').data('filters'));
 
     $('.date-selector .hot-button').click(function() {
       var selectPeriod = this.dataset.period;
       var dateContainer = $('.ga-side .date-selector.filter-block');
-      var fromDate = $('#calendar-from-date').data('DateTimePicker');
-      var toDate = $('#calendar-to-date').data('DateTimePicker');
+      var fromDate = $('#calendar-from-date').data('dateTimePicker');
+      var toDate = $('#calendar-to-date').data('dateTimePicker');
       var today = new Date();
       var yesterday = new Date(new Date().setDate(today.getDate() - 1));
       var weekDay = today.getDay();
       var monday = new Date(new Date()
         .setDate(today.getDate() - weekDay - (weekDay === 0 ? 6 : -1)));
-      var lastWeekEnd = new Date(new Date().setDate(monday.getDate() - 1));
-      var lastWeekStart = new Date(new Date().setDate(monday.getDate() - 7));
+      var lastWeekStart = new Date(monday.getTime() - (7 * 24 * 60 * 60 * 1000));
+      var lastWeekEnd = new Date(lastWeekStart.getTime() + (6 * 24 * 60 * 60 * 1000));
       var firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
       var lastMonthEnd = new Date(new Date().setDate(firstDay.getDate() - 1));
       var lastMonthStart = new Date(lastMonthEnd.getFullYear(), lastMonthEnd.getMonth(), 1);
       updateRunning = true;
-      fromDate.minDate(new Date(1900, 1, 1));
-      toDate.maxDate(new Date(3000, 1, 1));
       if (selectPeriod === 'today') {
-        fromDate.date(today);
-        toDate.date(today);
+        fromDate.$refs.vueDateTime.datetime = today;
+        toDate.$refs.vueDateTime.datetime = today;
       } else if (selectPeriod === 'yesterday') {
-        fromDate.date(yesterday);
-        toDate.date(yesterday);
+        fromDate.$refs.vueDateTime.datetime = yesterday;
+        toDate.$refs.vueDateTime.datetime = yesterday;
       } else if (selectPeriod === 'this_week') {
-        fromDate.date(today);
-        toDate.date(monday);
+        fromDate.$refs.vueDateTime.datetime = today;
+        toDate.$refs.vueDateTime.datetime = monday;
       } else if (selectPeriod === 'last_week') {
-        fromDate.date(lastWeekEnd);
-        toDate.date(lastWeekStart);
+        fromDate.$refs.vueDateTime.datetime = lastWeekEnd;
+        toDate.$refs.vueDateTime.datetime = lastWeekStart;
       } else if (selectPeriod === 'this_month') {
-        fromDate.date(today);
-        toDate.date(firstDay);
+        fromDate.$refs.vueDateTime.datetime = today;
+        toDate.$refs.vueDateTime.datetime = firstDay;
       } else if (selectPeriod === 'last_month') {
-        fromDate.date(lastMonthEnd);
-        toDate.date(lastMonthStart);
+        fromDate.$refs.vueDateTime.datetime = lastMonthEnd;
+        toDate.$refs.vueDateTime.datetime = lastMonthStart;
       }
       updateRunning = false;
       dateContainer[0].dataset.periodSelect = this.innerHTML;

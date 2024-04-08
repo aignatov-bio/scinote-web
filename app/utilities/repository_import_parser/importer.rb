@@ -63,7 +63,7 @@ module RepositoryImportParser
 
         @rows.each do |row|
           # Skip empty rows
-          next if row.empty?
+          next if row.blank?
 
           unless @header_skipped
             @header_skipped = true
@@ -72,7 +72,11 @@ module RepositoryImportParser
           @total_new_rows += 1
 
           new_full_row = {}
-          SpreadsheetParser.parse_row(row, @sheet).each_with_index do |value, index|
+          SpreadsheetParser.parse_row(
+            row,
+            @sheet,
+            date_format: @user.settings['date_format']
+          ).each_with_index do |value, index|
             if index == @name_index
               new_row =
                 RepositoryRow.new(name: try_decimal_to_string(value),

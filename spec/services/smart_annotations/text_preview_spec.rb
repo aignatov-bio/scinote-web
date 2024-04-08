@@ -5,14 +5,14 @@ require 'rails_helper'
 describe SmartAnnotations::TextPreview do
   let(:subject) { described_class }
   let(:user) { create :user }
-  let(:project) { create :project, name: 'my project' }
+  let(:project) { create :project, name: 'my project', created_by: user }
   let(:experiment) do
     create :experiment, name: 'my experiment',
                         project: project,
                         created_by: user,
                         last_modified_by: user
   end
-  let(:task) { create :my_module, name: 'task', experiment: experiment }
+  let(:task) { create :my_module, name: 'task', experiment: experiment, created_by: experiment.created_by }
 
   describe 'Project annotations' do
     it 'returns a text snippet' do

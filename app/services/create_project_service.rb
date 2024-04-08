@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class CreateProjectService
+  include Canaid::Helpers::PermissionsHelper
+
   def initialize(user, team, params)
     @params = params
     @user = user
@@ -8,24 +10,19 @@ class CreateProjectService
   end
 
   def call
-    new_project = nil
+    return unless can_create_projects?(@user, @team)
+
     ActiveRecord::Base.transaction do
       @params[:created_by] = @user
       @params[:last_modified_by] = @user
 
-      @project = @team.projects.new(@params)
+      @project = @team.projects.build(@params)
+      @project.default_public_user_role ||= UserRole.find_predefined_viewer_role if @project.visible?
+      @project.save!
 
-      if @project.save
-        @project.user_projects.create!(role: :owner, user: @user)
-        create_project_activity
-        new_project = @project
-      else
-        new_project = @project
-        raise ActiveRecord::Rollback
-
-      end
+      create_project_activity
     end
-    new_project
+    @project
   end
 
   private

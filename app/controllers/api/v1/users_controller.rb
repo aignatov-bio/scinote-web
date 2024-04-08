@@ -3,7 +3,14 @@
 module Api
   module V1
     class UsersController < BaseController
+      before_action :load_team, only: :index
       before_action :load_user, only: :show
+
+      def index
+        users = timestamps_filter(@team.users).page(params.dig(:page, :number))
+                                              .per(params.dig(:page, :size))
+        render jsonapi: users, each_serializer: UserSerializer
+      end
 
       def show
         render jsonapi: @user, serializer: UserSerializer
@@ -12,9 +19,9 @@ module Api
       private
 
       def load_user
-        @user = User.joins(:user_teams)
-                    .where('user_teams.team': current_user.teams)
-                    .find_by_id(params[:id])
+        @user = User.joins(:teams)
+                    .where(user_assignments: { assignable: current_user.teams })
+                    .find_by(id: params[:id])
         raise PermissionError.new(User, :read) unless @user
       end
     end

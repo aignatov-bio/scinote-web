@@ -1,13 +1,26 @@
 <% provide(:head_title, t("my_modules.module_archive.head_title", project: h(@my_module.experiment.project.name), module: h(@my_module.name)).html_safe) %>
-<%= render partial: "shared/sidebar", locals: { current_task: @my_module, page: 'task' } %>
-<%= render partial: "shared/secondary_navigation" %>
+<% provide(:sidebar_title, t("sidebar.my_module.sidebar_title")) %>
 
-<div class="content-pane" id="result-archive">
-  <div class="row">
+<%= content_for :sidebar do %>
+  <%= render partial: 'shared/sidebar/my_module',
+    locals: {
+      my_modules: @experiment_my_modules,
+      experiment: @experiment,
+      current_my_module: @my_module
+    }
+  %>
+<% end %>
+
+<% provide(:container_class, 'no-second-nav-container') %>
+<div class="content-pane flexible">
+  <%= render partial: 'my_modules/header' %>
+  <!-- Header Actions -->
+  <%= render partial: 'my_modules/header_actions' %>
+  <div class="row mt-5">
     <% if @archived_results.any? %>
       <% @archived_results.each do |result| %>
         <div class="col-xs-3">
-          <%= render partial: "my_modules/archive/result.html.erb", locals: { result: result } %>
+          <%= render partial: "my_modules/archive/result", locals: { result: result } %>
         </div>
       <% end %>
     <% else %>
@@ -18,4 +31,5 @@
   </div>
 </div>
 
-<script>FilePreviewModal.init()</script>
+<%= javascript_include_tag 'pdf_js' %>
+<%= stylesheet_link_tag 'pdf_js_styles' %>

@@ -1,24 +1,17 @@
-<% my_module_editable = can_manage_module?(my_module) %>
+<% due_date_editable = can_update_my_module_due_date?(my_module) %>
 
-<span class="date-text" data-editable="<%= my_module_editable %>">
+<span class="date-text" data-editable="<%= due_date_editable %>">
   <span id="dueDateLabelContainer" class="view-block">
-    <%= render partial: "due_date_label.html.erb" , locals: { my_module: my_module } %>
+    <%= render partial: "due_date_label" , locals: { my_module: my_module, due_date_editable: due_date_editable  } %>
   </span>
-  <% if my_module_editable %>
+  <% if due_date_editable %>
     <div class="datetime-picker-container" id="due-date">
-      <span class="fas fa-calendar-alt"></span>
-      <input id="calendarDueDate"
-             type="datetime"
-             data-toggle='date-time-picker'
-             class="form-control calendar-input"
-             readonly
-             placeholder="<%= t('my_modules.details.no_due_date_placeholder') %>"
-             data-date-format="<%= datetime_picker_format_full %>"
-             data-date-locale="<%= I18n.locale %>"
-             data-date-use-current="false"
-             data-date-orientation="left"
-             value="<%= my_module.due_date ? l(my_module.due_date, format: :full) : '' %>"/>
+      <div id="calendarDueDateContainer">
+        <input type="hidden" ref="input" v-model="date" data-simple-format="true" id="calendarDueDate" data-default="<%= l(my_module.due_date, format: :default) if my_module.due_date %>
+        " />
+        <date-time-picker class="w-full" ref="vueDateTime" :teleport="false" @change="updateDate" mode="datetime" :placeholder="'<%= t('my_modules.details.no_due_date_placeholder') %>'"></date-time-picker>
+      </div>
+      <span class="sn-icon sn-icon-close clear-date" data-toggle='clear-date-time-picker' data-target='calendarDueDate'></span>
     </div>
-    <span class="fas fa-times clear-date" data-toggle='clear-date-time-picker' data-target='calendarDueDate'></span>
   <% end %>
 </span>

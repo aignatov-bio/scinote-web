@@ -6,16 +6,19 @@ class TeamRepositoriesController < ApplicationController
 
   # DELETE :team_id/repositories/:repository_id/team_repositories/:id
   def destroy
-    team_repository = @repository.team_repositories.find_by_id(destory_params[:id])
-
-    if team_repository
-      log_activity(:unshare_inventory, team_repository)
-      team_repository.destroy
-      render json: {}, status: :no_content
-    else
-      render json: { message: I18n.t('repositories.multiple_share_service.nothing_to_delete') },
-             status: :unprocessable_entity
+    team_shared_object = @repository.team_shared_objects.find(destroy_params[:id])
+    ActiveRecord::Base.transaction do
+      log_activity(:unshare_inventory, team_shared_object)
+      team_shared_object.destroy!
     end
+    render json: {}, status: :no_content
+  rescue ActiveRecord::RecordNotFound
+    render json: { message: I18n.t('repositories.multiple_share_service.nothing_to_delete') },
+           status: :unprocessable_entity
+  rescue StandardError => e
+    Rails.logger.error(e.message)
+    Rails.logger.error(e.backtrace.join("\n"))
+    render json: { message: I18n.t('general.error') }, status: :unprocessable_entity
   end
 
   # POST :team_id/repositories/:repository_id/update
@@ -38,7 +41,7 @@ class TeamRepositoriesController < ApplicationController
   private
 
   def load_vars
-    @repository = current_team.repositories.find_by_id(params[:repository_id])
+    @repository = current_team.repositories.find_by(id: params[:repository_id])
 
     render_404 unless @repository
   end
@@ -47,16 +50,17 @@ class TeamRepositoriesController < ApplicationController
     params.permit(:team_id, :repository_id, :target_team_id, :permission_level)
   end
 
-  def destory_params
+  def destroy_params
     params.permit(:team_id, :id)
   end
 
   def update_params
-    params.permit(:permission_changes, share_team_ids: [], write_permissions: [])
+    params.permit(permission_changes: {}, share_team_ids: [], write_permissions: [])
   end
 
   def check_sharing_permissions
     render_403 unless can_share_repository?(@repository)
+    render_403 if !@repository.shareable_write? && update_params[:write_permissions].present?
   end
 
   def teams_to_share
@@ -73,7 +77,9 @@ class TeamRepositoriesController < ApplicationController
   end
 
   def teams_to_update
-    teams_to_update = JSON.parse(update_params[:permission_changes]).keys.map(&:to_i).to_a &
+    return [] if update_params[:permission_changes].blank?
+
+    teams_to_update = update_params[:permission_changes].keys.map(&:to_i).to_a &
                       update_params[:share_team_ids]&.map(&:to_i).to_a
     wp = update_params[:write_permissions]&.map(&:to_i)
 
@@ -87,15 +93,15 @@ class TeamRepositoriesController < ApplicationController
     }
   end
 
-  def log_activity(type_of, team_repository)
+  def log_activity(type_of, team_shared_object)
     Activities::CreateActivityService
       .call(activity_type: type_of,
             owner: current_user,
-            subject: team_repository.repository,
-            team: current_team,
-            message_items: { repository: team_repository.repository.id,
-                             team: team_repository.team.id,
+            subject: team_shared_object.shared_repository,
+            team: @repository.team,
+            message_items: { repository: team_shared_object.shared_repository.id,
+                             team: team_shared_object.team.id,
                              permission_level:
-                               Extends::SHARED_INVENTORIES_PL_MAPPINGS[team_repository.permission_level.to_sym] })
+                               Extends::SHARED_INVENTORIES_PL_MAPPINGS[team_shared_object.permission_level.to_sym] })
   end
 end

@@ -8,16 +8,14 @@ module Api
       before_action :check_manage_permissions, only: %i(create update)
 
       def index
-        results = @task.results
-                       .page(params.dig(:page, :number))
-                       .per(params.dig(:page, :size))
+        results = timestamps_filter(@task.results).page(params.dig(:page, :number))
+                                                  .per(params.dig(:page, :size))
         render jsonapi: results, each_serializer: ResultSerializer,
-                                 include: %i(text table file)
+                                 include: (%i(text table file) << include_params).flatten.compact
       end
 
       def create
         create_text_result if result_text_params.present?
-
         create_file_result if !@result && result_file_params.present?
 
         render jsonapi: @result,
@@ -29,8 +27,8 @@ module Api
       def update
         @result.attributes = result_params
 
-        update_file_result if result_file_params.present? && @result.is_asset
-        update_text_result if result_text_params.present? && @result.is_text
+        update_file_result if result_file_params.present? && @result.assets.any?
+        update_text_result if result_text_params.present? && @result.result_texts.any?
 
         if (@result.changed? && @result.save!) || @asset_result_updated
           render jsonapi: @result,
@@ -44,7 +42,7 @@ module Api
 
       def show
         render jsonapi: @result, serializer: ResultSerializer,
-                                 include: %i(text table file)
+                                 include: (%i(text table file) << include_params).flatten.compact
       end
 
       private
@@ -54,7 +52,7 @@ module Api
       end
 
       def check_manage_permissions
-        raise PermissionError.new(MyModule, :manage) unless can_manage_module?(@task)
+        raise PermissionError.new(MyModule, :manage) unless can_manage_my_module?(@task)
       end
 
       def create_text_result
@@ -70,6 +68,11 @@ module Api
           result_text = ResultText.create!(
             result: @result,
             text: convert_old_tiny_mce_format(result_text_params[:text])
+          )
+
+          @result.result_orderable_elements.create!(
+            position: 0,
+            orderable: result_text
           )
 
           if tiny_mce_asset_params.present?
@@ -104,19 +107,41 @@ module Api
       def create_file_result
         Result.transaction do
           @result = @task.results.create!(result_params.merge(user_id: current_user.id))
-          asset = Asset.create!(result_file_params)
+          if @form_multipart_upload
+            asset = Asset.create!(result_file_params.merge({ team_id: @team.id }))
+          else
+            blob = create_blob_from_params
+            asset = Asset.create!(file: blob, team: @team)
+          end
+          asset.post_process_file
           ResultAsset.create!(asset: asset, result: @result)
         end
       end
 
       def update_file_result
         old_checksum, new_checksum = nil
+        asset = @result.assets.order(created_at: :asc).first
         Result.transaction do
-          old_checksum = @result.asset.file.blob.checksum
-          @result.asset.file.attach(result_file_params[:file])
-          new_checksum = @result.asset.file.blob.checksum
+          old_checksum = asset.file.blob.checksum
+          if @form_multipart_upload
+            asset.file.attach(result_file_params[:file])
+          else
+            blob = create_blob_from_params
+            asset.update!(file: blob)
+          end
+          asset.post_process_file
+          new_checksum = asset.file.blob.checksum
         end
         @asset_result_updated = old_checksum != new_checksum
+      end
+
+      def create_blob_from_params
+        blob = ActiveStorage::Blob.create_and_upload!(
+          io: StringIO.new(Base64.decode64(result_file_params[:file_data])),
+          filename: result_file_params[:file_name],
+          content_type: result_file_params[:file_type]
+        )
+        blob
       end
 
       def result_params
@@ -140,8 +165,14 @@ module Api
         prms = params[:included]&.select { |el| el[:type] == 'result_files' }&.first
         return nil unless prms
 
-        prms.require(:attributes).require(:file)
-        prms.dig(:attributes).permit(:file)
+        if prms.require(:attributes)[:file]
+          @form_multipart_upload = true
+          return prms.dig(:attributes).permit(:file)
+        end
+        attr_list = %i(file_data file_type file_name)
+
+        prms.require(:attributes).require(attr_list)
+        prms.dig(:attributes).permit(attr_list)
       end
 
       def tiny_mce_asset_params
@@ -159,6 +190,10 @@ module Api
           end
         end
         prms
+      end
+
+      def permitted_includes
+        %w(comments)
       end
 
       def convert_old_tiny_mce_format(text)

@@ -1,4 +1,4 @@
-/* global animateSpinner globalActivities */
+/* global animateSpinner globalActivities HelperModule */
 
 'use strict';
 
@@ -14,16 +14,6 @@
     });
   }
 
-  function initExpandCollapseButton() {
-    $('.ga-activities-list').on('hidden.bs.collapse', function(ev) {
-      $(ev.target.dataset.buttonLink)
-        .find('.fas').removeClass('fa-chevron-down').addClass('fa-chevron-right');
-    });
-    $('.ga-activities-list').on('shown.bs.collapse', function(ev) {
-      $(ev.target.dataset.buttonLink)
-        .find('.fas').removeClass('fa-chevron-right').addClass('fa-chevron-down');
-    });
-  }
   function initShowMoreButton() {
     var moreButton = $('.btn-more-activities');
     moreButton.on('click', function(ev) {
@@ -31,7 +21,6 @@
       ev.preventDefault();
       animateSpinner(null, true);
       filters.page = moreButton.data('next-page');
-      filters.starting_timestamp = $('.ga-activities-list').data('starting-timestamp');
       $.ajax({
         url: $('.ga-activities-list').data('activities-url'),
         data: filters,
@@ -51,7 +40,7 @@
             let newNumber;
             existingLastDay.find('.activities-group').append(newFirstDay.find('.activities-group').html());
             newNumber = existingLastDay.find('.activity-card').length;
-            existingLastDay.find('.activities-counter-label strong').html(newNumber);
+            existingLastDay.find('.activities-counter-label strong').text(newNumber);
             newFirstDay.remove();
           }
 
@@ -69,7 +58,37 @@
     });
   }
 
+  function validateActivityFilterName() {
+    let filterName = $('#saveFilterModal .activity-filter-name-input').val();
+    $('#saveFilterModal .btn-confirm').prop('disabled', filterName.length === 0);
+  }
+
+  $('#saveFilterModal')
+    .on('keyup', '.activity-filter-name-input', function() {
+      validateActivityFilterName();
+    })
+    .on('click', '.btn-confirm', function() {
+      $.ajax({
+        url: this.dataset.saveFilterUrl,
+        type: 'POST',
+        global: false,
+        dataType: 'json',
+        data: {
+          name: $('#saveFilterModal .activity-filter-name-input').val(),
+          filter: globalActivities.getFilters()
+        },
+        success: function(data) {
+          HelperModule.flashAlertMsg(data.message, 'success');
+          $('#saveFilterModal .activity-filter-name-input').val('');
+          validateActivityFilterName();
+          $('#saveFilterModal').modal('hide');
+        },
+        error: function(response) {
+          HelperModule.flashAlertMsg(response.responseJSON.errors.join(','), 'danger');
+        }
+      });
+    });
+
   initExpandCollapseAllButtons();
-  initExpandCollapseButton();
   initShowMoreButton();
 }());

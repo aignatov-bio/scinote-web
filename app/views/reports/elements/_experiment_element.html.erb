@@ -1,46 +1,24 @@
+<% experiment ||= report_element.experiment %>
 <% timestamp = experiment.created_at %>
-<% name = experiment.name %>
-<% for_export_all = defined?(export_all) && export_all %>
-<div class="report-element report-experiment-element"
-  data-ts="<%= timestamp.to_i %>"
-  data-type="experiment"
-  data-id='{ "experiment_id": <%= experiment.id %> }'
-  data-scroll-id="<%= experiment.id %>"
-  data-modal-title="<%=t "projects.reports.elements.modals.experiment_contents.head_title",
-    experiment: experiment.name %>" data-name="<%= name %>" data-icon-class="fas fa-flask">
-  <div class="report-element-header">
-    <div class="row">
-      <div class="pull-left user-time">
-        <%=t "projects.reports.elements.experiment.user_time", timestamp: l(timestamp, format: :full) %>
-      </div>
-      <div class="pull-right controls">
-        <%= render partial: "reports/elements/element_controls.html.erb", locals: { show_sort: true } %>
-      </div>
-    </div>
-  </div>
+<% export_all = defined?(export_all) && export_all %>
+<div class="report-element report-experiment-element">
   <div class="report-element-body" data-hook="report-experiment-element">
-    <div class="row">
-      <div class="pull-left experiment-name">
-        <h4>
-          <i class="fas fa-flask"></i>
-          <%= name %>
-          <% if experiment.archived? %>
-            <span class="label label-warning"><%=t 'search.index.archived' %></span>
-          <% end %>
-        </h4>
-      </div>
+    <h3 class="experiment-name">
+      <%= link_to experiment.name, my_modules_experiment_url(experiment), target: :_blank %>
+      <% if experiment.archived? %>
+        <span class="label label-warning"><%= t('search.index.archived') %></span>
+      <% end %>
+    </h3>
+    <div class="user-time">
+      <%= t('projects.reports.elements.experiment.user_time', code: experiment.code, timestamp: l(timestamp, format: :full)) %>
     </div>
-    <div class="row">
-      <div class="col-xs-12">
-        <% if experiment.description.present? %>
-          <%= custom_auto_link(experiment.description, team: current_team, base64_encoded_imgs: for_export_all) %>
-        <% else %>
-           <em><%=t "projects.reports.elements.experiment.no_description" %></em>
-        <% end %>
-      </div>
+    <% if experiment.description.present? %>
+      <%= custom_auto_link(experiment.description, team: current_team, base64_encoded_imgs: export_all) %>
+    <% end %>
+  </div>
+  <% if defined?(children) %>
+    <div class="report-element-children">
+      <%= children %>
     </div>
-  </div>
-  <div class="report-element-children">
-    <%= children if (defined? children and children.present?) %>
-  </div>
+  <% end %>
 </div>

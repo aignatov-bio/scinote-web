@@ -29,21 +29,11 @@ module MyModulesHelper
         .index(asset_id) || 0
   end
 
-  def number_of_samples(my_module)
-    my_module.samples.count
-  end
-
-  def ordered_result_of(my_module)
-    my_module.results.where(archived: false).order(created_at: :desc)
-  end
-
   def get_task_alert_color(my_module)
     alert = ''
-    if !my_module.completed?
+    if !my_module.archived_branch? && !my_module.completed?
       alert = ' alert-yellow' if my_module.is_one_day_prior?
       alert = ' alert-red' if my_module.is_overdue?
-    elsif my_module.completed?
-      alert = ' alert-green'
     end
     alert
   end
@@ -99,5 +89,76 @@ module MyModulesHelper
 
   def assigned_repository_simple_view_name_column_id(repository)
     repository.is_a?(RepositorySnapshot) ? 2 : 3
+  end
+
+  def my_module_archived_on(my_module)
+    if my_module.archived?
+      my_module.archived_on
+    elsif my_module.experiment.archived?
+      my_module.experiment.archived_on
+    elsif my_module.experiment.project.archived?
+      my_module.experiment.project.archived_on
+    end
+  end
+
+  def my_module_due_status(my_module, datetime = DateTime.current)
+    return if my_module.archived_branch? || my_module.completed?
+
+    if my_module.is_overdue?(datetime)
+      I18n.t('my_modules.details.overdue')
+    elsif my_module.is_one_day_prior?(datetime)
+      I18n.t('my_modules.details.due_soon')
+    else
+      ''
+    end
+  end
+
+  def serialize_assigned_my_module_value(my_module)
+    [
+      serialize_assigned_my_module_team_data(my_module.team),
+      serialize_assigned_my_module_project_data(my_module.project),
+      serialize_assigned_my_module_experiment_data(my_module.experiment),
+      serialize_assigned_my_module_data(my_module)
+    ]
+  end
+
+  private
+
+  def serialize_assigned_my_module_team_data(team)
+    {
+      type: team.class.name.underscore,
+      value: team.name,
+      url: projects_path(team: team.id),
+      archived: false
+    }
+  end
+
+  def serialize_assigned_my_module_project_data(project)
+    archived = project.archived?
+    {
+      type: project.class.name.underscore,
+      value: project.name,
+      url: experiments_path(project_id: project, view_mode: archived ? 'archived' : 'active'),
+      archived: archived
+    }
+  end
+
+  def serialize_assigned_my_module_experiment_data(experiment)
+    archived = experiment.archived_branch?
+    {
+      type: experiment.class.name.underscore,
+      value: experiment.name,
+      url: archived ? module_archive_experiment_path(experiment) : my_modules_experiment_path(experiment),
+      archived: archived
+    }
+  end
+
+  def serialize_assigned_my_module_data(my_module)
+    {
+      type: my_module.class.name.underscore,
+      value: my_module.name,
+      url: protocols_my_module_path(my_module, view_mode: my_module.archived_branch? ? 'archived' : 'active'),
+      archived: my_module.archived_branch?
+    }
   end
 end

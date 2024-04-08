@@ -5,27 +5,29 @@ module Reports::Docx::DrawExperiment
     color = @color
     link_style = @link_style
     scinote_url = @scinote_url
-    experiment = Experiment.find_by_id(subject['id']['experiment_id'])
-    return unless experiment
+    experiment = subject.experiment
+    return unless can_read_experiment?(@user, experiment)
 
-    @docx.h2 experiment.name, size: Constants::REPORT_DOCX_EXPERIMENT_TITLE_SIZE
+    @docx.h2 do
+      link  experiment.name,
+            scinote_url + Rails.application.routes.url_helpers.my_modules_experiment_path(experiment),
+            link_style
+    end
+
     @docx.p do
       text I18n.t('projects.reports.elements.experiment.user_time',
-                  timestamp: I18n.l(experiment.created_at, format: :full)), color: color[:gray]
+                  code: experiment.code, timestamp: I18n.l(experiment.created_at, format: :full)), color: color[:gray]
       if experiment.archived?
         text ' | '
         text I18n.t('search.index.archived'), color: color[:gray]
       end
-      text ' | '
-      link  I18n.t('projects.reports.elements.all.scinote_link'),
-            scinote_url + Rails.application.routes.url_helpers.canvas_experiment_path(experiment),
-            link_style
     end
     html = custom_auto_link(experiment.description, team: @report_team)
-    html_to_word_converter(html)
+    Reports::HtmlToWordConverter.new(@docx, { scinote_url: scinote_url,
+                                              link_style: link_style }).html_to_word_converter(html)
     @docx.p
-    subject['children'].each do |child|
-      public_send("draw_#{child['type_of']}", child)
+    subject.children.active.each do |child|
+      public_send("draw_#{child.type_of}", child)
     end
   end
 end

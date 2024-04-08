@@ -38,7 +38,7 @@ var ChecklistColumnHelper = (function() {
   }
 
   function initialChecklistEditMode(formId, columnId, cell, values) {
-    var select = 'checklist-' + columnId;
+    var select = `checklist-${columnId}-${cell.parent()[0].id}`;
     var checklistUrl = $('.repository-column#' + columnId).data('items-url');
     var $select = checklistSelect(select, checklistUrl, values);
     var $hiddenField = checklistHiddenField(formId, columnId, values);
@@ -48,7 +48,8 @@ var ChecklistColumnHelper = (function() {
       optionClass: 'checkbox-icon',
       selectAppearance: 'simple',
       onChange: function() {
-        $hiddenField.val(JSON.stringify(dropdownSelector.getValues('#' + select)));
+        let currentValues = dropdownSelector.getValues('#' + select);
+        $hiddenField.val(currentValues.length ? JSON.stringify(currentValues) : null);
       }
     });
   }

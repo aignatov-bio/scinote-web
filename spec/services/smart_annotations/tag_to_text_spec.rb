@@ -3,13 +3,10 @@
 require 'rails_helper'
 
 describe SmartAnnotations::TagToText do
-  let!(:user) { create :user }
-  let!(:team) { create :team }
-  let!(:user_team) { create :user_team, user: user, team: team, role: 2 }
-  let!(:project) { create :project, name: 'my project', team: team }
-  let!(:user_project) do
-    create :user_project, project: project, user: user, role: 0
-  end
+  let!(:user) { create :user, full_name: 'admin' }
+  let!(:team) { create :team, :change_user_team, created_by: user }
+  let!(:project) { create :project, name: 'my project', team: team, created_by: user }
+
   let(:text) do
     "My annotation of [#my project~prj~#{project.id.base62_encode}]"
   end
@@ -46,14 +43,14 @@ describe SmartAnnotations::TagToText do
     let(:text) { "[@#{user.full_name}~#{user.id.base62_encode}]" }
     it 'parses the user tokent to text format' do
       expect(
-        subject.send(:parse_users_annotations, user, team, text)
+        subject.send(:parse_users_annotations, user, team, text, false)
       ).to eq user.full_name
     end
 
     it 'trims the user annotation if user is not member of a team' do
       random_text = "Sec:[@#{user_two.full_name}~#{user_two.id.base62_encode}]"
       expect(
-        subject.send(:parse_users_annotations, user, team, random_text)
+        subject.send(:parse_users_annotations, user, team, random_text, false)
       ).to eq 'Sec:'
     end
   end

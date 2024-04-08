@@ -10,10 +10,19 @@ en:
         title: "Filters"
         clear: "Clear"
         sort: "Sort by"
-        date_asc: "Due Date"
-        atoz: "From A to Z"
-        ztoa: "From Z to A"
-        display: "Display"
+        due_first: "Due first"
+        due_last: "Due last"
+        start_first: "Started first"
+        start_last: "Started last"
+        atoz: "Name A to Z"
+        ztoa: "Name Z to A"
+        id_asc: "ID ascending"
+        id_desc: "ID descending"
+        display: "Display statuses"
+        statuses:
+          placeholder: "Select statuses"
+          all_selected: "All selected"
+          selected: "selected"
         uncompleted_tasks: "Tasks in progress"
         completed_tasks: "Tasks completed"
         project: "Project"
@@ -21,30 +30,28 @@ en:
         experiment: "Experiment"
         select_experiment: "All Experiments"
         apply: "Apply"
+        show_results: "Show results"
       no_tasks:
         assigned_tasks:
           title: "There are no tasks assigned to you at the moment."
-          description: "Why not use the Quick start section to create your next task."
+          description: "Use the  “+ New task” button above to create a new one, or assign yourself to an existing task."
         team_tasks:
           title: "Your Team has no tasks at the moment."
         search_result:
           title: "No results."
-      due_date: "Due date: %{date}"
-      progress_bar:
-        in_progress: "In progress"
-        overdue: "Overdue"
-        completed_steps: ": %{steps} / %{total_steps}"
-        completed: "Completed"
+      due_date_html: "Due date: <b>%{date}</b>"
+      due_date_overdue_html: "Due date: <b>%{date} (overdue)</b>"
+      completed_on_html: "Completed on: <b>%{date}</b>"
     calendar:
       due_on: Due on
       dow:
-        su: 'Su'
-        mo: 'Mo'
-        tu: 'Tu'
-        we: 'We'
-        th: 'Th'
-        fr: 'Fr'
-        sa: 'Sa'
+        su: "Su"
+        mo: "Mo"
+        tu: "Tu"
+        we: "We"
+        th: "Th"
+        fr: "Fr"
+        sa: "Sa"
     quick_start:
       title: "Quick start"
       description: "Quickly start a new task, create a new project or a new report."
@@ -56,7 +63,7 @@ en:
         description: "As a guest in this team you cannot create anything."
     create_task_modal:
       title: "Create a new Task"
-      description: "Simply type in the fields bellow to find or create space for your new task to live in"
+      description: "Simply type in the fields below to find or create space for your new task to live in"
       project: "Project"
       project_visibility_label: "Visible to"
       project_visibility_members: "Project members"
@@ -71,10 +78,7 @@ en:
       title: "Recent work"
       no_results:
         title: "You have not worked on anything recently."
-        description: "Use the Quick start section to begin creating."
-      no_results_guest:
-        title: "No recent work."
-        description: "As a guest in this team you cannot make or change anything."
+        description: "All tasks, projects, inventories protocols and reports, you last worked on will appear here, when you make some changes."
       modes:
         all: "All"
         projects: "PROJECTS"

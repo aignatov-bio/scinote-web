@@ -1,20 +1,16 @@
-@import "constants";
-@import "mixins";
+
+
+:root {
+  --menu-bar-width: 83px;
+}
 
 .menu-bar {
   background-color: $color-white;
-  box-shadow: $flyout-shadow;
-  height: 100%;
-  left: 0;
-  padding-bottom: 50px;
-  position: fixed;
-  width: 83px;
-  z-index: 1001;
 
   .scroll-wrapper {
     height: 100%;
     padding-top: 16px;
-    width: 83px;
+    width: var(--menu-bar-width);
     overflow-x: hidden;
   }
 
@@ -23,7 +19,7 @@
     & > a,
     & > span {
       @include font-small;
-      color: $color-silver-chalice;
+      color: $color-volcano;
       display: grid;
       margin-left: auto;
       margin-right: auto;
@@ -59,10 +55,6 @@
     padding-bottom: 16px;
     position: fixed;
     width: inherit;
-
-    .academy-color {
-      color: $brand-academy-dark;
-    }
   }
 
   .dropup {
@@ -72,7 +64,7 @@
       margin-bottom: 0;
 
       & > li > a {
-        padding: 8px 20px;
+        padding: 8px 38px;
       }
     }
 
@@ -89,8 +81,12 @@
     }
   }
 
-  #support-link {
-    color: $brand-primary;
+  #knowledge-center-link {
+    .fas {
+      margin-left: -26px;
+      padding: 3px;
+      position: absolute
+    }
   }
 }
 

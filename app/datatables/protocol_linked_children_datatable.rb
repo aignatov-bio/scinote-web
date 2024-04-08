@@ -40,14 +40,16 @@ class ProtocolLinkedChildrenDatatable < CustomDatatable
   # Query database for records (this will be later paginated and filtered)
   # after that "data" function will return json
   def get_raw_records
-    records =
-      Protocol
-      .joins(my_module: { experiment: :project })
-      .includes(my_module: { experiment: :project })
-      .references(my_module: { experiment: :project })
-      .where(protocol_type: Protocol.protocol_types[:linked])
-      .where(parent: @protocol)
-    records.distinct
+    if params[:version].present?
+      records = @protocol.published_versions_with_original
+                         .find_by!(version_number: params[:version])
+                         .linked_children
+    else
+      records = Protocol.where(protocol_type: Protocol.protocol_types[:linked])
+      records = records.where(parent_id: @protocol.published_versions)
+                       .or(records.where(parent_id: @protocol.id))
+    end
+    records.preload(my_module: { experiment: :project }).distinct
   end
 
   # Helper methods
@@ -55,22 +57,25 @@ class ProtocolLinkedChildrenDatatable < CustomDatatable
   def record_html(record)
     res = ''
     res += "<ol class='breadcrumb'>"
-    res += "<li><span class='fas fa-folder'></span>&nbsp;"
+    res += "<li><span class='sn-icon sn-icon-projects'></span>&nbsp;"
     res += @controller.render_to_string(
-      partial: 'search/results/partials/project_text.html.erb',
-      locals: { project: record.my_module.experiment.project }
+      partial: 'search/results/partials/project_text',
+      locals: { project: record.my_module.experiment.project, link_to_page: :show },
+      formats: :html
     )
     res += '</li>'
-    res += "<li><i class='fas fa-flask'></i>&nbsp;"
+    res += "<li><i class='sn-icon sn-icon-experiment'></i>&nbsp;"
     res += @controller.render_to_string(
-      partial: 'search/results/partials/experiment_text.html.erb',
-      locals: { experiment: record.my_module.experiment }
+      partial: 'search/results/partials/experiment_text',
+      locals: { experiment: record.my_module.experiment },
+      formats: :html
     )
     res += '</li>'
-    res += "<li><span class='fas fa-credit-card'></span>&nbsp;"
+    res += "<li><span class='sn-icon sn-icon-task'></span>&nbsp;"
     res += @controller.render_to_string(
-      partial: 'search/results/partials/my_module_text.html.erb',
-      locals: { my_module: record.my_module, link_to_page: :protocols }
+      partial: 'search/results/partials/my_module_text',
+      locals: { my_module: record.my_module, link_to_page: :protocols },
+      formats: :html
     )
     res += '</li>'
     res += '</ol>'

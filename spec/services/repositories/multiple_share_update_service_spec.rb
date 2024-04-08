@@ -4,11 +4,10 @@ require 'rails_helper'
 
 describe Repositories::MultipleShareUpdateService do
   let(:user) { create :user }
-  let!(:user_team) { create :user_team, :admin, user: user, team: team }
-  let(:team) { create :team }
-  let(:team2) { create :team }
-  let(:team3) { create :team }
-  let(:repository) { create :repository, team: team }
+  let(:team) { create :team, created_by: user }
+  let(:team2) { create :team, created_by: user }
+  let(:team3) { create :team, created_by: user }
+  let(:repository) { create :repository, team: team, created_by: user }
 
   context 'when share' do
     let(:service_call) do
@@ -19,7 +18,7 @@ describe Repositories::MultipleShareUpdateService do
     end
 
     it 'adds TeamRepository record' do
-      expect { service_call }.to change { TeamRepository.count }.by(1)
+      expect { service_call }.to change { TeamSharedObject.count }.by(1)
     end
 
     it 'adds Activity record' do
@@ -48,14 +47,19 @@ describe Repositories::MultipleShareUpdateService do
                                                     team_ids_for_unshare: [team2.id])
     end
 
-    it 'removes TeamRepository record' do
-      create :team_repository, :write, team: team2, repository: repository
+    let(:team_shared_object) { create :team_shared_object, :write, team: team2, shared_repository: repository }
 
-      expect { service_call }.to change { TeamRepository.count }.by(-1)
+    before do
+      allow_any_instance_of(TeamSharedObject).to receive(:team_cannot_be_the_same)
+    end
+
+    it 'removes TeamRepository record' do
+      create :team_shared_object, :write, team: team2, shared_object: repository
+      expect { service_call }.to change { repository.team_shared_objects.count }.by(-1)
     end
 
     it 'adds Activity record' do
-      create :team_repository, :write, team: team2, repository: repository
+      create :team_shared_object, :write, team: team2, shared_object: repository
 
       expect { service_call }.to(change { Activity.all.count }.by(1))
     end
@@ -84,14 +88,18 @@ describe Repositories::MultipleShareUpdateService do
       )
     end
 
+    before do
+      allow_any_instance_of(TeamSharedObject).to receive(:team_cannot_be_the_same)
+    end
+
     it 'updates permission for share record' do
-      tr = create :team_repository, :write, team: team2, repository: repository
+      tr = create :team_shared_object, :write, team: team2, shared_object: repository
 
       expect { service_call }.to(change { tr.reload.permission_level })
     end
 
     it 'adds Activity record' do
-      create :team_repository, :write, team: team2, repository: repository
+      create :team_shared_object, :write, team: team2, shared_object: repository
 
       expect { service_call }.to(change { Activity.all.count }.by(1))
     end

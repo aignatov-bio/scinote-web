@@ -1,38 +1,18 @@
 // scss-lint:disable SelectorDepth SelectorFormat
 // scss-lint:disable NestingDepth ImportantRule
 
-@import "constants";
-@import "mixins";
 
 .team-settings-pane {
   .settings-team-name {
     line-height: 32px;
-    margin-bottom: 10px;
+    margin-bottom: 25px;
     margin-top: 0;
-
-    .inline-editing-container {
-      .view-mode {
-        font-size: 18px;
-      }
-
-      .input-field {
-        font-size: 18px;
-      }
-
-      &.error {
-        .input-field {
-          font-size: 16px;
-        }
-      }
-    }
   }
 
   .team-metadata {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 2fr));
-    grid-gap: 20px;
     font-size: 14px;
-    margin-bottom: 20px;
+    grid-gap: 8px;
 
     .grid-block {
 
@@ -49,9 +29,13 @@
     }
   }
 
+  .team-share-permission:disabled {
+    cursor: not-allowed;
+  }
+
   .team-description {
     display: inline-block;
-    margin-top: 20px;
+    margin-top: 16px;
     position: relative;
     width: 100%;
 
@@ -79,7 +63,7 @@
 
     .input-field {
       border: 1px solid $color-silver;
-      border-radius: $border-radius-small;
+      border-radius: $border-radius-default;
       cursor: pointer;
       display: block;
       float: left;
@@ -110,16 +94,7 @@
     }
 
     .button-container {
-      position: absolute;
-      right: 0;
-      top: -20px;
-
-      .inline-field-button {
-        color: $color-silver-chalice;
-        cursor: pointer;
-        line-height: 20px;
-        padding-left: 20px;
-      }
+      top: -32px;
     }
 
     &:hover .input-field,
@@ -141,6 +116,10 @@
       .add-new-team-members {
         flex-grow: 1;
         padding: 5px 0;
+      }
+
+      .filter-table input {
+        width: auto !important;
       }
 
       .filter-table,
@@ -178,6 +157,47 @@
         &:not(.disabled) span.fas {
           color: transparent !important;
         }
+      }
+    }
+  }
+
+  .modal-invite-users {
+    .user-selector {
+      .fa-search {
+        visibility: hidden;
+      }
+
+      .open {
+        .input-field {
+          border: 1px solid $brand-focus;
+          border-radius: $border-radius-default;
+
+          .fa-search {
+            color: $brand-focus;
+            visibility: visible;
+          }
+        }
+      }
+
+      .input-field {
+        padding: 3px 40px 3px 3px;
+      }
+    }
+
+    .dropdown-option.users-dropdown-list {
+      border-top: 1px solid $color-gainsboro;
+      padding: 8px 10px;
+
+      .item-avatar {
+        border-radius: 50%;
+        height: 32px;
+        margin: 0 16px 0 0;
+        width: 32px;
+      }
+
+      .item-email {
+        color: $color-silver-chalice;
+        margin-left: auto;
       }
     }
   }

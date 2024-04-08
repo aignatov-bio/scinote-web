@@ -1,5 +1,5 @@
-/* global TinyMCE I18n animateSpinner importProtocolFromFile truncateLongString */
-/* global HelperModule GLOBAL_CONSTANTS */
+/* global TinyMCE Prism I18n animateSpinner importProtocolFromFile */
+/* global HelperModule DataTableHelpers GLOBAL_CONSTANTS */
 /* eslint-disable no-use-before-define, no-alert, no-restricted-globals, no-underscore-dangle */
 
 //= require my_modules
@@ -8,133 +8,59 @@
 // Currently selected row in "load from protocol" modal
 var selectedRow = null;
 
-
 function initEditMyModuleDescription() {
   var viewObject = $('#my_module_description_view');
-  viewObject.on('click', function() {
-    TinyMCE.init('#my_module_description_textarea');
+  viewObject.on('click', function(e) {
+    if (e && $(e.target).prop("tagName") === 'A') return;
+    if (e && $(e.target).hasClass('atwho-user-popover')) return;
+    if (e && $(e.target).hasClass('record-info-link')) return;
+    if (e && $(e.target).parent().hasClass('record-info-link')) return;
+    if (e && $(e.target).parent().hasClass('atwho-inserted')) return;
+
+    TinyMCE.init(
+      '#my_module_description_textarea',
+      {
+        onSaveCallback: () => {
+          Prism.highlightAllUnder(viewObject.get(0));
+        },
+        assignableMyModuleId: $('#my_module_description_textarea').data('object-id')
+      }
+    );
   });
-  TinyMCE.initIfHasDraft(viewObject);
+
+  setTimeout(function() {
+    TinyMCE.wrapTables(viewObject);
+  }, 100);
 }
 
 function initEditProtocolDescription() {
   var viewObject = $('#protocol_description_view');
-  viewObject.on('click', function() {
-    TinyMCE.init('#protocol_description_textarea', refreshProtocolStatusBar);
-  });
-  TinyMCE.initIfHasDraft(viewObject);
-}
-
-// Initialize edit description modal window
-function initEditDescription() {
-  var editDescriptionModal = $('#manage-module-description-modal');
-  var editDescriptionModalBody = editDescriptionModal.find('.modal-body');
-  $('.description-link')
-    .on('ajax:success', function(ev, data) {
-      var descriptionLink = $('.description-refresh');
-
-      // Set modal body & title
-      editDescriptionModalBody.html(data.html);
-      editDescriptionModal
-        .find('#manage-module-description-modal-label')
-        .text(data.title);
-
-      editDescriptionModalBody.find('form')
-        .on('ajax:success', function(ev2, data2) {
-          // Update module's description in the tab
-          descriptionLink.html(data2.description_label);
-
-          // Close modal
-          editDescriptionModal.modal('hide');
-        })
-        .on('ajax:error', function(ev2, data2) {
-          // Display errors if needed
-          $(this).renderFormErrors('my_module', data2.responseJSON);
-        });
-
-      // Show modal
-      editDescriptionModal.modal('show');
-    });
-
-
-  editDescriptionModal.on('hidden.bs.modal', function() {
-    editDescriptionModalBody.find('form').off('ajax:success ajax:error');
-    editDescriptionModalBody.html('');
-  });
-}
-
-function initCopyToRepository() {
-  var link = "[data-action='copy-to-repository']";
-  var modal = '#copy-to-repository-modal';
-  var modalBody = '.modal-body';
-  var submitBtn = ".modal-footer [data-action='submit']";
-  $('.my-modules-protocols-index')
-    .on('ajax:success', link, function(e, data) {
-      $(modal).find(modalBody).html(data.html);
-      $(modal).find(modalBody).find("[data-role='copy-to-repository']")
-        .on('ajax:success', function(e2, data2) {
-          if (data2.refresh !== null) {
-            // Reload page
-            location.reload();
-          } else {
-            // Simply hide the modal
-            $(modal).modal('hide');
-          }
-        })
-        .on('ajax:error', function(e2, data2) {
-          // Display errors in form
-          $(modal).find(submitBtn)[0].disabled = false;
-          if (data2.status === 422) {
-            $(this).renderFormErrors('protocol', data2.responseJSON);
-          } else {
-            // Simply display global error
-            alert(data2.responseJSON.message);
-          }
-        });
-
-      $(modal).modal('show');
-      $(modal).find(submitBtn)[0].disabled = false;
-    })
-    .on('ajax:error', function() {});
-
-  $(modal).on('click', submitBtn, function() {
-    // Submit the embedded form
-    $(modal).find(submitBtn)[0].disabled = true;
-    $(modal).find('form').submit();
-  });
-
-  $(modal).find(modalBody).on('click', "[data-role='link-check']", function() {
-    var text = $(this).closest('.modal-body').find("[data-role='link-text']");
-    if ($(this).prop('checked')) {
-      text.show();
-    } else {
-      text.hide();
-    }
-  });
-
-  $(modal).on('hidden.bs.modal', function() {
-    $(modal).find(modalBody).find("[data-role='copy-to-repository']")
-      .off('ajax:success ajax:error');
-
-    $(modal).find(modalBody).html('');
+  viewObject.on('click', function(e) {
+    if ($(e.target).hasClass('record-info-link')) return;
+    TinyMCE.init('#protocol_description_textarea', { afterInitCallback: refreshProtocolStatusBar });
+  }).on('click', 'a', function(e) {
+    if ($(this).hasClass('record-info-link')) return;
+    e.stopPropagation();
   });
 }
 
 function initLinkUpdate() {
   var modal = $('#confirm-link-update-modal');
   var modalTitle = modal.find('.modal-title');
-  var modalBody = modal.find('.modal-body');
+  var modalMessage = modal.find('.modal-body .message');
   var updateBtn = modal.find(".modal-footer [data-action='submit']");
-  $("[data-action='unlink'], [data-action='revert'], [data-action='update-parent'], [data-action='update-self']")
-    .on('ajax:success', function(e, data) {
-      modalTitle.html(data.title);
-      modalBody.html(data.message);
+  $('.protocol-options-dropdown')
+    .on('ajax:success', "[data-action='unlink'], [data-action='revert'], [data-action='update-parent'],"
+        + "[data-action='update-self']", function(e, data) {
+      modalTitle.text(data.title);
+      modalMessage.text(data.message);
       updateBtn.text(data.btn_text);
       modal.attr('data-url', data.url);
       modal.modal('show');
     });
+
   modal.on('hidden.bs.modal', function() {
-    modalBody.html('');
+    modalMessage.html('');
   });
 
   if (!$._data(updateBtn[0], 'events')) {
@@ -179,19 +105,7 @@ function initLoadFromRepository() {
       modal.modal('show');
 
       // Init Datatable on recent tab
-      initLoadFromRepositoryTable(modalBody.find('#recent-tab'));
-
-      modalBody.find("a[data-toggle='tab']")
-        .on('hide.bs.tab', function(el) {
-          // Destroy Handsontable in to-be-hidden tab
-          var content = $($(el.target).attr('href'));
-          destroyLoadFromRepositoryTable(content);
-        })
-        .on('shown.bs.tab', function(el) {
-          // Initialize Handsontable in to-be-shown tab
-          var content = $($(el.target).attr('href'));
-          initLoadFromRepositoryTable(content);
-        });
+      initLoadFromRepositoryTable(modalBody.find('#load-protocols-datatable'));
 
       loadBtn.on('click', function() {
         loadFromRepository();
@@ -199,13 +113,8 @@ function initLoadFromRepository() {
     });
   modal.on('hidden.bs.modal', function() {
     // Destroy the current Datatable
-    destroyLoadFromRepositoryTable(modalBody.find('.tab-pane.active'));
-
-    modalBody.find("a[data-toggle='tab']")
-      .off('hide.bs.tab shown.bs.tab');
-
+    destroyLoadFromRepositoryTable(modalBody.find('#load-protocols-datatable'));
     loadBtn.off('click');
-
     modalBody.html('');
   });
 }
@@ -213,14 +122,15 @@ function initLoadFromRepository() {
 function initLoadFromRepositoryTable(content) {
   var tableEl = content.find("[data-role='datatable']");
   var datatable = tableEl.DataTable({
-    dom: "RBfl<'row'<'col-sm-12't>><'row'<'col-sm-7'i><'col-sm-5'p>>",
+    dom: "R<'main-actions'<'toolbar'><'protocol-filters'f>>t"
+      + "<'pagination-row'<'pagination-info'li><'pagination-actions'p>>",
     sScrollX: '100%',
     sScrollXInner: '100%',
     buttons: [],
     processing: true,
     serverSide: true,
     responsive: true,
-    order: tableEl.data('default-order') || [[1, 'asc']],
+    order: [[5, 'desc']],
     ajax: {
       url: tableEl.data('source'),
       type: 'POST'
@@ -229,17 +139,16 @@ function initLoadFromRepositoryTable(content) {
       fixedColumnsLeft: 1000000 // Disable reordering
     },
     columnDefs: [{
-      targets: 0,
-      searchable: false,
-      orderable: false,
-      sWidth: '1%',
-      render: function() {
-        return "<input type='radio'>";
-      }
-    }, {
-      targets: [1, 2, 3, 4, 5, 6],
+      targets: [0, 3, 4],
       searchable: true,
       orderable: true
+    }, {
+      targets: [1, 2, 5],
+      searchable: true,
+      orderable: true,
+      render: function(data) {
+        return `<div class="nowrap">${data}</div`;
+      }
     }],
     columns: [
       { data: '0' },
@@ -247,8 +156,7 @@ function initLoadFromRepositoryTable(content) {
       { data: '2' },
       { data: '3' },
       { data: '4' },
-      { data: '5' },
-      { data: '6' }
+      { data: '5' }
     ],
     oLanguage: {
       sSearch: I18n.t('general.filter')
@@ -256,50 +164,39 @@ function initLoadFromRepositoryTable(content) {
     rowCallback: function(row, data) {
       // Get row ID
       var rowId = data.DT_RowId;
-
       $(row).attr('data-row-id', rowId);
-
-      // If row ID is in the list of selected row IDs
-      if (rowId === selectedRow) {
-        $(row).find("input[type='radio']").prop('checked', true);
-        $(row).addClass('selected');
-      }
     },
     fnDrawCallback: function() {
       animateSpinner(this, false);
     },
     preDrawCallback: function() {
       animateSpinner(this);
+    },
+    fnInitComplete: function(e) {
+      var dataTableWrapper = $(e.nTableWrapper);
+      DataTableHelpers.initLengthAppearance(dataTableWrapper);
+      DataTableHelpers.initSearchField(
+        dataTableWrapper,
+        I18n.t('my_modules.protocols.load_from_repository_modal.filter_protocols')
+      );
+
+      $('.toolbar').html(I18n.t('my_modules.protocols.load_from_repository_modal.text2'));
     }
   });
 
-  // Handle click on table cells with radio buttons
-  tableEl.find('tbody').on('click', 'td', function() {
-    $(this).parent().find("input[type='radio']").trigger('click');
-  });
-
-  // Handle clicks on radio buttons
-  tableEl.find('tbody').on('click', "input[type='radio']", function(e) {
-    // Get row ID
-    var row = $(this).closest('tr');
-    var data = datatable.row(row).data();
-    var rowId = data.DT_RowId;
-
-    // Uncheck all radio buttons
-    tableEl.find("tbody input[type='radio']")
-      .prop('checked', false)
-      .closest('tr')
-      .removeClass('selected');
+  // Handle clicks on row
+  tableEl.find('tbody').on('click', 'tr', function(e) {
+    // Uncheck all
+    tableEl.find('tbody tr.selected').removeClass('selected');
 
     // Select the current row
-    row.find("input[type='radio']").prop('checked', true);
-    selectedRow = rowId;
-    row.addClass('selected');
+    selectedRow = datatable.row($(this)).data().DT_RowId;
+    $(this).addClass('selected');
 
     // Enable load btn
     content.closest('.modal')
       .find(".modal-footer [data-action='submit']")
-      .removeAttr('disabled');
+      .attr('disabled', false);
 
     e.stopPropagation();
   });
@@ -322,8 +219,7 @@ function destroyLoadFromRepositoryTable(content) {
 
   // Unbind event listeners
   tableEl.find('tbody').off('click', "a[data-action='filter']");
-  tableEl.find('tbody').off('click', "input[type='radio']");
-  tableEl.find('tbody').off('click', 'td');
+  tableEl.find('tbody').off('click', 'tr');
 
   // Destroy datatable
   tableEl.DataTable().destroy();
@@ -351,6 +247,7 @@ function loadFromRepository() {
   }
 
   if (selectedRow !== null && confirm(confirmMessage)) {
+    modal.find(".modal-footer [data-action='submit']").prop('disabled', true);
     // POST via ajax
     $.ajax({
       url: modal.attr('data-url'),
@@ -361,11 +258,13 @@ function loadFromRepository() {
         // Simply reload page
         location.reload();
       },
-      error: function(ev) {
-        // Display error message in alert()
-        alert(ev.responseJSON.message);
+      error: function(response) {
+        if (response.status === 403) {
+          HelperModule.flashAlertMsg(I18n.t('general.no_permissions'), 'danger');
+        } else {
+          alert(response.responseJSON.message);
+        }
 
-        // Hide modal
         modal.modal('hide');
       }
     });
@@ -388,49 +287,13 @@ function refreshProtocolStatusBar() {
   });
 }
 
-function initImport() {
-  var fileInput = $("[data-action='load-from-file']");
-
-  // Make sure multiple selections of same file
-  // always prompt new modal
-  fileInput.find("input[type='file']").on('click', function() {
-    this.value = null;
-  });
-
-  // Hack to hide "No file chosen" tooltip
-  fileInput.attr('title', window.URL ? ' ' : '');
-
-  fileInput.on('change', function(ev) {
-    var importUrl = fileInput.attr('data-import-url');
-    importProtocolFromFile(
-      ev.target.files[0],
-      importUrl,
-      null,
-      true,
-      function(datas) {
-        var data = datas[0];
-        if (data.status === 'ok') {
-          // Simply reload page
-          location.reload();
-        } else if (data.status === 'locked') {
-          alert(I18n.t('my_modules.protocols.load_from_file_error_locked'));
-        } else {
-          if (data.status === 'size_too_large') {
-            alert(I18n.t('my_modules.protocols.load_from_file_size_error',
-              { size: GLOBAL_CONSTANTS.FILE_MAX_SIZE_MB }));
-          } else {
-            alert(I18n.t('my_modules.protocols.load_from_file_error'));
-          }
-          animateSpinner(null, false);
-        }
-      }
-    );
-    // Clear input on self
-    $(this).val('');
+function initDetailsDropdown() {
+  $('#task-details .task-section-caret').on('click', function() {
+    if (!$('.task-details').hasClass('collapsing')) {
+      $(this).closest('#task-details').toggleClass('expanded');
+    }
   });
 }
-
-
 
 function initProtocolSectionOpenEvent() {
   $('#protocol-container').on('shown.bs.collapse', function() {
@@ -442,19 +305,50 @@ function initProtocolSectionOpenEvent() {
   });
 }
 
+function initAccessModal() {
+  $('#openAccessModal').on('click', (e) => {
+    e.preventDefault();
+    const container = document.getElementById('accessModalContainer');
+    $.get(container.dataset.url, (data) => {
+      const object = {
+        ...data.data.attributes,
+        id: data.data.id,
+        type: data.data.type
+      };
+      const { rolesUrl } = container.dataset;
+      const params = {
+        object: object,
+        roles_path: rolesUrl
+      };
+      const modal = $('#accessModalComponent').data('accessModal');
+      modal.params = params;
+      modal.open();
+    });
+  });
+}
+
+function initWrapTables() {
+  const viewMode = new URLSearchParams(window.location.search).get('view_mode');
+  if (['archived', 'locked', 'active'].includes(viewMode)) {
+    setTimeout(() => {
+      const notesContainerEl = document.getElementById('notes-container');
+      window.wrapTables(notesContainerEl);
+    }, 100);
+  }
+}
+
 /**
  * Initializes page
  */
 function init() {
   initEditMyModuleDescription();
   initEditProtocolDescription();
-  initEditDescription();
-  initCopyToRepository();
   initLinkUpdate();
   initLoadFromRepository();
-  refreshProtocolStatusBar();
-  initImport();
   initProtocolSectionOpenEvent();
+  initDetailsDropdown();
+  initAccessModal();
+  initWrapTables();
 }
 
 init();

@@ -2,42 +2,35 @@
 
 module OmniAuth
   module Strategies
-    class CustomAzureActiveDirectory < AzureActiveDirectory
+    class CustomAzureActiveDirectory < AzureActivedirectoryV2
       include OmniAuth::Strategy
 
-      option :openid_config_url
-      option :sign_in_policy
+      option :name, 'customazureactivedirectory'
 
-      # Azure doesn't allow query params in callback URL
-      def callback_url
-        full_host + script_name + callback_path
+      def client
+        omni_client = super
+        begin
+          app_conf =
+            Rails.cache.fetch("ad_app_conf_#{options[:client_id]}", expires_in: 1.day) do
+              JSON.parse(Net::HTTP.get(URI(options[:conf_url])))
+            end
+          omni_client.options[:authorize_url] = app_conf['authorization_endpoint']
+          omni_client.options[:token_url] = app_conf['token_endpoint']
+        rescue StandardError => e
+          Rails.logger.error('Failed to load OAuth2 configuration from the remote server! Using defaults.')
+          Rails.logger.error(e.message)
+        end
+        omni_client
       end
 
-      def openid_config_url
-        options[:openid_config_url]
-      end
+      def raw_info
+        if @raw_info.nil?
+          id_token_data   = ::JWT.decode(access_token.params['id_token'], nil, false).first rescue {}
+          auth_token_data = ::JWT.decode(access_token.token,              nil, false).first rescue {}
+          @raw_info = auth_token_data.merge(id_token_data)
+        end
 
-      def authorize_endpoint_url
-        uri = URI(openid_config['authorization_endpoint'])
-        params = {
-          client_id: client_id,
-          redirect_uri: callback_url,
-          response_mode: response_mode,
-          response_type: response_type,
-          nonce: new_nonce,
-          scope: 'openid profile email'
-        }
-        params[:p] = options[:sign_in_policy] if options[:sign_in_policy].present?
-
-        uri.query = URI.encode_www_form(params)
-        uri.to_s
-      end
-
-      def validate_and_parse_id_token(id_token)
-        jwt_claims, jwt_header = Api::AzureJwt.decode(id_token)
-        return jwt_claims, jwt_header if jwt_claims['nonce'] == read_nonce
-
-        raise JWT::DecodeError, 'Returned nonce did not match.'
+        @raw_info
       end
     end
   end

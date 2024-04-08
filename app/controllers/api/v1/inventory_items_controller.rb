@@ -8,20 +8,22 @@ module Api
       before_action only: %i(show update destroy) do
         load_inventory_item(:id)
       end
-      before_action :check_manage_permissions, only: %i(create update destroy)
+      before_action :check_manage_permissions, only: %i(create update)
+      before_action :check_delete_permissions, only: :destroy
 
       def index
         items =
-          @inventory.repository_rows
-                    .active
-                    .preload(repository_cells: :repository_column)
-                    .preload(repository_cells: @inventory.cell_preload_includes)
-                    .page(params.dig(:page, :number))
-                    .per(params.dig(:page, :size))
-        incl = params[:include] == 'inventory_cells' ? :inventory_cells : nil
-        render jsonapi: items,
-               each_serializer: InventoryItemSerializer,
-               include: incl
+          timestamps_filter(
+            @inventory.repository_rows
+          )
+          .active
+          .preload(repository_cells: :repository_column)
+          .preload(repository_cells: { value: @inventory.cell_preload_includes })
+          .page(params.dig(:page, :number))
+          .per(params.dig(:page, :size))
+          .order(:id)
+
+        render jsonapi: items, each_serializer: InventoryItemSerializer, include: include_params
       end
 
       def create
@@ -66,11 +68,12 @@ module Api
             p.require(%i(id attributes))
             p.require(:attributes).require(:value)
           end
-          @inventory_item.transaction do
+          @inventory_item.with_lock do
             inventory_cells_params.each do |cell_params|
               cell = @inventory_item.repository_cells.find(cell_params[:id])
               cell_value = cell_params.dig(:attributes, :value)
-              next unless cell.value.data_changed?(cell_value)
+              next unless cell.value.data_different?(cell_value)
+
               cell.value.update_data!(cell_value, current_user)
               item_changed = true
             end
@@ -79,6 +82,9 @@ module Api
         @inventory_item.attributes = update_inventory_item_params
         item_changed = true if @inventory_item.changed?
         if item_changed
+          if @inventory_item.archived_changed?
+            @inventory_item.archived? ? @inventory_item.archive(current_user) : @inventory_item.restore(current_user)
+          end
           @inventory_item.last_modified_by = current_user
           @inventory_item.save!
           render jsonapi: @inventory_item,
@@ -97,21 +103,25 @@ module Api
       private
 
       def check_manage_permissions
-        raise PermissionError.new(RepositoryItem, :manage) unless can_manage_repository_rows?(@inventory)
+        raise PermissionError.new(RepositoryRow, :manage) unless can_manage_repository_rows?(@inventory)
+      end
+
+      def check_delete_permissions
+        unless can_delete_repository_rows?(@inventory) && @inventory_item.archived?
+          raise PermissionError.new(RepositoryRow, :delete)
+        end
       end
 
       def inventory_item_params
-        unless params.require(:data).require(:type) == 'inventory_items'
-          raise TypeError
-        end
+        raise TypeError unless params.require(:data).require(:type) == 'inventory_items'
+
         params.require(:data).require(:attributes)
-        params.permit(data: { attributes: :name })[:data]
+        params.permit(data: { attributes: %i(name archived) })[:data]
       end
 
       def update_inventory_item_params
-        unless params.require(:data).require(:id).to_i == params[:id].to_i
-          raise IDMismatchError
-        end
+        raise IDMismatchError unless params.require(:data).require(:id).to_i == params[:id].to_i
+
         inventory_item_params[:attributes]
       end
 
@@ -119,6 +129,10 @@ module Api
       # https://github.com/json-api/json-api/pull/1197
       def inventory_cells_params
         params[:included]&.select { |el| el[:type] == 'inventory_cells' }
+      end
+
+      def permitted_includes
+        %w(inventory_cells)
       end
     end
   end

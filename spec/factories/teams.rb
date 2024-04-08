@@ -7,9 +7,16 @@ FactoryBot.define do
     description { Faker::Lorem.sentence }
     space_taken { 1048576 }
     without_templates { true }
-    without_intro_demo { true }
+    trait :change_user_team do
+      after(:create) do |team|
+        team.created_by.update(current_team_id: team.id)
+      end
+    end
     trait :with_members do
       users { create_list :user, 3 }
+    end
+    trait :shareable_links_enabled do
+      shareable_links_enabled { true }
     end
   end
 end

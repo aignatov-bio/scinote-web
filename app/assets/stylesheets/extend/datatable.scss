@@ -1,22 +1,48 @@
 // scss-lint:disable SelectorDepth QualifyingElement NestingDepth
 // Data table
 
+.dataTables_scrollBody {
+  .column-grip {
+    display: none !important;
+  }
+}
+
 .table.dataTable {
   table-layout: initial;
   text-overflow: initial;
   width: 100%;
   word-break: initial;
 
-  thead {
-    background-color: $color-concrete;
+  &.table--reorderable-columns {
+    thead tr th:not(:first-child) {
+      padding-left: 24px;
 
+      .column-grip {
+        color: $color-volcano;
+        cursor: grabbing;
+        display: block;
+        left: 0;
+        opacity: 0;
+        position: absolute;
+        top: 6px;
+      }
+
+      &:hover .column-grip {
+        opacity: 1;
+      }
+    }
+  }
+
+  thead {
     tr {
       th {
+        background-color: $color-concrete;
         border-bottom: 2px solid $color-white;
         border-left: 2px solid $color-white;
         font-weight: bold;
         overflow: hidden;
         white-space: nowrap;
+        cursor: pointer;
 
         .modal-tooltiptext {
           margin-left: -10px;
@@ -29,14 +55,23 @@
           opacity: 1;
         }
 
+        &.sorting:hover {
+          background-color: $color-alto;
+        }
+
         &:first-child {
           border-left: 0;
+          border-top-left-radius: $border-radius-default;
+        }
+
+        &:last-child {
+          border-top-right-radius: $border-radius-default;
         }
       }
 
       th,
       td {
-        padding: 8px;
+        padding: 8px 6px;
       }
     }
   }
@@ -45,8 +80,20 @@
     tr {
       &.selected,
       .selected {
-        background-color: $color-alto;
+        background-color: $color-concrete;
       }
+    }
+
+    td {
+      padding-left: 10px;
+
+      .nowrap {
+        white-space: nowrap;
+      }
+    }
+
+    .dt-body-center {
+      padding-left: 8px;
     }
   }
 
@@ -72,10 +119,15 @@
     text-align: center;
 
     a {
+      align-items: center;
       background-color: inherit;
       border: 1px solid transparent;
       border-radius: $border-radius-default;
       color: inherit;
+      display: flex;
+      justify-content: center;
+      min-height: 36px;
+      min-width: 36px;
       outline: 0;
 
       &:hover,
@@ -91,7 +143,10 @@
     }
 
     &.active {
+      min-height: 36px;
       a {
+        min-width: 36px;
+        min-height: 36px;
         background-color: inherit;
         border: 1px solid $brand-primary;
         color: inherit;
@@ -105,32 +160,32 @@
     }
 
     &.previous {
+      align-items: center;
+      display: inline-flex;
+
       &::before {
-        @include font-awesome;
-        content: $font-fas-angle-left;
-        left: 0;
-        line-height: 36px;
-        padding: 0 8px;
-        position: absolute;
+        @include font-sn-icon;
+        content: $sn-icon-left;
       }
 
       a {
-        padding-left: 23px;
+        min-height: unset;
+        padding-left: .25rem;
       }
     }
 
     &.next {
-      &::before {
-        @include font-awesome;
-        content: $font-fas-angle-right;
-        line-height: 36px;
-        padding: 0 8px;
-        position: absolute;
-        right: 0;
+      align-items: center;
+      display: inline-flex;
+
+      &::after {
+        @include font-sn-icon;
+        content: $sn-icon-right;
       }
 
       a {
-        padding-right: 23px;
+        min-height: unset;
+        padding-right: .25rem;
       }
     }
   }

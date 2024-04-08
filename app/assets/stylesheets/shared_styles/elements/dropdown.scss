@@ -1,7 +1,13 @@
+// scss-lint:disable SelectorDepth, NestingDepth, ImportantRule
+
+.dropdown-menu .divider {
+  margin: 5px 0;
+}
+
 .sci-dropdown {
   [data-toggle="dropdown"] {
-    &:focus {
-      box-shadow: none;
+    .caret {
+      margin: 8px 0 8px 8px;
     }
   }
 
@@ -12,11 +18,16 @@
       border-color: $brand-focus;
 
       .caret {
-        transform: rotateX(180deg)
+        transform: rotateX(180deg);
+      }
+
+      .sn-icon-down {
+        transform: rotateX(180deg);
       }
     }
 
     .dropdown-menu {
+      @include font-button;
       border-top-left-radius: 0;
       border-top-right-radius: 0;
       box-shadow: $flyout-shadow;
@@ -28,5 +39,102 @@
       }
     }
   }
+}
 
+.dropdown-menu {
+  @include font-button;
+
+  .form-dropdown-break hr {
+    margin: 0;
+  }
+
+  .form-dropdown-item {
+    padding: 0 !important;
+
+    button,
+    .form-dropdown-item-info {
+      border-radius: 0;
+      padding-left: .9em;
+      text-align: left;
+      width: 100%;
+    }
+
+    button {
+      color: $color-black !important;
+    }
+    .text-light {
+      color: $color-white;
+    }
+
+    .form-dropdown-item-info {
+      color: $color-silver-chalice !important;
+      border-top: 1px solid $color-concrete;
+      padding-top: .3em;
+    }
+
+    &:only-child .form-dropdown-item-info {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .project-archive-restore-form {
+      .button-to {
+        &:hover {
+          background-color: $color-dd-hover !important;
+        }
+      }
+    }
+
+    .change-projects-view-type-form,
+    .change-experiments-view-type-form,
+    .change-my-modules-view-type-form {
+      .button-to {
+        float: unset !important;
+        height: 48px;
+        margin: 0;
+
+        &:active {
+          background-color: inherit;
+        }
+
+        &.selected::after {
+          @include font-awesome;
+          content: $font-fas-check;
+          float: right;
+        }
+      }
+    }
+  }
+
+  .form-dropdown-state-item {
+    background: $brand-primary;
+    border: 1px solid $brand-primary;
+    color: $color-white;
+
+    &:hover {
+      background: $brand-primary-hover !important;
+      color: $color-white;
+    }
+
+    &:active,
+    &.active {
+      background: $brand-primary-press;
+      color: $color-white;
+    }
+
+    &:focus {
+      box-shadow: 0 0 0 1px $brand-complementary;
+      color: $color-white;
+    }
+  }
+
+  .h-34 {
+    height: 34px;
+  }
+
+  .dropdown-switch-link {
+
+    display: flex;
+    align-items: center;
+  }
 }

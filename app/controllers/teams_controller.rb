@@ -1,83 +1,42 @@
+# frozen_string_literal: true
+
 class TeamsController < ApplicationController
-  before_action :load_vars, only: %i(parse_sheet export_projects export_projects_modal)
+  include ProjectsHelper
+  include CardsViewHelper
+  attr_reader :current_folder
+  helper_method :current_folder
+
+  before_action :load_vars, only: %i(sidebar export_projects export_projects_modal
+                                     disable_tasks_sharing_modal shared_tasks_toggle)
+  before_action :load_current_folder, only: :sidebar
+  before_action :check_read_permissions, except: :view_type
   before_action :check_export_projects_permissions, only: %i(export_projects_modal export_projects)
 
-  def parse_sheet
-    session[:return_to] ||= request.referer
-
-    unless import_params[:file]
-      return parse_sheet_error(t('teams.parse_sheet.errors.no_file_selected'))
-    end
-    if import_params[:file].size > Rails.configuration.x.file_max_size_mb.megabytes
-      error = t('general.file.size_exceeded',
-                file_size: Rails.configuration.x.file_max_size_mb)
-      return parse_sheet_error(error)
-    end
-
-    begin
-      sheet = SpreadsheetParser.open_spreadsheet(import_params[:file])
-      @header, @columns = SpreadsheetParser.first_two_rows(sheet)
-
-      if @header.empty? || @columns.empty?
-        return parse_sheet_error(t('teams.parse_sheet.errors.empty_file'))
-      end
-
-      # Fill in fields for dropdown
-      @available_fields = @team.get_available_sample_fields
-      # Truncate long fields
-      @available_fields.update(@available_fields) do |_k, v|
-        v.truncate(Constants::NAME_TRUNCATION_LENGTH_DROPDOWN)
-      end
-
-      # Save file for next step (importing)
-      @temp_file = TempFile.new(
-        session_id: session.id,
-        file: import_params[:file]
+  def sidebar
+    render json: {
+      html: render_to_string(
+        partial: 'shared/sidebar/projects',
+        locals: { team: current_team, sort: params[:sort] },
+        formats: :html
       )
-
-      if @temp_file.save
-        TempFile.destroy_obsolete(@temp_file.id)
-        respond_to do |format|
-          format.json do
-            render json: {
-              html: render_to_string(
-                partial: 'samples/parse_samples_modal.html.erb'
-              )
-            }
-          end
-        end
-      else
-        return parse_sheet_error(
-          t('teams.parse_sheet.errors.temp_file_failure')
-        )
-      end
-    rescue ArgumentError, CSV::MalformedCSVError
-      return parse_sheet_error(t('teams.parse_sheet.errors.invalid_file',
-                                 encoding: ''.encoding))
-    rescue TypeError
-      return parse_sheet_error(t('teams.parse_sheet.errors.invalid_extension'))
-    end
+    }
   end
 
   def export_projects
     if current_user.has_available_exports?
       current_user.increase_daily_exports_counter!
+      TeamZipExportJob.perform_later(
+        user_id: current_user.id,
+        params: {
+          team_id: @team.id,
+          project_ids: @exp_projects.collect(&:id)
+        }
+      )
+      log_activity(:export_projects,
+                   team: @team.id,
+                   projects: @exp_projects.map(&:name).join(', '))
 
-      generate_export_projects_zip
-
-      Activities::CreateActivityService
-        .call(activity_type: :export_projects,
-              owner: current_user,
-              subject: @team,
-              team: @team,
-              message_items: {
-                team: @team.id,
-                projects: @exp_projects.map(&:name).join(', ')
-              })
-
-      render json: {
-        flash: t('projects.export_projects.success_flash')
-      }, status: :ok
+      render json: { flash: t('projects.export_projects.success_flash') }
     end
   end
 
@@ -86,23 +45,53 @@ class TeamsController < ApplicationController
       if current_user.has_available_exports?
         render json: {
           html: render_to_string(
-            partial: 'projects/export/modal.html.erb',
+            partial: 'projects/export/modal',
             locals: { num_projects: @exp_projects.size,
                       limit: TeamZipExport.exports_limit,
-                      num_of_requests_left: current_user.exports_left - 1 }
+                      num_of_requests_left: current_user.exports_left - 1 },
+            formats: :html
           ),
           title: t('projects.export_projects.modal_title')
         }
       else
         render json: {
           html: render_to_string(
-            partial: 'projects/export/error.html.erb',
-            locals: { limit: TeamZipExport.exports_limit }
+            partial: 'projects/export/error',
+            locals: { limit: TeamZipExport.exports_limit },
+            formats: :html
           ),
           title: t('projects.export_projects.error_title'),
           status: 'error'
         }
       end
+    else
+      render json: { flash: I18n.t('projects.export_projects.zero_projects_flash') }, status: :unprocessable_entity
+    end
+  end
+
+  def disable_tasks_sharing_modal
+    render json: {
+      html: render_to_string(
+        partial: 'users/settings/teams/destroy_tasks_sharing_modal',
+        locals: {},
+        formats: :html
+      )
+    }
+  end
+
+  def shared_tasks_toggle
+    return render_403 unless can_manage_team?(@team)
+
+    @team.toggle!(:shareable_links_enabled)
+
+    if @team.shareable_links_enabled?
+      log_activity(:team_sharing_tasks_enabled,
+                   team: @team.id,
+                   user: current_user.id)
+    else
+      log_activity(:team_sharing_tasks_disabled,
+                   team: @team.id,
+                   user: current_user.id)
     end
   end
 
@@ -110,80 +99,62 @@ class TeamsController < ApplicationController
     redirect_to root_path
   end
 
+  def view_type
+    view_state = current_team.current_view_state(current_user)
+    view_state.state['projects']['view_type'] = view_type_params
+    view_state.save!
+
+    render json: { cards_view_type_class: cards_view_type_class(view_type_params) }, status: :ok
+  end
+
   private
 
-  def parse_sheet_error(error)
-    respond_to do |format|
-      format.html do
-        flash[:alert] = error
-        session[:return_to] ||= request.referer
-        redirect_to session.delete(:return_to)
-      end
-      format.json do
-        render json: { message: error },
-          status: :unprocessable_entity
-      end
-    end
-  end
-
   def load_vars
-    @team = Team.find_by_id(params[:id])
-
-    unless @team
-      render_404
-    end
-  end
-
-  def import_params
-    params.permit(:id, :file, :file_id, mappings: {}).to_h
-  end
-
-  def export_params
-    params.permit(sample_ids: [], header_ids: []).to_h
+    @team = current_user.teams.find_by(id: params[:id])
+    render_404 unless @team
   end
 
   def export_projects_params
-    params.permit(:id, project_ids: []).to_h
+    params.permit(:id, project_ids: [], project_folder_ids: [])
   end
 
-  def check_create_samples_permissions
-    render_403 unless can_create_samples?(@team)
+  def view_type_params
+    params.require(:projects).require(:view_type)
   end
 
-  def check_export_projects_permissions
+  def check_read_permissions
     render_403 unless can_read_team?(@team)
+  end
 
-    if export_projects_params[:project_ids]
-      @exp_projects = Project.where(id: export_projects_params[:project_ids])
-      @exp_projects.each do |project|
-        render_403 unless can_export_project?(current_user, project)
-      end
+  def load_current_folder
+    if current_team && params[:project_folder_id].present?
+      @current_folder = current_team.project_folders.find_by(id: params[:project_folder_id])
     end
   end
 
-  def generate_samples_zip
-    zip = ZipExport.create(user: current_user)
-    zip.generate_exportable_zip(
-      current_user,
-      @team.to_csv(
-        Sample.where(id: export_params[:sample_ids]),
-        export_params[:header_ids]
-      ),
-      :samples
-    )
+  def check_export_projects_permissions
+    @exp_projects = []
+    if export_projects_params[:project_ids]
+      @exp_projects = @team.projects.where(id: export_projects_params[:project_ids]).to_a
+    end
+    if export_projects_params[:project_folder_ids]
+      folders = @team.project_folders.where(id: export_projects_params[:project_folder_ids])
+      folders.each do |folder|
+        @exp_projects += folder.inner_projects.visible_to(current_user, @team)
+      end
+    end
+
+    @exp_projects.each do |project|
+      return render_403 unless can_export_project?(current_user, project)
+    end
   end
 
-  def generate_export_projects_zip
-    ids = @exp_projects.where(team_id: @team).index_by(&:id)
-
-    options = { team: @team }
-    zip = TeamZipExport.create(user: current_user)
-    zip.generate_exportable_zip(
-      current_user,
-      ids,
-      :teams,
-      options
-    )
-    ids
+  def log_activity(type_of, message_items = {})
+    Activities::CreateActivityService
+      .call(activity_type: type_of,
+            owner: current_user,
+            subject: @team,
+            team: @team,
+            message_items: message_items)
   end
 end

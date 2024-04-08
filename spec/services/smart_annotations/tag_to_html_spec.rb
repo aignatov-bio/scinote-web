@@ -4,11 +4,19 @@ require 'rails_helper'
 
 describe SmartAnnotations::TagToHtml do
   let!(:user) { create :user }
-  let!(:team) { create :team }
-  let!(:user_team) { create :user_team, user: user, team: team, role: 2 }
+  let!(:team) { create :team, :change_user_team, created_by: user }
+  let!(:owner_role) { UserRole.find_by(name: I18n.t('user_roles.predefined.owner')) }
+  let!(:team_assignment) { create_user_assignment(team, owner_role, user) }
   let!(:project) { create :project, name: 'my project', team: team }
   let!(:user_project) do
-    create :user_project, project: project, user: user, role: 0
+    create :user_project, project: project, user: user
+  end
+  let!(:user_assignment) do
+    create :user_assignment,
+           assignable: project,
+           user: user,
+           user_role: UserRole.find_by(name: I18n.t('user_roles.predefined.owner')),
+           assigned_by: user
   end
   let(:text) do
     "My annotation of [#my project~prj~#{project.id.base62_encode}]"
@@ -17,8 +25,8 @@ describe SmartAnnotations::TagToHtml do
   describe 'Parsed text' do
     it 'returns a existing string with smart annotation' do
       expect(subject.html).to eq(
-        "My annotation of <span class='sa-type'>Prj</span> "\
-        "<a href='/projects/#{project.id}'>my project</a>"
+        "My annotation of <a class='sa-link' href='/projects/#{project.id}/experiments'>" \
+        "<span class='sa-type'>Prj</span>my project</a>"
       )
     end
   end

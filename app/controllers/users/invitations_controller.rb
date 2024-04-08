@@ -22,15 +22,9 @@ module Users
       @team.name = params[:team][:name]
 
       super do |user|
-        if user.errors.empty?
+        if user.errors.blank?
           @team.created_by = user
           @team.save
-
-          UserTeam.create(
-            user: user,
-            team: @team,
-            role: 'admin'
-          )
         end
       end
     end
@@ -77,11 +71,10 @@ module Users
           next
         end
         # Check if user already exists
-        user = User.find_by_email(email)
+        user = User.find_by(email: email)
 
         if user
           result[:status] = :user_exists
-          result[:user] = user
         else
           user = User.invite!(
             full_name: email,
@@ -92,7 +85,6 @@ module Users
           user.update(invited_by: @user)
 
           result[:status] = :user_created
-          result[:user] = user
 
           # Sending email invitation is done in background job to prevent
           # issues with email delivery. Also invite method must be call
@@ -100,60 +92,66 @@ module Users
           user.delay.deliver_invitation
         end
 
-        if @team && user
-          user_team = UserTeam.find_by_user_id_and_team_id(user.id, @team.id)
-          if user_team
-            result[:status] = :user_exists_and_in_team
-          else
-            # Also generate user team relation
-            user_team = UserTeam.new(
-              user: user,
-              team: @team,
-              role: @role
-            )
-            user_team.save
+        if @teams.any? && user
+          @user_role ||= UserRole.find_predefined_normal_user_role
+          @teams.each do |team|
+            if team.user_assignments.exists?(user: user)
+              result[:status] = :user_exists_and_in_team
+            else
+              # Also generate user team relation
+              team.user_assignments.create!(user: user, user_role: @user_role, assigned_by: current_user)
 
-            generate_notification(
-              @user,
-              user,
-              user_team.team,
-              user_team.role_str
-            )
-            Activities::CreateActivityService
-              .call(activity_type: :invite_user_to_team,
-                    owner: current_user,
-                    subject: @team,
-                    team: @team,
-                    message_items: {
-                      team: @team.id,
-                      user_invited: user.id,
-                      role: user_team.role_str
-                    })
+              generate_notification(
+                @user,
+                user,
+                team,
+                @user_role.name
+              )
 
-            result[:status] = if result[:status] == :user_exists && !user.confirmed?
-                                :user_exists_unconfirmed_invited_to_team
-                              elsif result[:status] == :user_exists
-                                :user_exists_invited_to_team
-                              else
-                                :user_created_invited_to_team
-                              end
+              Activities::CreateActivityService
+                .call(activity_type: :invite_user_to_team,
+                      owner: current_user,
+                      subject: team,
+                      team: team,
+                      message_items: {
+                        team: team.id,
+                        user_invited: user.id,
+                        role: @user_role.name
+                      })
+
+              result[:status] = if result[:status] == :user_exists && !user.confirmed?
+                                  :user_exists_unconfirmed_invited_to_team
+                                elsif result[:status] == :user_exists
+                                  :user_exists_invited_to_team
+                                else
+                                  :user_created_invited_to_team
+                                end
+            end
+
+            result[:user_role_name] = @user_role.name
+            result[:team_name] = team.name
           end
-
-          result[:user_team] = user_team
         end
 
         @invite_results << result
       end
 
-      respond_to do |format|
-        format.json do
-          render json: {
-            html: render_to_string(
-              partial: 'shared/invite_users_modal_results.html.erb'
-            )
-          }
-        end
-      end
+      render json: {
+        html: render_to_string(partial: 'shared/invite_users_modal_results', formats: :html)
+      }
+    end
+
+    def invitable_teams
+      teams = current_user.teams
+                          .select(:id, :name)
+                          .joins(user_assignments: :user_role)
+                          .where(user_assignments: { user: current_user })
+                          .where('? = ANY(user_roles.permissions)', TeamPermissions::USERS_MANAGE)
+                          .distinct
+      teams = teams.where_attributes_like('teams.name', params[:query]) if params[:query].present?
+
+      teams = teams.select { |team| can_invite_team_users?(team) }
+      render json: teams.map { |t| { value: t.id, label: escape_input(t.name) } }.to_json
     end
 
     private
@@ -184,14 +182,14 @@ module Users
 
     def check_invite_users_permission
       @user = current_user
-      @emails = params[:emails]&.map(&:downcase)
-      @team = Team.find_by_id(params['teamId'])
-      @role = params['role']
+      @emails = params[:emails]&.map(&:strip)&.map(&:downcase)
 
-      return render_403 if @team && @role.nil? # if we select team, we must select role
+      @teams = Team.where(id: params[:team_ids]).select { |team| can_manage_team_users?(team) }
+      return render_403 if params[:team_ids].present? && @teams.blank?
+
+      @user_role = UserRole.find_by(id: params[:role_id])
+
       return render_403 if @emails.blank? # We must have at least one email
-      return render_403 if @team && !can_manage_team_users?(@team) # if we select team, we must check permission
-      return render_403 if @role && !UserTeam.roles.key?(@role) # if we select role, we must check that this role exist
     end
   end
 end

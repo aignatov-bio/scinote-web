@@ -1,11 +1,74 @@
 // scss-lint:disable SelectorDepth SelectorFormat QualifyingElement
 // scss-lint:disable NestingDepth ImportantRule
 
-@import "constants";
+
+@import "../layouts/reminders";
 
 .repository-table {
+  --content-header-size: 3.5rem;
+  --repository-top-toolbar-height: 3.5rem;
+  height: calc(100vh - var(--navbar-height) - var(--content-header-size));
+  position: relative;
+
+  .dataTables_wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+  }
+
+  .dataTables_scrollHead {
+    flex-shrink: 0;
+
+    .table.dataTable .sorting {
+      &::after {
+        opacity: 0;
+      }
+
+      &:hover {
+        &::after {
+          opacity: 1;
+        }
+      }
+    }
+
+    thead .sci-checkbox-container {
+      margin-left: .125em !important;
+    }
+  }
+
   .dataTables_filter {
+    display: flex;
     float: right;
+
+    #filtersDropdownButton {
+      margin-left: .5em;
+    }
+  }
+
+  .processing-error {
+    color: $brand-danger;
+    margin-left: 2px;
+
+    .fa-exclamation-triangle {
+      margin-right: 5px;
+    }
+  }
+
+  .repository-table-error {
+    background: $color-white;
+    display: none;
+    height: 200px;
+    padding: 1em;
+    position: absolute;
+    text-align: center;
+    top: 176px;
+    width: 100%;
+    z-index: 1;
+
+    &.active {
+      display: block;
+    }
   }
 
   // hack only for firefox
@@ -18,15 +81,22 @@
   }
 
   // Cells
-
+  td.added-on,
+  td.asset-value-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   // Assigned
 
   .assigned-column {
+    overflow: unset;
     padding: 1px 8px;
     position: relative;
+    white-space: nowrap;
 
-    .fas {
+    .sn-icon.sn-icon-edit {
       line-height: 35px;
       text-align: center;
       width: 30px;
@@ -34,7 +104,26 @@
 
     .repository-row-edit-icon {
       cursor: pointer;
-      display: none;
+      display: inline-block;
+      opacity: 0;
+    }
+
+    .row-reminders-dropdown {
+      cursor: pointer;
+      display: inline-block;
+      margin-right: 8px;
+      padding: 8px;
+
+      .fa-bell {
+        height: 16px;
+        text-align: center;
+        width: 16px;
+      }
+
+      &.open {
+        background: $color-concrete;
+        border-radius: 4px;
+      }
     }
 
     .assign-counter-container {
@@ -42,8 +131,7 @@
       display: inline-block;
       line-height: 35px;
       position: absolute;
-      right: 0;
-      width: calc(100% - 40px);
+      right: 5px;
 
       .assign-counter {
         display: inline-block;
@@ -85,6 +173,36 @@
     }
   }
 
+  .checklist-column {
+    overflow: unset;
+  }
+
+  .item-name {
+    padding: 2px 8px;
+
+    .row-reminders-dropdown {
+      cursor: pointer;
+      display: inline-block;
+      margin-right: 8px;
+      padding: 8px;
+
+      .fa-bell {
+        height: 16px;
+        text-align: center;
+        width: 16px;
+      }
+
+      &.open {
+        background: $color-concrete;
+        border-radius: 4px;
+      }
+    }
+
+    .record-info-link {
+      display: inline-block;
+      margin: 8px 0;
+    }
+  }
   // Added on
   .added-on {
     white-space: nowrap;
@@ -127,6 +245,7 @@
 
   .repository-status-value-icon {
     .emoji {
+      display: inline;
       height: 24px;
       margin-right: 5px;
       min-width: 24px;
@@ -136,6 +255,12 @@
 
   .dropdown-selector-container {
     width: 150px;
+
+    .dropdown-container {
+      left: 0 !important;
+      margin: 0 !important;
+      position: absolute !important;
+    }
 
     .emoji-status {
       .emoji {
@@ -159,6 +284,55 @@
     }
   }
 
+  // Stock
+  .stock-value-view-render {
+    &.stock-empty {
+      color: $brand-danger;
+
+      &::before {
+        @include font-awesome;
+        content: $font-fas-exclamation-triangle;
+      }
+    }
+
+    &.stock-low {
+      &::before {
+        @include font-awesome;
+        color: $brand-warning;
+        content: $font-fas-exclamation-triangle;
+      }
+    }
+
+  }
+
+  .not-assigned-stock {
+    color: $color-black;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: none;
+    };
+  }
+
+  .manage-repository-stock-value-link {
+    cursor: pointer;
+  }
+
+  .manage-repository-consumed-stock-value-link:not(.stock-value-view-render) {
+    color: $color-volcano;
+  }
+
+  .empty-stock-render,
+  .consumption-locked {
+    color: $color-silver-chalice;
+  }
+
+  .row-stock,
+  .row-consumption {
+    min-width: 140px;
+  }
+
+
   // DateTime
   .datetime-container {
     display: flex;
@@ -181,7 +355,28 @@
     }
 
     .date-container {
-      width: 160px;
+      &.datetime {
+        width: 240px;
+      }
+
+      &.time {
+        width: 120px;
+      }
+
+      &.date {
+        width: 200px;
+      }
+
+      &.error {
+        &::after {
+          color: $brand-danger;
+          content: attr(data-error-text);
+          font-size: 12px;
+          margin-top: -4px;
+          position: absolute;
+          top: 100%;
+        }
+      }
     }
 
     .time-container {
@@ -212,11 +407,18 @@
   .dataTable {
     tbody {
       tr:hover {
-        background-color: $color-concrete;
+        background-color: var(--sn-super-light-grey);
 
         .assigned-column {
           .repository-row-edit-icon {
-            display: inline-block;
+            opacity: 1;
+          }
+        }
+
+        &.editing {
+          .assigned-column .repository-row-edit-icon {
+            opacity: 0;
+            pointer-events: none;
           }
         }
       }
@@ -237,10 +439,6 @@
 
         tr:hover {
           .assigned-column {
-            .repository-row-edit-icon {
-              display: none;
-            }
-
             .assign-counter-container {
               background-color: transparent;
             }
@@ -250,6 +448,40 @@
             }
           }
         }
+
+        td {
+          overflow: visible;
+        }
+      }
+    }
+  }
+}
+
+.repository-table,
+#myModuleRepositoryFullViewModal {
+  .modal-body {
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .date-time-cell-value,
+  .date-cell-value {
+    display: inline-block;
+
+    &.reminder {
+      position: relative;
+
+      &::after {
+        background-color: $brand-danger;
+        border: 2px solid $color-white;
+        border-radius: 50%;
+        content: "";
+        display: inline-block;
+        height: 10px;
+        position: absolute;
+        right: -.7em;
+        top: 0;
+        width: 10px;
       }
     }
   }

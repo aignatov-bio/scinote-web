@@ -47,6 +47,8 @@
 
   function loadUnseenNotificationsNumber(element = 'notifications', icon = '.fa-bell') {
     var notificationCount = $('#count-' + element);
+    if (!notificationCount.length) return;
+
     $.ajax({
       url: notificationCount.attr('data-href'),
       type: 'GET',
@@ -54,7 +56,7 @@
       success: function(data) {
         notificationCount.html('');
         if (data.notificationNmber > 0) {
-          notificationCount.html(data.notificationNmber);
+          notificationCount.text(data.notificationNmber);
           notificationCount.show();
           toggleNotificationBellPosition(element, icon);
         } else {
@@ -145,7 +147,6 @@
               noRecentText.show();
             }
             bindSystemNotificationAjax();
-            SystemNotificationsMarkAsSeen();
           }
         });
         $('#count-system-notifications').hide();

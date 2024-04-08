@@ -1,24 +1,68 @@
-/* eslint-disable no-param-reassign, no-use-before-define */
+/* eslint-disable no-param-reassign, no-use-before-define  */
 /* global DataTableHelpers PerfectScrollbar FilePreviewModal animateSpinner HelperModule
-initAssignedTasksDropdown I18n */
+initAssignedTasksDropdown I18n prepareRepositoryHeaderForExport initReminderDropdown */
 
 var MyModuleRepositories = (function() {
   const FULL_VIEW_MODAL = $('#myModuleRepositoryFullViewModal');
   const UPDATE_REPOSITORY_MODAL = $('#updateRepositoryRecordModal');
-  const STATUS_POLLING_INTERVAL = 10000;
   var SIMPLE_TABLE;
   var FULL_VIEW_TABLE;
   var FULL_VIEW_TABLE_SCROLLBAR;
   var SELECTED_ROWS = {};
 
-  function reloadRepositoriesList(repositoryId) {
+  function stockManagementColumns(withConsumption = true) {
+    let columns = [
+      {
+        visible: true,
+        searchable: false,
+        data: 'stock'
+      }
+    ];
+    if (withConsumption) {
+      columns = columns.concat([{
+        visible: true,
+        searchable: false,
+        data: 'consumedStock'
+      }]);
+    }
+    return columns;
+  }
+
+  function stockManagementColumnDefs(withConsumption = true) {
+    let columns = [
+      {
+        targets: 'row-stock',
+        className: 'item-stock',
+        sWidth: '1%',
+        render: function(data) {
+          return $.fn.dataTable.render.RepositoryStockValue(data);
+        }
+      }
+    ];
+    if (withConsumption) {
+      columns = columns.concat([{
+        targets: 'row-consumption',
+        className: 'item-consumed-stock',
+        sWidth: '1%',
+        render: function(data) {
+          return $.fn.dataTable.render.RepositoryStockConsumptionValue(data);
+        }
+      }]);
+    }
+
+    return columns;
+  }
+
+  function reloadRepositoriesList(repositoryId, expand = false) {
     var repositoriesContainer = $('#assigned-items-container');
     $.get(repositoriesContainer.data('repositories-list-url'), function(result) {
       repositoriesContainer.html(result.html);
       $('.assigned-items-title').attr('data-assigned-items-count', result.assigned_rows_count);
       // expand recently updated repository
-      $('#assigned-items-container').collapse('show');
-      $('#assigned-repository-items-container-' + repositoryId).collapse('show');
+      if (expand) {
+        $('#assigned-items-container').collapse('show');
+        $('#assigned-repository-items-container-' + repositoryId).collapse('show');
+      }
     });
   }
 
@@ -30,18 +74,28 @@ var MyModuleRepositories = (function() {
       columns[i].defaultContent = '';
       if (skipCheckbox && i === 0) columns[i].visible = false;
     }
+
     customColumns.each((i, column) => {
       columns.push({
         visible: true,
         searchable: true,
-        data: String(columns.length),
+        data: column.dataset.type === 'RepositoryStockValue' ? 'stock' : String(columns.length),
         defaultContent: $.fn.dataTable.render['default' + column.dataset.type](column.id)
       });
     });
+
+    if ($(tableContainer).data('stock-consumption-column')) {
+      columns.push({
+        visible: true,
+        searchable: false,
+        data: 'consumedStock'
+      });
+    }
+
     return columns;
   }
 
-  function fullViewColumnDefs() {
+  function fullViewColumnDefs(tableContainer) {
     let columnDefs = [{
       targets: 0,
       visible: true,
@@ -64,8 +118,8 @@ var MyModuleRepositories = (function() {
         searchable: false,
         className: 'assigned-column',
         sWidth: '1%',
-        render: function(data) {
-          return $.fn.dataTable.render.AssignedTasksValue(data);
+        render: function(data, type, row) {
+          return $.fn.dataTable.render.AssignedTasksValue(data, row);
         }
       }, {
         targets: 3,
@@ -73,14 +127,26 @@ var MyModuleRepositories = (function() {
         render: function(data, type, row) {
           return "<a href='" + row.recordInfoUrl + "' class='record-info-link'>" + data + '</a>';
         }
+      }, {
+        targets: 4,
+        class: 'relationship',
+        render: (data, type, row) => $.fn.dataTable.render.RelationshipValue(data, row)
       });
     } else {
       columnDefs.push({
-        targets: 3,
-        className: 'item-name'
+        targets: 2,
+        className: 'item-name',
+        render: (data, type, row) => `<a href="${row.recordInfoUrl}" class="record-info-link">${data}</a>`,
       });
     }
 
+    if ($(tableContainer).data('stock-management')) {
+      columnDefs = columnDefs.concat(
+        stockManagementColumnDefs(
+          $(tableContainer).data('stock-consumption-column')
+        )
+      );
+    }
 
     columnDefs.push(
       {
@@ -89,10 +155,56 @@ var MyModuleRepositories = (function() {
           if (typeof data === 'object' && $.fn.dataTable.render[data.value_type]) {
             return $.fn.dataTable.render[data.value_type](data);
           }
+          if (data !== undefined && data.stock_present !== undefined) {
+            return $.fn.dataTable.render.RepositoryStockConsumptionValue(data);
+          }
           return data;
         }
       }
     );
+
+    return columnDefs;
+  }
+
+  function simpleTableColumns(tableContainer) {
+    let columns = [
+      {
+        visible: true,
+        searchable: false,
+        data: 0
+      }
+    ];
+
+    if ($(tableContainer).data('stock-management')) {
+      columns = columns.concat(stockManagementColumns());
+    }
+
+    return columns;
+  }
+
+  function simpleViewColumnDefs(tableContainer) {
+    let columnDefs = [{
+      targets: 0,
+      className: 'item-name',
+      render: function(data, type, row) {
+        let recordName = `<a href="${row.recordInfoUrl}" class="record-info-link">${data}</a>`;
+
+        if (row.hasActiveReminders) {
+          recordName = `<div class="dropdown row-reminders-dropdown"
+                          data-row-reminders-url="${row.rowRemindersUrl}" tabindex='-1'>
+                          <i class="sn-icon sn-icon-notifications dropdown-toggle row-reminders-icon"
+                             data-toggle="dropdown" id="rowReminders${row.DT_RowId}}"></i>
+                          <ul class="dropdown-menu" role="menu" aria-labelledby="rowReminders${row.DT_RowId}">
+                          </ul>
+                        </div>` + recordName;
+        }
+        return recordName;
+      }
+    }];
+
+    if ($(tableContainer).data('stock-management')) {
+      columnDefs = columnDefs.concat(stockManagementColumnDefs());
+    }
 
     return columnDefs;
   }
@@ -112,33 +224,44 @@ var MyModuleRepositories = (function() {
       destroy: true,
       ajax: {
         url: $(tableContainer).data('source'),
+        contentType: 'application/json',
         data: function(d) {
-          d.order[0].column = tableContainer.data('name-column-id');
-          d.assigned = 'assigned';
+          d.assigned = 'assigned_simple';
           d.view_mode = true;
           d.simple_view = true;
+          return JSON.stringify(d);
         },
         global: false,
         type: 'POST'
       },
-      columnDefs: [{
-        targets: 0,
-        className: 'item-name',
-        render: function(data, type, row) {
-          return "<a href='" + row.recordInfoUrl + "'"
-                 + "class='record-info-link'>" + data + '</a>';
-        }
-      }],
+      columns: simpleTableColumns(tableContainer),
+      columnDefs: simpleViewColumnDefs(tableContainer),
       drawCallback: function() {
         var repositoryContainer = $(this).closest('.assigned-repository-container');
         repositoryContainer.find('.table.dataTable').removeClass('hidden');
-        repositoryContainer.find('.version-label').html(tableContainer.data('version-label'));
+        repositoryContainer.find('.dataTables_scrollBody').css('overflow', 'initial');
+        repositoryContainer.find('.version-label').text(tableContainer.data('version-label'));
         SIMPLE_TABLE.columns.adjust();
       },
       createdRow: function(row, data) {
         $(row).find('.item-name').attr('data-state', data.DT_RowAttr['data-state']);
+      },
+      fnInitComplete: function() {
+        initReminderDropdown(tableContainer);
       }
     });
+  }
+
+  function reloadSimpleTable() {
+    if (!SIMPLE_TABLE) return;
+    SIMPLE_TABLE.ajax.reload(null, false);
+  }
+
+  function addRepositorySearch() {
+    $(`<div id="inventorySearchComponent">
+      <repository-search-container/>
+    </div>`).appendTo('.filter-container');
+    initRepositorySearch();
   }
 
   function renderFullViewTable(tableContainer, options = {}) {
@@ -154,23 +277,28 @@ var MyModuleRepositories = (function() {
       pageLength: 25,
       sScrollX: '100%',
       sScrollXInner: '100%',
+      stateDuration: 0,
       destroy: true,
       ajax: {
         url: $(tableContainer).data('source'),
+        contentType: 'application/json',
         data: function(d) {
           if (options.assigned) d.assigned = 'assigned';
           d.view_mode = true;
+          return JSON.stringify(d);
         },
         global: false,
         type: 'POST'
       },
       columns: tableColumns(tableContainer, options.skipCheckbox),
-      columnDefs: fullViewColumnDefs(),
+      columnDefs: fullViewColumnDefs(tableContainer),
 
       fnInitComplete: function() {
         var dataTableWrapper = $(tableContainer).closest('.dataTables_wrapper');
-        DataTableHelpers.initLengthApearance(dataTableWrapper);
-        DataTableHelpers.initSearchField(dataTableWrapper);
+        DataTableHelpers.initLengthAppearance(dataTableWrapper);
+        $('.dataTables_filter').addClass('hidden');
+        addRepositorySearch();
+        $("<i class='sn-icon sn-icon-barcode'></i>").appendTo($('.search-container'));
         dataTableWrapper.find('.main-actions, .pagination-row').removeClass('hidden');
         if (options.assign_mode) {
           renderFullViewAssignButtons();
@@ -181,11 +309,11 @@ var MyModuleRepositories = (function() {
           }
         }
         initAssignedTasksDropdown(tableContainer);
+        initReminderDropdown(tableContainer);
       },
 
       drawCallback: function() {
         FULL_VIEW_TABLE.columns.adjust();
-        FilePreviewModal.init();
         renderFullViewRepositoryName(
           tableContainer.attr('data-repository-name'),
           tableContainer.attr('data-repository-snapshot-created'),
@@ -211,9 +339,15 @@ var MyModuleRepositories = (function() {
           if (!options.assign_mode) {
             json.state.columns[0].visible = false;
           }
-          json.state.columns[6].visible = false;
-          json.state.columns[7].visible = false;
-          json.state.search.search = null;
+          if ($(tableContainer).data('type') !== 'snapshot') {
+            json.state.columns[6].visible = false;
+            json.state.columns[7].visible = false;
+          }
+          if (json.state.search) delete json.state.search;
+          if ($(tableContainer).data('stockConsumptionColumn')) {
+            json.state.columns.push({});
+            json.state.ColReorder.push(json.state.ColReorder.length);
+          }
           callback(json.state);
         });
       },
@@ -283,14 +417,17 @@ var MyModuleRepositories = (function() {
 
   function checkSnapshotStatus(snapshotItem) {
     $.getJSON(snapshotItem.data('status-url'), (statusData) => {
-      if (statusData.status === 'ready') {
+      if (statusData.status !== 'provisioning') {
         $.getJSON(snapshotItem.data('version-item-url'), (itemData) => {
           snapshotItem.replaceWith(itemData.html);
+          if (statusData.status === 'failed') {
+            $('#snapshot-error-' + itemData.repository_id).modal('show');
+          }
         });
       } else {
         setTimeout(function() {
           checkSnapshotStatus(snapshotItem);
-        }, STATUS_POLLING_INTERVAL);
+        }, GLOBAL_CONSTANTS.SLOW_STATUS_POLLING_INTERVAL);
       }
     });
   }
@@ -298,15 +435,24 @@ var MyModuleRepositories = (function() {
   function initSimpleTable() {
     $('#assigned-items-container').on('shown.bs.collapse', '.assigned-repository-container', function() {
       var repositoryContainer = $(this);
-      var repositoryTemplate = $($('#myModuleRepositorySimpleTemplate').html());
-      repositoryTemplate.attr('data-source', $(this).data('repository-url'));
-      repositoryTemplate.attr('data-version-label', $(this).data('footer-label'));
-      repositoryTemplate.attr('data-name-column-id', $(this).data('name-column-id'));
-      repositoryContainer.html(repositoryTemplate);
-      renderSimpleTable(repositoryTemplate);
+      var repositoryTable = repositoryContainer.find('.table');
+      var initializedTable = repositoryContainer.find('.dataTables_wrapper table');
+
+      // do not try to re-initialized already initialized table
+      if (initializedTable.length) {
+        initializedTable.DataTable().columns.adjust();
+        return;
+      }
+
+      repositoryTable.attr('data-source', $(this).data('repository-url'));
+      repositoryTable.attr('data-version-label', $(this).data('footer-label'));
+      repositoryTable.attr('data-name-column-id', $(this).data('name-column-id'));
+      repositoryTable.attr('data-stock-management', $(this).data('data-stock-management'));
+      repositoryContainer.html(repositoryTable);
+      renderSimpleTable(repositoryTable);
     });
 
-    $('.navbar-secondary').on('sideBar::shown sideBar::hidden', function() {
+    $('#wrapper').on('sideBar::shown sideBar::hidden', function() {
       if (SIMPLE_TABLE) {
         SIMPLE_TABLE.columns.adjust();
       }
@@ -319,11 +465,11 @@ var MyModuleRepositories = (function() {
       var snapshotItem = $(this);
       setTimeout(function() {
         checkSnapshotStatus(snapshotItem);
-      }, STATUS_POLLING_INTERVAL);
+      }, GLOBAL_CONSTANTS.SLOW_STATUS_POLLING_INTERVAL);
     });
   }
 
-  function refreshCreationSpanshotInfoText() {
+  function refreshCreationSnapshotInfoText() {
     var snapshotsCount = FULL_VIEW_MODAL.find('.repository-snapshot-item').length;
     var createSnapshotInfo = FULL_VIEW_MODAL.find('.create-snapshot-item .info');
     if (snapshotsCount) {
@@ -366,9 +512,9 @@ var MyModuleRepositories = (function() {
           FULL_VIEW_MODAL.find('.snapshots-container-scrollbody').prepend(snapshotItem);
           setTimeout(function() {
             checkSnapshotStatus(snapshotItem);
-          }, STATUS_POLLING_INTERVAL);
+          }, GLOBAL_CONSTANTS.SLOW_STATUS_POLLING_INTERVAL);
           animateSpinner(null, false);
-          refreshCreationSpanshotInfoText();
+          refreshCreationSnapshotInfoText();
         }
       });
       e.stopPropagation();
@@ -387,7 +533,7 @@ var MyModuleRepositories = (function() {
           }
           snapshotItem.remove();
           animateSpinner(null, false);
-          refreshCreationSpanshotInfoText();
+          refreshCreationSnapshotInfoText();
         }
       });
       e.stopPropagation();
@@ -437,6 +583,7 @@ var MyModuleRepositories = (function() {
           versionsList.find('.list-group-item').attr('data-selected', false);
           versionsList.find('.list-group-item.active').attr('data-selected', true);
           $('#setDefaultVersionButton').parent().addClass('hidden');
+          reloadRepositoriesList(FULL_VIEW_MODAL.find('.table').data('id'));
           animateSpinner(null, false);
         }
       });
@@ -452,7 +599,8 @@ var MyModuleRepositories = (function() {
 
     FULL_VIEW_MODAL.on('show.bs.modal', function() {
       FULL_VIEW_MODAL.find('.table-container').empty();
-      FULL_VIEW_MODAL.find('.repository-name').empty();
+      FULL_VIEW_MODAL.find('.repository-title').empty();
+      FULL_VIEW_MODAL.find('.repository-version').empty();
       updateFullViewRowsCount('');
     });
   }
@@ -465,9 +613,11 @@ var MyModuleRepositories = (function() {
 
       renderFullViewRepositoryName(repositoryNameObject.text());
       FULL_VIEW_MODAL.modal('show');
+      initCloseFullViewModal();
       $.getJSON($(this).data('table-url'), (data) => {
         FULL_VIEW_MODAL.find('.table-container').html(data.html);
         renderFullViewTable(FULL_VIEW_MODAL.find('.table'), { assigned: true, skipCheckbox: true });
+        FULL_VIEW_MODAL.focus();
       });
       e.stopPropagation();
     });
@@ -497,9 +647,9 @@ var MyModuleRepositories = (function() {
     $(row).toggleClass('selected');
 
     if (Object.keys(SELECTED_ROWS).length) {
-      $('#assignRepositoryRecords, #updateRepositoryRecords').attr('disabled', false);
+      $('.assign-button').attr('disabled', false);
     } else {
-      $('#assignRepositoryRecords, #updateRepositoryRecords').attr('disabled', true);
+      $('.assign-button').attr('disabled', true);
     }
 
     refreshSelectAllCheckbox();
@@ -510,43 +660,48 @@ var MyModuleRepositories = (function() {
     toolbar.empty();
     if (parseInt(FULL_VIEW_MODAL.data('rows-count'), 10) === 0) {
       toolbar.append($('#my-module-repository-full-view-assign-button').html());
+      toolbar.append($('#my-module-repository-full-view-assign-downstream-button').html());
     } else {
       toolbar.append($('#my-module-repository-full-view-update-button').html());
+      toolbar.append($('#my-module-repository-full-view-update-downstream-button').html());
     }
   }
 
   function updateFullViewRowsCount(value) {
     FULL_VIEW_MODAL.data('rows-count', value);
-    FULL_VIEW_MODAL.find('.repository-name').attr('data-rows-count', value);
+    FULL_VIEW_MODAL.find('.repository-version').attr('data-rows-count', value);
   }
 
   function renderFullViewRepositoryName(name, snapshotDate, assignMode) {
     var title;
-    var repositoryName = name || FULL_VIEW_MODAL.find('.repository-name').data('repository-name');
+    var version;
+    var repositoryName = name || FULL_VIEW_MODAL.find('.repository-title').data('repository-name');
 
     if (assignMode) {
       title = I18n.t('my_modules.repository.full_view.assign_modal_header', {
         repository_name: repositoryName
       });
+      version = '';
     } else if (snapshotDate) {
-      title = I18n.t('my_modules.repository.full_view.modal_snapshot_header', {
-        repository_name: repositoryName,
-        snaphot_date: snapshotDate
+      title = repositoryName;
+      version = I18n.t('my_modules.repository.full_view.modal_snapshot_header', {
+        snapshot_date: snapshotDate
       });
     } else {
-      title = I18n.t('my_modules.repository.full_view.modal_live_header', {
-        repository_name: repositoryName
-      });
+      title = repositoryName;
+      version = I18n.t('my_modules.repository.full_view.modal_live_header');
     }
-    FULL_VIEW_MODAL.find('.repository-name').data('repository-name', repositoryName);
-    FULL_VIEW_MODAL.find('.repository-name').html(title);
+    FULL_VIEW_MODAL.find('.repository-title').data('repository-name', repositoryName);
+    FULL_VIEW_MODAL.find('.repository-title').text(title);
+    FULL_VIEW_MODAL.find('.repository-version').text(version);
   }
 
-  function initRepoistoryAssignView() {
+  function initRepositoryAssignView() {
     $('.repositories-dropdown-menu').on('click', '.repository', function(e) {
       var assignUrlModal = $(this).data('assign-url-modal');
       var updateUrlModal = $(this).data('update-url-modal');
       FULL_VIEW_MODAL.modal('show');
+      initCloseFullViewModal();
       $.get($(this).data('table-url'), (data) => {
         FULL_VIEW_MODAL.find('.table-container').html(data.html);
         FULL_VIEW_MODAL.data('assign-url-modal', assignUrlModal);
@@ -565,20 +720,31 @@ var MyModuleRepositories = (function() {
       e.stopPropagation();
     }).on('click', '#assignRepositoryRecords', function() {
       openAssignRecordsModal();
-    }).on('click', '#updateRepositoryRecords', function() {
-      openUpdateRecordsModal();
-    });
+    }).on('click', '#assignRepositoryRecordsDownstream', function() {
+      openAssignRecordsModal(true);
+    })
+      .on('click', '#updateRepositoryRecords', function() {
+        openUpdateRecordsModal();
+      })
+      .on('click', '#updateRepositoryRecordsDownstream', function() {
+        openUpdateRecordsModal(true);
+      });
 
     UPDATE_REPOSITORY_MODAL.on('click', '.downstream-action', function() {
       submitUpdateRepositoryRecord({ downstream: true });
     }).on('click', '.task-action', function() {
       submitUpdateRepositoryRecord({ downstream: false });
+    }).on('hidden.bs.modal', function() {
+      FULL_VIEW_MODAL.focus();
+    }).on('click', '.next-step', function() {
+      UPDATE_REPOSITORY_MODAL.find('.next-step, .description-1, .rows-list-container').addClass('hidden');
+      UPDATE_REPOSITORY_MODAL.find('.description-2, .my-modules-to-assign, .hidden-my-modules, .downstream-action').removeClass('hidden');
     });
   }
 
-  function openUpdateRecordsModal() {
+  function openUpdateRecordsModal(downstream) {
     var updateUrl = FULL_VIEW_MODAL.data('update-url-modal');
-    $.get(updateUrl, { selected_rows: SELECTED_ROWS }, function(data) {
+    $.get(updateUrl, { selected_rows: SELECTED_ROWS, downstream: downstream }, function(data) {
       var assignList;
       var assignListScrollbar;
       var unassignList;
@@ -595,13 +761,15 @@ var MyModuleRepositories = (function() {
     });
   }
 
-  function openAssignRecordsModal() {
+  function openAssignRecordsModal(downstream) {
     var assignUrl = FULL_VIEW_MODAL.data('assign-url-modal');
-    $.get(assignUrl, { selected_rows: SELECTED_ROWS }, function(data) {
+    $.get(assignUrl, { selected_rows: SELECTED_ROWS, downstream: downstream }, function(data) {
       UPDATE_REPOSITORY_MODAL.find('.modal-content').html(data.html);
       UPDATE_REPOSITORY_MODAL.data('update-url', data.update_url);
       UPDATE_REPOSITORY_MODAL.modal('show');
     });
+
+    $(document).on('hidden.bs.modal', '#updateRepositoryRecordModal', () => $('body').addClass('modal-open'));
   }
 
   function submitUpdateRepositoryRecord(options = {}) {
@@ -629,16 +797,43 @@ var MyModuleRepositories = (function() {
         SELECTED_ROWS = {};
         $(FULL_VIEW_TABLE.table().container()).find('.dataTable')
           .attr('data-assigned-items-count', data.rows_count);
-        FULL_VIEW_TABLE.ajax.reload(null, false);
-        reloadRepositoriesList(data.repository_id);
+        reloadRepositoriesList(data.repository_id, true);
         updateFullViewRowsCount(data.rows_count);
-        renderFullViewAssignButtons();
+        FULL_VIEW_MODAL.modal('hide');
       },
-      error: function(data) {
+      error: function(response) {
+        if (response.status === 403) {
+          HelperModule.flashAlertMsg(I18n.t('general.no_permissions'), 'danger');
+        } else {
+          HelperModule.flashAlertMsg(response.responseJSON.flash, 'danger');
+        }
         UPDATE_REPOSITORY_MODAL.modal('hide');
-        HelperModule.flashAlertMsg(data.responseJSON.flash, 'danger');
         SELECTED_ROWS = {};
         FULL_VIEW_TABLE.ajax.reload(null, false);
+      }
+    });
+  }
+
+  function initExportAssignedRows() {
+    FULL_VIEW_MODAL.on('click', '#exportAssignedItems', function() {
+      var headerIds = [];
+      $(FULL_VIEW_TABLE.table().container()).find('.dataTables_scrollHead thead tr th').each(function() {
+        headerIds.push(prepareRepositoryHeaderForExport($(this)));
+      });
+      $.post($(FULL_VIEW_TABLE.table().container()).find('.dataTable').data('export-url'), {
+        header_ids: headerIds
+      }, function(response) {
+        HelperModule.flashAlertMsg(response.message, 'success');
+      }).fail((response) => {
+        HelperModule.flashAlertMsg(response.responseJSON.message, 'danger');
+      });
+    });
+  }
+
+  function initCloseFullViewModal() {
+    $(FULL_VIEW_MODAL).on('keyup', function(e) {
+      if (e.key === 'Escape') {
+        FULL_VIEW_MODAL.modal('hide');
       }
     });
   }
@@ -649,8 +844,19 @@ var MyModuleRepositories = (function() {
       initRepositoryFullView();
       initRepositoriesDropdown();
       initVersionsSidebarActions();
-      initRepoistoryAssignView();
+      initRepositoryAssignView();
       initSelectAllCheckbox();
+      initExportAssignedRows();
+    },
+    reloadSimpletable: () => {
+      reloadSimpleTable();
+    },
+    reloadFullViewTable: () => {
+      if (!FULL_VIEW_TABLE) return;
+      FULL_VIEW_TABLE.ajax.reload(null, false);
+    },
+    reloadRepositoriesList: (repositoryId, expand = false) => {
+      reloadRepositoriesList(repositoryId, expand);
     }
   };
 }());

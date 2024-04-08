@@ -1,71 +1,29 @@
+# frozen_string_literal: true
+
 class UserNotificationsController < ApplicationController
-  layout 'main'
+  prepend_before_action -> { request.env['devise.skip_trackable'] = true }, only: :unseen_counter
 
   def index
-    @last_notification_id = params[:from].to_i || 0
-    @per_page = Constants::ACTIVITY_AND_NOTIF_SEARCH_LIMIT
+    page = (params.dig(:page, :number) || 1).to_i
+    notifications = load_notifications.page(page).per(Constants::INFINITE_SCROLL_LIMIT)
 
-    @notifications =
-      UserNotification.last_notifications(@current_user,
-                                          @last_notification_id,
-                                          @per_page + 1)
+    render json: notifications, each_serializer: NotificationSerializer
 
-    @more_notifications_url = ''
-
-    @overflown = @notifications.length > @per_page
-
-    @notifications =
-      UserNotification.last_notifications(@current_user,
-                                          @last_notification_id,
-                                          @per_page)
-
-    if @notifications.count > 0
-      @more_notifications_url = url_for(
-        controller: 'user_notifications',
-        action: 'index',
-        format: :json,
-        from: @notifications.last.id
-      )
-    end
-
-    respond_to do |format|
-      format.html
-      format.json do
-        render json: {
-          per_page: @per_page,
-          results_number: @notifications.length,
-          more_notifications_url: @more_notifications_url,
-          html: render_to_string(partial: 'list.html.erb')
-        }
-      end
-    end
-    UserNotification.seen_by_user(current_user)
+    notifications.mark_as_read!
   end
 
-  def recent_notifications
-    @recent_notifications = UserNotification.recent_notifications(current_user)
-
-    respond_to do |format|
-      format.json do
-        render json: {
-          html: render_to_string(
-            partial: 'recent_notifications.html.erb'
-          )
-        }
-      end
-    end
-    UserNotification.seen_by_user(current_user)
+  def unseen_counter
+    render json: {
+      unseen: load_notifications.where(read_at: nil).size
+    }
   end
 
-  def unseen_notification
-    @number = UserNotification.unseen_notification_count(current_user)
+  private
 
-    respond_to do |format|
-      format.json do
-        render json: {
-          notificationNmber: @number
-        }
-      end
-    end
+  def load_notifications
+    current_user.notifications
+                .in_app
+                .order(created_at: :desc)
   end
+
 end

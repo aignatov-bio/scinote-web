@@ -17,6 +17,8 @@ var ActiveStoragePreviews = (function() {
 
       if (img.retryCount >= RETRY_COUNT) return;
 
+      $(img).css('opacity', 0);
+
       if (!$(img).parent().hasClass('processing')) $(img).parent().addClass('processing');
 
       setTimeout(() => {
@@ -27,6 +29,25 @@ var ActiveStoragePreviews = (function() {
     showPreview: function(ev) {
       $(ev.target).css('opacity', 1);
       $(ev.target).parent().removeClass('processing');
+    },
+    reloadPreview: function(target) {
+      $(target)
+        .on('error', event => this.reCheckPreview(event))
+        .on('load', event => this.showPreview(event))
+        .trigger('error');
     }
   });
 }());
+
+$(document).on('turbolinks:load', function() {
+  $('.asset-preview-image')
+    .one('load', (event) => ActiveStoragePreviews.showPreview(event))
+    .one('error', (event) => ActiveStoragePreviews.reCheckPreview(event))
+    .each(function() { 
+      if (this.complete) {
+        $(this).trigger('load');
+      } else if (this.error) {
+        $(this).trigger('error');
+      }
+    });
+});

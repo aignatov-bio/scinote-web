@@ -1,0 +1,455 @@
+// scss-lint:disable ImportantRule PropertyUnits NestingDepth SelectorDepth
+
+.attachment-container {
+  @include md-card-style;
+  grid-row: span 5;
+  height: 15.875rem;
+  padding: 1rem;
+  position: relative;
+  width: var(--attachment-column-width);
+
+
+  .file-preview-link,
+  .shareable-file-preview-link {
+    display: block;
+    height: 100%;
+    width: 100%;
+  }
+
+  .attachment-preview {
+    border-radius: $border-radius-default;
+    color: $color-volcano;
+    height: 11.625rem;
+    position: relative;
+    text-align: center;
+    width: 100%;
+
+    &.processing {
+      background-image: url("/images/medium/loading.svg");
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    img {
+      max-height: 100%;
+      max-width: 100%;
+    }
+    .fas {
+      font-size: 100px;
+      height: 240px;
+    }
+  }
+
+  .no-shadow {
+    box-shadow: none;
+  }
+
+  .attachment-label,
+  .attachment-metadata {
+    background: $color-white;
+    overflow: hidden;
+    padding-top: 1em;
+    position: relative;
+    text-overflow: ellipsis;
+    transition: $md-transaction;
+    white-space: nowrap;
+  }
+
+  .thumbnail-action-btn {
+    border: 1px solid var(--sn-light-grey);
+
+    &:hover {
+      background-color: var(--sn-white);
+      border-color: var(--sn-blue);
+    }
+  }
+
+  .attachment-label {
+    @include font-main;
+    z-index: 2;
+  }
+
+  .attachment-metadata {
+    @include font-small;
+    color: $color-silver-chalice;
+    margin-top: -4em;
+  }
+
+  .remove-icon {
+    bottom: .5em;
+    cursor: pointer;
+    display: none;
+    position: absolute;
+    right: .5em;
+  }
+
+  &:hover {
+    .file-preview-link,
+    .shareable-file-preview-link {
+      text-decoration: none;
+    }
+
+
+    .remove-icon {
+      display: inline-block;
+    }
+
+    .attachment-label,
+    .attachment-metadata {
+      margin-top: 0;
+
+    }
+  }
+
+  &.new {
+    border: 1px solid $brand-primary;
+
+    .dnd-error {
+      bottom: 15px;
+      float: left;
+      padding-left: 5px;
+      position: relative;
+    }
+
+    &::before {
+      background: $brand-primary;
+      border-radius: 0 $border-radius-default;
+      bottom: 0;
+      color: $color-white;
+      content: "NEW";
+      left: 0;
+      line-height: 20px;
+      position: absolute;
+      text-align: center;
+      width: 50px;
+      z-index: 2;
+    }
+  }
+
+  .asset-context-menu {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+  }
+}
+
+.inline-attachment-container {
+  @include md-card-style;
+  grid-column: 1/-1;
+  grid-row: span 12;
+  height: 47em;
+
+  .active-iframe-preview {
+    border: 0;
+    height: calc(100% - 4em);
+    width: 100%;
+  }
+
+  .file-info {
+    line-height: 1.5em;
+  }
+
+  .image-container,
+  .general-file-container {
+    align-items: center;
+    background: $color-concrete;
+    display: flex;
+    height: calc(100% - 4em);
+    justify-content: center;
+    padding: .5em;
+    width: 100%;
+
+    &.processing {
+      background-image: url("/images/medium/loading.svg");
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    img {
+      max-height: 100%;
+      max-width: 100%;
+    }
+
+    .sn-icon {
+      font-size: 10em !important;
+    }
+  }
+
+  .pdf-viewer {
+    align-items: center;
+    background: $color-silver-chalice;
+    display: flex;
+    height: calc(100% - 4em);
+    justify-content: center;
+    margin: unset;
+    width: 100%;
+  }
+
+  .header {
+    align-items: center;
+    display: flex;
+    height: 4em;
+    padding: 0 1em;
+
+    .show-as-thumbnail {
+      cursor: pointer;
+      margin-left: auto;
+    }
+
+    .file-name {
+      @include font-main;
+      color: $brand-primary;
+    }
+
+    .file-metadata {
+      @include font-small;
+      color: $color-silver-chalice;
+      display: grid;
+      grid-column-gap: 1em;
+      grid-template-columns: max-content max-content;
+    }
+
+    .asset-context-menu {
+      margin-left: auto;
+    }
+  }
+
+  .empty-office-file {
+    padding: 5em 1em 1em;
+    text-align: center;
+  }
+}
+
+.list-attachment-container {
+  @include md-card-style;
+  align-items: center;
+  display: flex;
+  grid-column: 1/-1;
+  height: 3em;
+  padding: .5em;
+
+  .file-icon {
+    @include font-main;
+  }
+
+  .attachment-image-tooltip {
+    bottom: 90px;
+    display: none;
+    position: relative;
+    right: 110px;
+    z-index: 9999;
+
+    img {
+      height: 150px;
+    }
+  }
+
+  .file-preview-link:hover + .attachment-image-tooltip {
+    display: block;
+  }
+
+  .file-name {
+    @include font-main;
+    color: $brand-primary;
+    margin: 0 .5em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-metadata {
+    @include font-small;
+    color: $color-silver-chalice;
+    display: grid;
+    grid-column-gap: 1em;
+    grid-template-columns: max-content max-content;
+    margin-left: auto;
+  }
+
+  .asset-context-menu {
+    margin-left: 1rem;
+  }
+}
+
+.asset-context-menu {
+  display: inline-block;
+
+  #dropdownAssetContextMenu {
+    background: $color-white;
+
+    &:active {
+      box-shadow: none;
+    }
+
+    &:hover {
+      background: $color-concrete;
+    }
+  }
+
+  .dropdown-menu {
+    @include font-button;
+
+    .divider-label {
+      @include font-small;
+      color: $color-silver-chalice;
+      padding-left: 1em;
+    }
+
+    a {
+      border-radius: unset;
+      cursor: pointer;
+      padding: .5em 1em;
+      text-align: left;
+
+      &:hover {
+        background: $color-concrete;
+      }
+
+      .fas {
+        width: 1.5em;
+      }
+
+      &.selected::after {
+        @include font-awesome;
+        content: $font-fas-check;
+        margin-left: auto;
+        position: absolute;
+        right: 1em;
+      }
+    }
+  }
+}
+
+.uploading-attachment-container {
+  align-items: center;
+  background-color: $color-concrete;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+
+  .icon {
+    font-size: 2em;
+  }
+
+  .file-name {
+
+    &:not(.one-line) div {
+      margin-bottom: .5em;
+    }
+
+    &.one-line {
+      align-items: center;
+      display: flex;
+
+      .file-name-text {
+        margin-left: .25em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .remove-button {
+    color: $color-silver-chalice;
+    cursor: pointer;
+    margin: .75em 1em;
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+
+  .progress-container {
+    background-color: $color-white;
+    flex-basis: 4px;
+    margin-top: 1em;
+    position: relative;
+    width: 60%;
+
+    .progress-bar {
+      background-color: $brand-primary;
+      height: 100%;
+      position: relative;
+      transition: 1s $timing-function-sharp;
+    }
+  }
+
+  &.list-attachment-container {
+    flex-direction: row;
+
+    .icon {
+      font-size: 1em;
+    }
+
+    .progress-container {
+      border-radius: 50%;
+      flex-basis: 30%;
+      height: 4px;
+      margin-left: auto;
+      margin-top: 0;
+    }
+  }
+
+  &.error {
+    background: $color-white;
+    border-color: $brand-danger;
+
+    .icon {
+      color: $brand-danger;
+    }
+
+    .error-container {
+      color: $brand-danger;
+      margin-top: 1em;
+      padding: 0 1em;
+      text-align: center;
+    }
+
+    &.list-attachment-container {
+      .error-container {
+        margin-left: auto;
+        margin-top: 0;
+      }
+    }
+  }
+}
+
+.asset-icon {
+  display: inline-block;
+  font-size: $font-size-h2;
+  text-align: center;
+  width: 24px;
+
+  &.fa-file-pdf {
+    color: $pdf-color;
+  }
+
+  &.fa-image {
+    color: $brand-primary;
+  }
+}
+
+.attachment-label-new {
+  align-items: center;
+  background-color: $brand-primary;
+  border-radius: 2px;
+  color: $color-concrete;
+  font-size: 12px;
+  margin-left: .25em;
+  margin-right: 1em;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.sn-file-ove {
+  height: 1.5rem;
+  width: 1.5rem;
+
+  &::before {
+    content: url("icon_small/sequence-editor.svg");
+    display: inline-block;
+    margin: auto;
+    width: 100%;
+  }
+}

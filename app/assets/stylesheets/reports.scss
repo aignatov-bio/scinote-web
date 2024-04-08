@@ -1,9 +1,13 @@
-@import 'constants';
-@import "mixins";
+// scss-lint:disable SelectorDepth
+// scss-lint:disable NestingDepth
 
 /* Index page */
 .report-table {
   margin-top: 20px;
+
+  .report-row.selected {
+    background: $color-alto;
+  }
 }
 
 /* New page navbar */
@@ -61,6 +65,8 @@ label {
  * Global fix for handsontable
  */
 .hot-table-container {
+  display: flex;
+  overflow: auto;
   .ht_master .wtHolder {
     height: auto !important;
     width: auto !important;
@@ -68,9 +74,12 @@ label {
 }
 
 .report-common-table-format {
+  page-break-inside: avoid;
   width: 100%;
 
   tr {
+    text-align: left;
+    vertical-align: top;
 
     td,
     th {
@@ -81,6 +90,27 @@ label {
         display: inline-block;
         min-height: 19px;
       }
+
+      &.htCenter {
+        text-align: center;
+      }
+
+      &.htRight {
+        text-align: right;
+      }
+
+      &.htJustify {
+        text-align: justify;
+      }
+
+      &.htMiddle {
+        vertical-align: middle;
+      }
+
+      &.htBottom {
+        vertical-align: bottom;
+      }
+
     }
 
     th {
@@ -203,27 +233,17 @@ label {
 /* GLOBAL REPORT ELEMENT STYLE */
 .report-element {
   width: 100%;
+  max-width: 270mm;
   margin-bottom: 15px;
 
-  .report-element-header {
-    border-bottom: 2px solid $color-black;
 
-    .user-time {
-      color: $color-emperor;
-      margin-left: 15px;
-      white-space: nowrap;
-    }
-    .controls {
-      margin-right: 15px;
-      font-size: $font-size-h6;
-      opacity: 0.05;
-    }
+  .user-time {
+    color: $color-silver-chalice;
+    white-space: nowrap;
   }
 
   .report-element-body {
     padding-top: 10px;
-    padding-left: 15px;
-    padding-right: 15px;
 
     .report-export-img {
       max-height: 300px;
@@ -232,7 +252,6 @@ label {
   }
 
   .report-element-children {
-    padding-left: 45px;
     padding-top: 15px;
   }
 
@@ -251,14 +270,17 @@ label {
 
 /* Project header element style */
 .report-project-header-element {
-  margin-bottom: 60px;
+  margin-bottom: 0;
 
   .report-element-header {
     border-bottom: none;
   }
+
   .report-element-body {
     .project-name {
-      border-bottom: 4px solid $color-black;
+      @include font-h1;
+      font-size: 18pt;
+      margin-top: 0;
     }
   }
 
@@ -267,20 +289,48 @@ label {
   }
 }
 
+// Experiment element style
+.report-experiment-element {
+  .experiment-name {
+    font-size: 16pt;
+    font-weight: bold;
+  }
+}
+
+// Protocol element style
+.report-module-protocol-element {
+  .protocol-name {
+    font-size: 12pt;
+    font-weight: bold;
+  }
+}
+
 /* Module element style */
 .report-module-element {
-  margin-top: 15px;
-  margin-bottom: 15px;
+  @include font-button;
+
+  .results-title-name {
+    font-size: 12pt;
+    font-weight: bold;
+  }
 
   .report-element-body {
     .module-name {
-      margin-left: 15px;
+      font-size: 14pt;
+      font-weight: bold;
     }
 
     .module-start-date,
     .module-due-date {
-      margin-left: 5px;
       white-space: nowrap;
+    }
+
+    .module-status {
+      .status-block {
+        border-radius: $border-radius-tag;
+        color: $color-white;
+        padding: 2px 4px;
+      }
     }
 
     .module-tags {
@@ -296,6 +346,7 @@ label {
         border-radius: 4px;
         padding: 2px 4px;
         color: $color-white;
+        white-space: nowrap;
       }
     }
   }
@@ -317,20 +368,15 @@ label {
 
   .report-element-header {
     border-bottom: none;
-    height: 0;
-
-    .result-name-container {
-      max-width: 570px;
-    }
 
     .result-icon {
       display: inline-block;
-      margin-left: 15px;
     }
 
     .result-name {
-      display: inline-block;
-      margin-left: 5px;
+      font-size: 12pt;
+      font-weight: bold;
+      overflow-wrap: break-word;
     }
 
     .user-time {
@@ -353,8 +399,19 @@ label {
 .report-result-asset-element {
   .report-element-header {
     .file-name {
-      margin-left: 15px;
+      font-size: 10pt;
+      font-weight: bold;
     }
+
+    .image-icon.report {
+      display: none;
+    }
+  }
+
+  img {
+    display: inline;
+    margin-top: 4em;
+    max-width: 100%;
   }
 }
 
@@ -362,7 +419,8 @@ label {
 .report-result-table-element {
   .report-element-header {
     .table-name {
-      margin-left: 15px;
+      font-size: 10pt;
+      font-weight: bold;
     }
   }
 
@@ -371,21 +429,43 @@ label {
   }
 }
 
-/* Result text element style */
+// Text element style
+.report-step-text-element,
 .report-result-text-element {
+  .report-element-header {
+    .text-name {
+      font-size: 10pt;
+      font-weight: bold;
+    }
+  }
+
   .report-element-body {
     .text-container {
       border-radius: 4px;
       padding: 5px;
-      background-color: $color-concrete;
     }
   }
 }
 
 /** Step element style  */
 .report-step-element {
+  .step-name {
+    font-size: 11pt;
+    font-weight: bold;
+  }
+
   &:hover > .report-element-body .step-name {
     color: $brand-primary;
+  }
+
+  .step-label-default {
+    @include font-h3;
+    color: $color-alto;
+  }
+
+  .step-label-success {
+    @include font-h3;
+    color: $brand-success;
   }
 }
 
@@ -394,9 +474,19 @@ label {
   .report-element-header {
     border-bottom: none;
 
+    .step-name {
+      font-size: 10pt;
+      font-weight: bold;
+    }
+
     .attachment-icon {
       color: $color-emperor;
     }
+  }
+
+
+  img {
+    max-width: 100%;
   }
 
   .report-element-children {
@@ -414,13 +504,15 @@ label {
 .report-step-table-element {
   .report-element-header {
     .table-name {
-      margin-left: 5px;
+      font-size: 10pt;
+      font-weight: bold;
     }
   }
 
   &:hover > .report-element-header {
     .table-name {
       color: $brand-primary;
+
     }
   }
 }
@@ -429,7 +521,13 @@ label {
 .report-step-asset-element {
   .report-element-header {
     .file-name {
-      margin-left: 5px;
+      font-size: 10pt;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .image-icon.report {
+      display: none;
     }
   }
 
@@ -442,15 +540,29 @@ label {
 .report-step-checklist-element {
   .report-element-header {
     .checklist-name {
-      margin-left: 5px;
+      font-size: 10pt;
+      font-weight: bold;
     }
   }
 
   .report-element-body {
     padding-top: 0;
+  }
 
-    & > ul > li > span.checked {
-      /* Currently nothing */
+  .report-checklist-item {
+    -webkit-box-pack: start; // for wkhtmltopdf compatibility
+    display: -webkit-box; // for wkhtmltopdf compatibility
+    display: flex;
+    justify-content: start;
+    margin-top: .5em;
+
+    div:nth-child(2) {
+      margin-top: .2em;
+    }
+
+    > div {
+      margin-left: .7em;
+      white-space: pre-wrap;
     }
   }
 
@@ -461,6 +573,12 @@ label {
 
 /** Comments element style (generic) */
 .report-comments-element {
+  .comment-message {
+    .view-mode {
+      font-size: 10pt;
+    }
+  }
+
   .report-element-header {
     border-bottom: none;
 
@@ -469,8 +587,9 @@ label {
     }
 
     .comments-name {
-      margin-left: 5px;
       color: $color-emperor;
+      font-size: 10pt;
+      font-weight: bold;
     }
   }
 
@@ -478,7 +597,6 @@ label {
     .comments-container {
       border-radius: 4px;
       padding: 5px;
-      background-color: $color-alabaster;
 
        .comment {
         margin: 3px 2px;
@@ -497,35 +615,6 @@ label {
   }
 }
 
-/** Result comments element style */
-.report-result-comments-element {
-
-}
-
-/** Step comments element style */
-.report-step-comments-element {
-
-}
-
-/** Module samples element */
-.report-module-samples-element {
-  margin-bottom: 0;
-
-  .report-element-header {
-    border-bottom: none;
-
-    .samples-name {
-      margin-left: 5px;
-    }
-  }
-
-  &:hover > .report-element-header {
-    .samples-icon,.samples-name {
-      color: $brand-primary;
-    }
-  }
-}
-
 // Module repository element
 .report-module-repository-element {
   margin-bottom: 0;
@@ -534,11 +623,8 @@ label {
     border-bottom: 0;
 
     .repository-name {
-      margin-left: 5px;
-    }
-
-    .table-name {
-      margin-left: 15px;
+      font-size: 12pt;
+      font-weight: bold;
     }
   }
 
@@ -562,7 +648,8 @@ label {
     border-bottom: none;
 
     .activity-name {
-      margin-left: 5px;
+      font-size: 12pt;
+      font-weight: bold;
     }
   }
 
@@ -570,13 +657,12 @@ label {
     .activity-container {
       border-radius: 4px;
       padding: 5px;
-      background-color: $color-alabaster;
 
        .activity {
         margin: 3px 2px;
 
         .activity-prefix {
-          color: $color-emperor;
+          color: $color-silver-chalice;
         }
       }
     }

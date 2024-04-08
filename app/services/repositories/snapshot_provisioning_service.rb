@@ -14,8 +14,9 @@ module Repositories
     def call
       return self unless valid?
 
-      ActiveRecord::Base.transaction do
+      ActiveRecord::Base.transaction(requires_new: true) do
         repository = @repository_snapshot.original_repository
+        has_stock_management = repository.has_stock_management?
 
         repository.repository_columns.each do |column|
           column.snapshot!(@repository_snapshot)
@@ -26,12 +27,17 @@ module Repositories
                                     .where(my_module_repository_rows: { my_module: @repository_snapshot.my_module })
 
         repository_rows.find_each do |original_row|
-          original_row.snapshot!(@repository_snapshot)
+          row_snapshot = original_row.snapshot!(@repository_snapshot)
+          create_stock_consumption_cell_snapshot!(original_row, row_snapshot) if has_stock_management
         end
 
         @repository_snapshot.ready!
-      rescue ActiveRecord::RecordInvalid => e
-        @errors[e.record.class.name.underscore] = e.record.errors.full_messages
+      rescue StandardError => e
+        if e.is_a?(ActiveRecord::RecordInvalid)
+          @errors[e.record.class.name.underscore] = e.record.errors.full_messages
+        else
+          @errors[:general] = e.message
+        end
         Rails.logger.error e.message
         raise ActiveRecord::Rollback
       end
@@ -57,6 +63,32 @@ module Repositories
         return false
       end
       true
+    end
+
+    def create_stock_consumption_cell_snapshot!(repository_row, row_snapshot)
+      return if repository_row.repository_stock_value.blank?
+
+      my_module_repository_row =
+        repository_row.my_module_repository_rows.find { |mrr| mrr.my_module_id == @repository_snapshot.my_module_id }
+
+      stock_unit_item_data =
+        if my_module_repository_row.repository_stock_unit_item.present?
+          my_module_repository_row.repository_stock_unit_item.data
+        else
+          repository_row.repository_stock_cell&.repository_stock_value&.repository_stock_unit_item&.data
+        end
+
+      stock_unit_item = @repository_snapshot.repository_stock_consumption_column
+                                            .repository_stock_unit_items
+                                            .find { |item| item.data == stock_unit_item_data }
+      RepositoryStockConsumptionValue.create!(
+        repository_cell_attributes: {
+          repository_column: @repository_snapshot.repository_stock_consumption_column,
+          repository_row: row_snapshot
+        },
+        amount: my_module_repository_row.stock_consumption.to_d,
+        repository_stock_unit_item: stock_unit_item
+      )
     end
   end
 end

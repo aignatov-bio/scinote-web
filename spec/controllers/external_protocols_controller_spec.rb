@@ -7,7 +7,6 @@ describe ExternalProtocolsController, type: :controller do
 
   let(:user) { subject.current_user }
   let(:team) { create :team, created_by: user }
-  let!(:user_team) { create :user_team, :admin, user: user, team: team }
 
   describe 'GET index' do
     let(:params) do
@@ -71,7 +70,7 @@ describe ExternalProtocolsController, type: :controller do
 
     let(:action) { get :show, params: params }
 
-    let(:html_preview) { double('html_preview') }
+    let(:html_preview) { double('html_preview', body: '<html></html>') }
 
     before do
       allow(html_preview).to(receive(:as_json).and_return('<html></html>'))

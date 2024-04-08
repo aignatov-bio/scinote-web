@@ -2,23 +2,29 @@
 
 $.fn.dataTable.render.RepositoryAssetValue = function(data) {
   var asset = data.value;
-  return `
-    <div class="asset-value-cell">
-      ${asset.icon_html}
-      <div>
-        <a  class="file-preview-link"
-          id="modal_link${asset.id}"
-          data-no-turbolink="true"
-          data-id="true"
-          data-status="asset-present"
-          data-preview-url="${asset.preview_url}"
-          href="${asset.url}"
-          >
-          ${asset.file_name}
-        </a>
+  if (asset.id) {
+    return `
+      <div class="asset-value-cell">
+        <i class="sn-icon sn-icon-${asset.icon_html}"></i>
+        <div>
+          <a  class="file-preview-link"
+            id="modal_link${asset.id}"
+            data-no-turbolink="true"
+            data-id="true"
+            data-status="asset-present"
+            data-preview-url="${asset.preview_url}"
+            href="${asset.url}"
+            >
+            ${asset.file_name}
+          </a>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  }
+  return `<div class="processing-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            ${I18n.t('my_modules.repository.full_view.error')}
+          </div>`;
 };
 
 $.fn.dataTable.render.defaultRepositoryAssetValue = function() {
@@ -26,7 +32,9 @@ $.fn.dataTable.render.defaultRepositoryAssetValue = function() {
 };
 
 $.fn.dataTable.render.RepositoryTextValue = function(data) {
-  return data.value;
+  var text = $(`<span class="text-value">${data.value.view}</span>`);
+  text.attr('data-edit-value', data.value.edit);
+  return text.prop('outerHTML');
 };
 
 $.fn.dataTable.render.defaultRepositoryTextValue = function() {
@@ -59,7 +67,10 @@ $.fn.dataTable.render.defaultRepositoryDateValue = function() {
 };
 
 $.fn.dataTable.render.RepositoryDateValue = function(data) {
-  return `<span data-datetime="${data.value.datetime}" data-date="${data.value.formatted}">${data.value.formatted}</span>`;
+  let reminderClass = data.value.reminder ? 'reminder' : '';
+  return `<span class="${reminderClass}
+                date-cell-value" data-datetime="${data.value.datetime}"
+                data-date="${data.value.formatted}">${data.value.formatted}</span>`;
 };
 
 $.fn.dataTable.render.defaultRepositoryDateTimeValue = function() {
@@ -67,7 +78,9 @@ $.fn.dataTable.render.defaultRepositoryDateTimeValue = function() {
 };
 
 $.fn.dataTable.render.RepositoryDateTimeValue = function(data) {
-  return `<span data-time="${data.value.time_formatted}"
+  let reminderClass = data.value.reminder ? 'reminder' : '';
+  return `<span class="${reminderClass} date-time-cell-value"
+                data-time="${data.value.time_formatted}"
                 data-datetime="${data.value.datetime}"
                 data-date="${data.value.date_formatted}">${data.value.formatted}</span>`;
 };
@@ -149,32 +162,117 @@ $.fn.dataTable.render.defaultRepositoryNumberValue = function() {
   return '';
 };
 
-$.fn.dataTable.render.RepositoryNumberValue = function(data) {
+$.fn.dataTable.render.RepositoryNumberValue = function (data) {
   return `<span class="number-value" data-value="${data.value}">
             ${data.value}
           </span>`;
 };
 
-$.fn.dataTable.render.AssignedTasksValue = function(data) {
+$.fn.dataTable.render.AssignedTasksValue = function(data, row) {
+  let tasksLinkHTML;
+
   if (data.tasks > 0) {
     let tooltip = I18n.t('repositories.table.assigned_tooltip', {
       tasks: data.tasks,
       experiments: data.experiments,
       projects: data.projects
     });
-    return `<div class="assign-counter-container dropdown" title="${tooltip}"
+    tasksLinkHTML = `<div class="assign-counter-container dropdown" title="${tooltip}"
             data-task-list-url="${data.task_list_url}">
               <a href="#" class="assign-counter has-assigned"
                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">${data.tasks}</a>
               <div class="dropdown-menu" role="menu">
                 <div class="sci-input-container right-icon">
-                  <input type="text" class="sci-input-field search-tasks"
+                  <input id="searchAssignedTasks" type="text" class="sci-input-field search-tasks"
                     placeholder="${I18n.t('repositories.table.assigned_search')}"></input>
-                  <i class="fas fa-times-circle clear-search"></i>
+                  <i class="sn-icon sn-icon-close clear-search"></i>
                 </div>
                 <div class="tasks"></div>
               </div>
             </div>`;
+  } else {
+    tasksLinkHTML = "<div class='assign-counter-container'><span class='assign-counter'>0</span></div>";
   }
-  return "<div class='assign-counter-container'><span class='assign-counter'>0</span></div>";
+  if (row.hasActiveReminders) {
+    return `<div class="dropdown row-reminders-dropdown" data-row-reminders-url="${row.rowRemindersUrl}" tabindex='-1'>
+              <i class="sn-icon sn-icon-notifications dropdown-toggle row-reminders-icon" data-toggle="dropdown"
+                id="rowReminders${row.DT_RowId}}"></i>
+              <ul class="dropdown-menu" role="menu" aria-labelledby="rowReminders${row.DT_RowId}">
+              </ul>
+            </div>`
+      + tasksLinkHTML;
+  }
+
+  return tasksLinkHTML;
+};
+
+$.fn.dataTable.render.RepositoryStockValue = function(data) {
+  if (data) {
+    if (data.value) {
+      if (data.stock_managable) {
+        return `<a class="manage-repository-stock-value-link stock-value-view-render stock-${data.stock_status}"
+                 data-manage-stock-url=${data.value.stock_url}>
+                  ${data.value.stock_formatted}
+                  </a>`;
+      }
+      return `<span class="stock-value-view-render data-manage-stock-url=${data.value.stock_url}
+                            ${data.displayWarnings ? `stock-${data.stock_status}` : ''}">
+                ${data.value.stock_formatted}
+                </span>`;
+    }
+    if (data.stock_managable) {
+      return `<a class="manage-repository-stock-value-link not-assigned-stock" data-manage-stock-url=${data.stock_url}>
+                <i class="fas fa-box-open"></i>
+                ${I18n.t('libraries.manange_modal_column.stock_type.add_stock')}
+              </a>`;
+    }
+  }
+  return `<span class="empty-stock-render">
+            ${I18n.t('libraries.manange_modal_column.stock_type.no_item_stock')}
+          </span>`;
+};
+
+$.fn.dataTable.render.defaultRepositoryStockValue = function() {
+  return $.fn.dataTable.render.RepositoryStockValue();
+};
+
+$.fn.dataTable.render.RepositoryStockConsumptionValue = function(data = {}) {
+  // covers case of snapshots
+  if (!data.stock_present && data.value && data.value.consumed_stock !== null) {
+    return `<span class="empty-consumed-stock-render">${data.value.consumed_stock_formatted}</span>`;
+  }
+  if (!data.stock_present) {
+    return '<span class="empty-consumed-stock-render"> - </span>';
+  }
+  if (!data.consumptionManagable && data.value && !data.value.consumed_stock) {
+    return `<span class="consumption-locked">
+    ${I18n.t('libraries.manange_modal_column.stock_type.stock_consumption_locked')}
+    </span>`;
+  }
+  if (!data.consumptionPermitted || !data.consumptionManagable) {
+    return `<span class="empty-consumed-stock-render">${data.value.consumed_stock_formatted}</span>`;
+  }
+  if (!data.value.consumed_stock) {
+    return `<a href="${data.updateStockConsumptionUrl}" class="manage-repository-consumed-stock-value-link">
+              <i class="fas fa-vial"></i>
+              ${I18n.t('libraries.manange_modal_column.stock_type.add_stock_consumption')}
+            </a>`;
+  }
+  return `<a href="${data.updateStockConsumptionUrl}"
+                class="manage-repository-consumed-stock-value-link stock-value-view-render">
+              ${data.value.consumed_stock_formatted}
+            </a>`;
+};
+
+$.fn.dataTable.render.defaultRepositoryStockConsumptionValue = function() {
+  return $.fn.dataTable.render.RepositoryStockConsumptionValue();
+};
+
+$.fn.dataTable.render.RelationshipValue = function(data, row) {
+  return `<a
+            style="text-decoration: none !important;"
+            class="relationships-info-link !text-sn-blue !no-underline pl-4"
+            href=${row.recordInfoUrl}>
+            ${data}
+          </a>`;
 };

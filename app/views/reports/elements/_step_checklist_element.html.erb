@@ -1,44 +1,34 @@
-<% if checklist.blank? and @checklist.present? then checklist = @checklist end %>
+<% checklist ||= report_element.checklist %>
 <% items = checklist.checklist_items %>
 <% timestamp = checklist.created_at %>
-<% for_export_all = defined?(export_all) && export_all %>
-<div class="report-element report-step-attachment-element report-step-checklist-element" data-ts="<%= timestamp.to_i %>" data-type="step_checklist" data-id='{ "checklist_id": <%= checklist.id %> }' data-scroll-id="<%= checklist.id %>" data-name="<%= checklist.name %>" data-icon-class="fas fa-tasks">
+<% export_all = defined?(export_all) && export_all %>
+<div class="report-element report-step-attachment-element report-step-checklist-element">
   <div class="report-element-header">
-    <div class="row">
-      <div class="pull-left attachment-icon">
-          <span class="fas fa-tasks"></span>
-      </div>
-      <div class="pull-left checklist-name">
-        <%= custom_auto_link(t('projects.reports.elements.step_checklist.checklist_name',
-                             name: checklist.name),
-                             team: current_team,
-                             base64_encoded_imgs: for_export_all) %>
-      </div>
-      <div class="pull-left user-time">
-        <%=t 'projects.reports.elements.step_checklist.user_time', timestamp: l(timestamp, format: :full) %>
-      </div>
-      <div class="pull-right controls">
-        <%= render partial: 'reports/elements/element_controls.html.erb' %>
-      </div>
+    <div class="checklist-name">
+      <%= custom_auto_link(checklist.name,
+                           team: current_team,
+                           base64_encoded_imgs: export_all) %>
+    </div>
+    <div class="user-time">
+      <%= t('projects.reports.elements.step_checklist.user_time', timestamp: l(timestamp, format: :full)) %>
     </div>
   </div>
   <div class="report-element-body">
-    <ul class="no-style">
-      <% items.each do |item| %>
-        <li>
-          <input type="checkbox" disabled="disabled" <%= "checked='checked'" if item.checked %>/>
-          <span class="<%= 'checked' if item.checked %>">
-            <%= custom_auto_link(item.text,
-                                 team: current_team,
-                                 simple_format: true,
-                                 wrapper_tag: { wrapper_tag: 'span'},
-                                 base64_encoded_imgs: for_export_all) %>
-          </span>
-        </li>
-      <% end %>
-    </ul>
+    <% items.each do |item| %>
+      <div class="report-checklist-item">
+        <div><input type="checkbox" disabled="disabled" <%= "checked='checked'" if item.checked %>/></div>
+        <div class="report-checklist-item-text"><%= custom_auto_link(item.text, # Must be on one line
+                                team: current_team,
+                                simple_format: false,
+                                wrapper_tag: { wrapper_tag: 'span'},
+                                base64_encoded_imgs: export_all) %>
+        </div>
+      </div>
+    <% end %>
   </div>
-  <div class="report-element-children">
-    <%= children if (defined? children and children.present?) %>
-  </div>
+  <% if defined?(children) %>
+    <div class="report-element-children">
+      <%= children %>
+    </div>
+  <% end %>
 </div>

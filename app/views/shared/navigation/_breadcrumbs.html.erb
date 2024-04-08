@@ -1,0 +1,9 @@
+<% if @breadcrumbs_items&.length %>
+  <div id="breadcrumbs" data-behaviour="vue">
+    <breadcrumbs
+      breadcrumbs-items="<%= @breadcrumbs_items.to_json %>"
+      delimiter-url="<%= asset_path "icon_small/navigate_next.svg" %>"
+    />
+  </div>
+  <%= javascript_include_tag 'vue_navigation_breadcrumbs' %>
+<% end %>

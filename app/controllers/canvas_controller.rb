@@ -1,31 +1,31 @@
 class CanvasController < ApplicationController
   before_action :load_vars
 
-  before_action :check_view_canvas, only: [:edit, :full_zoom, :medium_zoom, :small_zoom]
-  before_action :check_edit_canvas, only: [:edit, :update]
+  before_action :check_view_canvas, except: %i(edit update)
+  before_action :check_edit_canvas, only: %i(edit update)
 
   def edit
     render partial: 'canvas/edit',
-      locals: { experiment: @experiment, my_modules: @my_modules },
-      :content_type => 'text/html'
+      locals: {
+        experiment: @experiment,
+        my_modules: @my_modules
+      }, content_type: 'text/html'
   end
 
   def full_zoom
-    render partial: 'canvas/full_zoom',
-      locals: { experiment: @experiment, my_modules: @my_modules },
-      :content_type => 'text/html'
+    @my_modules = @my_modules.left_outer_joins(:designated_users, :task_comments)
+                             .select('COUNT(DISTINCT users.id) as designated_users_count')
+                             .select('COUNT(DISTINCT comments.id) as task_comments_count')
+                             .select('my_modules.*').group(:id)
+    render partial: 'canvas/full_zoom', locals: { experiment: @experiment, my_modules: @my_modules }
   end
 
   def medium_zoom
-    render partial: 'canvas/medium_zoom',
-      locals: { experiment: @experiment, my_modules: @my_modules },
-      :content_type => 'text/html'
+    render partial: 'canvas/medium_zoom', locals: { experiment: @experiment, my_modules: @my_modules }
   end
 
   def small_zoom
-    render partial: 'canvas/small_zoom',
-      locals: { experiment: @experiment, my_modules: @my_modules },
-      :content_type => 'text/html'
+    render partial: 'canvas/small_zoom', locals: { experiment: @experiment, my_modules: @my_modules }
   end
 
   def update
@@ -33,10 +33,7 @@ class CanvasController < ApplicationController
     to_archive = []
     if update_params[:remove].present?
       to_archive = update_params[:remove].split(',')
-      if to_archive.all? do |id|
-           is_int?(id) &&
-           can_manage_module?(MyModule.find_by_id(id))
-         end
+      if to_archive.all? { |id| can_archive_my_module?(MyModule.find_by(id: id)) }
         to_archive.collect!(&:to_i)
       else
         return render_403
@@ -60,16 +57,13 @@ class CanvasController < ApplicationController
     positions = {}
     if update_params[:positions].present?
       poss = update_params[:positions].split(';')
-      center = ''
-      (poss.collect { |pos| pos.split(',') }).each_with_index do |pos, index|
-        unless pos.length == 3 && pos[0].is_a?(String) &&
-               float?(pos[1]) && float?(pos[2])
+      (poss.collect { |pos| pos.split(',') }).each_with_index do |pos, _|
+        unless pos.length == 3 && pos[0].is_a?(String) && float?(pos[1]) && float?(pos[2])
           return render_403
         end
         x = pos[1].to_i
         y = pos[2].to_i
-        # Multiple modules cannot have same position
-        return render_403 if positions.any? { |_, v| v[:x] == x && v[:y] == y }
+
         positions[pos[0]] = { x: x, y: y }
       end
     end
@@ -102,7 +96,7 @@ class CanvasController < ApplicationController
         unless to_rename.is_a?(Hash) &&
                to_rename.keys.all? do |id|
                  id.is_a?(String) &&
-                 can_manage_module?(MyModule.find_by_id(id))
+                 can_manage_my_module?(MyModule.find_by(id: id))
                end &&
                to_rename.values.all? { |new_name| new_name.is_a? String }
           return render_403
@@ -120,16 +114,14 @@ class CanvasController < ApplicationController
         # Okay, JSON parsed!
         unless to_move.is_a?(Hash) &&
                to_move.keys.all? do |id|
-                 id.is_a?(String) &&
-                 (!is_int?(id) || can_manage_module?(MyModule.find_by_id(id)))
+                 !is_int?(id) || can_move_my_module?(MyModule.find_by(id: id))
                end &&
                to_move.values.all? do |exp_id|
-                 exp_id.is_a?(String) &&
-                 can_manage_experiment?(Experiment.find_by_id(exp_id))
+                 can_manage_experiment?(Experiment.find_by(id: exp_id))
                end
           return render_403
         end
-      rescue
+      rescue StandardError
         return render_403
       end
     end
@@ -179,9 +171,6 @@ class CanvasController < ApplicationController
       next if my_module.blank?
     end
 
-    # Create workflow image
-    @experiment.generate_workflow_img
-
     flash[:success] = t('experiments.canvas.update.success_flash')
     redirect_to canvas_experiment_path(@experiment)
   end
@@ -204,7 +193,7 @@ class CanvasController < ApplicationController
   end
 
   def load_vars
-    @experiment = Experiment.find_by_id(params[:id])
+    @experiment = Experiment.preload(user_assignments: %i(user user_role)).find_by(id: params[:id])
     unless @experiment
       respond_to do |format|
         format.html { render_404 and return }
@@ -212,11 +201,15 @@ class CanvasController < ApplicationController
       end
     end
 
-    @my_modules = @experiment.active_modules
+    @my_modules = @experiment.my_modules
+                             .active
+                             .preload(:tags, outputs: :to, user_assignments: %i(user user_role))
+                             .preload(:my_module_status, :my_module_group)
   end
 
   def check_edit_canvas
-    render_403 and return unless can_manage_experiment?(@experiment)
+    @experiment_managable = can_manage_experiment?(@experiment)
+    return render_403 unless @experiment_managable
   end
 
   def check_view_canvas

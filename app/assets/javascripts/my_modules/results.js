@@ -1,7 +1,8 @@
+/* eslint-disable no-unused-vars */
 /*
  global Results ActiveStorage animateSpinner Comments ResultAssets FilePreviewModal
         TinyMCE getParam applyCreateWopiFileCallback initFormSubmitLinks textValidator
-        GLOBAL_CONSTANTS
+        GLOBAL_CONSTANTS ActiveStoragePreviews
 */
 
 (function(global) {
@@ -18,7 +19,7 @@
       root.find('div.hot-table').each(function() {
         var $container = $(this).find('.step-result-hot-table');
         var contents = $(this).find('.hot-contents');
-
+        var metadata = $(this).find('.hot-metadata');
         $container.handsontable({
           width: '100%',
           startRows: 5,
@@ -27,35 +28,15 @@
           colHeaders: true,
           fillHandle: false,
           formulas: true,
-          cells: function(row, col) {
-            var cellProperties = {};
-
-            if (col >= 0) {
-              cellProperties.readOnly = true;
-            } else {
-              cellProperties.readOnly = false;
-            }
-            return cellProperties;
-          }
+          data: JSON.parse(contents.attr('value')).data,
+          cell: (metadata.val() || {}).cells || [],
+          readOnly: true
         });
         let hot = $container.handsontable('getInstance');
-        let data = JSON.parse(contents.attr('value'));
-        if (Array.isArray(data.data)) hot.loadData(data.data);
         setTimeout(() => {
-          hot.render()
-        }, 0)
+          hot.render();
+        }, 500);
       });
-    }
-
-    function applyCollapseLinkCallBack() {
-      $('.result-panel-collapse-link')
-        .on('ajax:success', function() {
-          var collapseIcon = $(this).find('.collapse-result-icon');
-          var collapsed = $(this).hasClass('collapsed');
-          // Toggle collapse button
-          collapseIcon.toggleClass('fa-caret-square-up', !collapsed);
-          collapseIcon.toggleClass('fa-caret-square-down', collapsed);
-        });
     }
 
     // Toggle editing buttons
@@ -80,10 +61,6 @@
     // Expand all results
     function expandAllResults() {
       $('.result .panel-collapse').collapse('show');
-      $(document).find('span.collapse-result-icon').each(function() {
-        $(this).addClass('fa-caret-square-up');
-        $(this).removeClass('fa-caret-square-down');
-      });
       $(document).find('div.step-result-hot-table').each(function() {
         renderTable(this);
       });
@@ -91,10 +68,6 @@
 
     function expandResult(result) {
       $('.panel-collapse', result).collapse('show');
-      $(result).find('span.collapse-result-icon').each(function() {
-        $(this).addClass('fa-caret-square-up');
-        $(this).removeClass('fa-caret-square-down');
-      });
       renderTable($(result).find('div.step-result-hot-table'));
       animateSpinner(null, false);
     }
@@ -120,8 +93,9 @@
           // Handle the error
         } else {
           let formData = new FormData();
+          const assetId = form.find('#result_asset_attributes_id').val();
           formData.append('result[name]', form.find('#result_name').val());
-          formData.append('result[asset_attributes][id]', form.find('#result_asset_attributes_id').val());
+          formData.append('result[asset_attributes][id]', assetId);
           formData.append('result[asset_attributes][signed_blob_id]', blob.signed_id);
 
           $.ajax({
@@ -130,26 +104,25 @@
             data: formData,
             success: function(data) {
               animateSpinner(null, false);
-              $('.edit_result').parent().remove();
+              $('.edit-result-asset').parent().remove();
               $(data.html).prependTo('#results').promise().done(() => {
                 $.each($('#results').find('.result'), function() {
                   initFormSubmitLinks($(this));
                   ResultAssets.applyEditResultAssetCallback();
-                  applyCollapseLinkCallBack();
                   applyCreateWopiFileCallback();
                   toggleResultEditButtons(true);
-                  FilePreviewModal.init();
                   Comments.init();
                   ResultAssets.initNewResultAsset();
                   expandResult($(this));
                 });
+                ActiveStoragePreviews.reloadPreview(`.asset[data-asset-id=${assetId}] .attachment-preview img`);
               });
 
               $('#results-toolbar').show();
             },
             error: function(XHR) {
               animateSpinner(null, false);
-              $('.edit_result').renderFormErrors('result', XHR.responseJSON.errors);
+              $('.edit-result-asset').renderFormErrors('result', XHR.responseJSON.errors);
             },
             processData: false,
             contentType: false
@@ -159,6 +132,7 @@
     }
 
     function processResult(ev, resultTypeEnum) {
+      var textWithoutImages;
       var $form = $(ev.target.form);
       $form.clearFormErrors();
 
@@ -169,11 +143,16 @@
           handleResultFileSubmit($form, ev);
           break;
         case ResultTypeEnum.TABLE:
+          $form
+            .find(`.${GLOBAL_CONSTANTS.HAS_UNSAVED_DATA_CLASS_NAME}`)
+            .removeClass(GLOBAL_CONSTANTS.HAS_UNSAVED_DATA_CLASS_NAME);
           break;
         case ResultTypeEnum.TEXT:
+          textWithoutImages = TinyMCE.getContent().replaceAll(/src="(data:image\/[^;]+;base64[^"]+)"/g, '');
+
           textValidator(
             ev, $form.find('#result_text_attributes_textarea'), 1,
-            $form.data('rich-text-max-length'), false, TinyMCE.getContent()
+            $form.data('rich-text-max-length'), false, textWithoutImages
           );
           break;
         default:
@@ -205,18 +184,20 @@
       }
     }
 
+    function initArchive() {
+      $('#results').on('click', '.form-submit-link', function(event) {
+        archive(event, this);
+      });
+    }
+
     function init() {
       initHandsOnTables($(document));
       expandAllResults();
-      applyCollapseLinkCallBack();
       applyCreateWopiFileCallback();
 
       $(function() {
         $('#results-collapse-btn').click(function() {
           $('.result .panel-collapse').collapse('hide');
-          $(document).find('span.collapse-result-icon')
-            .addClass('fa-caret-square-down')
-            .removeClass('fa-caret-square-up');
         });
 
         $('#results-expand-btn').click(expandAllResults);
@@ -228,12 +209,13 @@
         let target = '#' + getParam('ctarget');
         $(target).find('a.comment-tab-link').click();
       }
+
+      initArchive();
     }
 
     let publicAPI = Object.freeze({
       init: init,
       initHandsOnTables: initHandsOnTables,
-      applyCollapseLinkCallBack: applyCollapseLinkCallBack,
       toggleResultEditButtons: toggleResultEditButtons,
       expandResult: expandResult,
       processResult: processResult,

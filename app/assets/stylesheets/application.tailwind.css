@@ -1,0 +1,62 @@
+@import "tailwind/inputs";
+@import "tailwind/buttons";
+@import "tailwind/modals";
+@import "tailwind/flyouts";
+@import "tailwind/loader.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.tw-hidden {
+  @apply hidden
+}
+
+html {
+  font-size: 16px;
+}
+
+.border {
+  border-style: solid;
+  border-color: theme('borderColor.DEFAULT', currentColor);
+}
+
+.scroll-container .ps__rail-y{
+  background-color: var(--sn-white);
+  opacity: 1;
+}
+
+.scroll-container.ps-transparent .ps__rail-y{
+  background-color: transparent;
+
+  &::after,
+  &::before {
+    background-color: transparent;
+  }
+}
+
+.scroll-container .ps__thumb-y{
+  background-color: var(--sn-grey);
+  opacity: 1;
+  right: 5px;
+}
+
+.scroll-container .ps__rail-x{
+  background-color: var(--sn-white);
+  opacity: 1;
+}
+
+.scroll-container .ps__thumb-x{
+  background-color: var(--sn-grey);
+  opacity: 1;
+  bottom: 5px;
+}
+
+/* Hide caret in Safari */
+#relationships-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.ag-theme-alpine {
+  --ag-font-family: "SN Inter", "Open Sans", Arial, Helvetica, sans-serif !important;
+}

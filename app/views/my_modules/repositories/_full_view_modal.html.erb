@@ -1,7 +1,8 @@
-<div class="modal" id="myModuleRepositoryFullViewModal" tabindex="-1" role="dialog">
+<div class="modal modal-full-screen custom-z-index" id="myModuleRepositoryFullViewModal" data-keyboard="false" role="dialog" >
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal"><i class="sn-icon sn-icon-close"></i></button>
         <div class="header-container">
           <div class="breadcrumbs">
             <span class="project" title="<%= @project.name %>"><%= @project.name %></span>
@@ -11,18 +12,22 @@
             <span class="my-module" title="<%= @my_module.name %>"><%= @my_module.name %></span>
           </div>
           <div class="repository-name-container">
-            <span class="repository-name"></span>
+            <span class="repository-title"></span>
+            <span class="repository-version"></span>
           </div>
         </div>
-        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span></button>
       </div>
       <div class="modal-body">
         <template id="repositoryToolbarButtonsTemplate">
           <div class="">
-            <div class="pull-left">
+            <div class="pull-left sci-btn-group">
               <button id="showVersionsSidebar" type="button" class="btn btn-secondary">
-                <span class="fas fa-eye"></span>
+                <span class="sn-icon sn-icon-visibility-show"></span>
                 <%= t('my_modules.repository.snapshots.full_view.versions_sidebar_button') %>
+              </button>
+              <button id="exportAssignedItems" type="button" class="btn btn-secondary">
+                <span class="sn-icon sn-icon-import"></span>
+                <%= t('my_modules.repository.snapshots.full_view.export_button') %>
               </button>
             </div>
           </div>
@@ -35,13 +40,27 @@
 </div>
 
 <template id="my-module-repository-full-view-assign-button">
-  <button type="button" class="btn btn-primary" id="assignRepositoryRecords" disabled>
+  <button type="button" class="btn btn-primary assign-button" id="assignRepositoryRecords" disabled>
       <%= t('repositories.assign_records_to_module') %>
   </button>
 </template>
 
+<template id="my-module-repository-full-view-assign-downstream-button">
+  <button type="button" class="btn btn-secondary assign-button" id="assignRepositoryRecordsDownstream" disabled>
+      <%= t('my_modules.modals.assign_repository_record.task_and_downstream') %>
+  </button>
+</template>
+
 <template id="my-module-repository-full-view-update-button">
-   <button type="button" class="btn btn-primary" id="updateRepositoryRecords" disabled>
-      <%= t('general.update') %>
+   <button type="button" class="btn btn-primary assign-button" id="updateRepositoryRecords" disabled>
+      <%= t('repositories.update_records_to_module') %>
    </button>
 </template>
+
+<template id="my-module-repository-full-view-update-downstream-button">
+   <button type="button" class="btn btn-secondary assign-button" id="updateRepositoryRecordsDownstream" disabled>
+      Update task & downstream
+   </button>
+</template>
+
+<%= javascript_include_tag 'vue_repository_search' %>

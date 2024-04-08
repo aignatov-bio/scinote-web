@@ -12,11 +12,13 @@ module Api
       before_action :check_create_permissions, only: %i(create)
 
       def index
-        columns = @inventory.repository_columns
-                            .includes(:repository_list_items)
-                            .includes(:repository_status_items)
-                            .page(params.dig(:page, :number))
-                            .per(params.dig(:page, :size))
+        columns = timestamps_filter(@inventory.repository_columns).includes(:repository_list_items)
+                                                                  .includes(:repository_status_items)
+                                                                  .includes(:repository_checklist_items)
+                                                                  .includes(:repository_stock_unit_items)
+                                                                  .page(params.dig(:page, :number))
+                                                                  .per(params.dig(:page, :size))
+
         render jsonapi: columns,
                each_serializer: InventoryColumnSerializer,
                hide_list_items: true
@@ -34,7 +36,7 @@ module Api
       def show
         render jsonapi: @inventory_column,
                serializer: InventoryColumnSerializer,
-               include: :inventory_list_items
+               include: include_params
       end
 
       def update
@@ -86,6 +88,15 @@ module Api
                 I18n.t('api.core.errors.inventory_column_type.detail')
         end
         inventory_column_params[:attributes]
+      end
+
+      def permitted_includes
+        %w(
+          inventory_list_items
+          inventory_checklist_items
+          inventory_status_items
+          inventory_stock_unit_items
+        )
       end
     end
   end

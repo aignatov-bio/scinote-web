@@ -18,18 +18,43 @@ class RepositoryAssetValue < ApplicationRecord
   validates :asset, :repository_cell, presence: true
 
   SORTABLE_COLUMN_NAME = 'active_storage_blobs.filename'
-  SORTABLE_VALUE_INCLUDE = { repository_asset_value: { asset: { file_attachment: :blob } } }.freeze
-  PRELOAD_INCLUDE = { repository_asset_value: { asset: { file_attachment: :blob } } }.freeze
+  EXTRA_SORTABLE_VALUE_INCLUDE = { asset: { file_attachment: :blob } }.freeze
+  EXTRA_PRELOAD_INCLUDE = { asset: { file_attachment: :blob } }.freeze
 
   def formatted
     asset.file_name
+  end
+
+  def self.add_filter_condition(repository_rows, join_alias, filter_element)
+    case filter_element.operator
+    when 'file_contains'
+      s_query = filter_element.parameters['text']&.gsub(/[!()&|:]/, ' ')&.strip&.split(/\s+/)
+      return repository_rows if s_query.blank?
+
+      asset_join_alias = "#{join_alias}_assets"
+      asset_text_join_alias = "#{join_alias}_asset_text_data"
+
+      s_query = s_query.map { |t| "#{t}:*" }.join('|').tr('\'', '"')
+      repository_rows
+        .joins(
+          "INNER JOIN \"assets\" AS \"#{asset_join_alias}\" ON "\
+          "\"#{asset_join_alias}\".\"id\" = \"#{join_alias}\".\"asset_id\""
+        ).joins(
+          "INNER JOIN \"asset_text_data\" AS \"#{asset_text_join_alias}\" ON "\
+          "\"#{asset_text_join_alias}\".\"asset_id\" = \"#{asset_join_alias}\".\"id\""
+        ).where("\"#{asset_text_join_alias}\".data_vector @@ to_tsquery(?)", s_query)
+    when 'file_attached'
+      repository_rows.where.not("#{join_alias} IS NULL")
+    else
+      raise ArgumentError, 'Wrong operator for RepositoryAssetValue!'
+    end
   end
 
   def data
     asset.file_name
   end
 
-  def data_changed?(_new_data)
+  def data_different?(_new_data)
     true
   end
 
@@ -40,14 +65,19 @@ class RepositoryAssetValue < ApplicationRecord
       asset.file.attach(io: StringIO.new(Base64.decode64(new_data[:file_data])), filename: new_data[:file_name])
     end
 
+    asset.file_pdf_preview.purge if asset.file_pdf_preview.attached?
+
     asset.last_modified_by = user
     self.last_modified_by = user
     asset.save! && save!
+    asset.post_process_file
   end
 
   def snapshot!(cell_snapshot)
     value_snapshot = dup
     asset_snapshot = asset.dup
+    # Needed to handle shared repositories from another teams
+    asset_snapshot.team_id = cell_snapshot.repository_column.repository.team_id
 
     asset_snapshot.save!
 
@@ -74,7 +104,7 @@ class RepositoryAssetValue < ApplicationRecord
       value.asset.file.attach(io: StringIO.new(Base64.decode64(payload[:file_data])), filename: payload[:file_name])
     end
 
-    value.asset.post_process_file(team)
+    value.asset.post_process_file
     value
   end
 

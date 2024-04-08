@@ -4,10 +4,16 @@ module Api
   module V1
     class BaseController < ApiController
       class TypeError < StandardError; end
+
       class IDMismatchError < StandardError; end
+
+      class IncludeNotSupportedError < StandardError; end
+
+      class FilterParamError < StandardError; end
+
       class PermissionError < StandardError
-        attr_reader :klass
-        attr_reader :mode
+        attr_reader :klass, :mode
+
         def initialize(klass, mode)
           @klass = klass
           @mode = mode
@@ -19,6 +25,14 @@ module Api
         logger.error e.backtrace.join("\n")
         render_error(I18n.t('api.core.errors.general.title'),
                      I18n.t('api.core.errors.general.detail'),
+                     :bad_request)
+      end
+
+      rescue_from FilterParamError do |e|
+        logger.error e.message
+        logger.error e.backtrace.join("\n")
+        render_error(I18n.t('api.core.errors.filter_parameter.title'),
+                     I18n.t('api.core.errors.filter_parameter.detail'),
                      :bad_request)
       end
 
@@ -41,6 +55,24 @@ module Api
         render_error(I18n.t('api.core.errors.id_mismatch.title'),
                      I18n.t('api.core.errors.id_mismatch.detail'),
                      :bad_request)
+      end
+
+      rescue_from NotImplementedError do
+        render_error(I18n.t('api.core.errors.not_implemented.title'),
+                     I18n.t('api.core.errors.not_implemented.detail'),
+                     :bad_request)
+      end
+
+      rescue_from IncludeNotSupportedError do
+        render_error(I18n.t('api.core.errors.include_not_supported.title'),
+                     I18n.t('api.core.errors.include_not_supported.detail'),
+                     :bad_request)
+      end
+
+      rescue_from ActionController::BadRequest do |e|
+        render_error(
+          I18n.t('api.core.errors.parameter_incorrect.title'), e.message, :bad_request
+        )
       end
 
       rescue_from ActionController::ParameterMissing do |e|
@@ -74,6 +106,28 @@ module Api
         )
       end
 
+      before_action :check_include_param, only: %i(index show)
+
+      def index
+        raise NotImplementedError
+      end
+
+      def show
+        raise NotImplementedError
+      end
+
+      def create
+        raise NotImplementedError
+      end
+
+      def update
+        raise NotImplementedError
+      end
+
+      def destroy
+        raise NotImplementedError
+      end
+
       private
 
       def render_error(title, message, status)
@@ -90,22 +144,43 @@ module Api
         }, status: status
       end
 
+      def check_include_param
+        return if params[:include].blank?
+
+        include_params
+      end
+
+      # redefine it in the specific controller if includes are used there
+      def permitted_includes
+        []
+      end
+
+      def include_params
+        return nil if params[:include].blank?
+
+        provided_includes = params[:include].split(',')
+        raise IncludeNotSupportedError if (provided_includes - permitted_includes).any?
+
+        provided_includes
+      end
+
       def load_team(key = :team_id)
         @team = Team.find(params.require(key))
+        current_user.permission_team = @team
         raise PermissionError.new(Team, :read) unless can_read_team?(@team)
       end
 
       def load_inventory(key = :inventory_id)
         @inventory = @team.repositories.find(params.require(key))
+        raise PermissionError.new(Repository, :read) unless can_read_repository?(@inventory)
       end
 
       def load_inventory_column(key = :column_id)
-        @inventory_column = @inventory.repository_columns
-                                      .find(params.require(key))
+        @inventory_column = @inventory.repository_columns.find(params.require(key))
       end
 
       def load_inventory_item(key = :item_id)
-        @inventory_item = @inventory.repository_rows.find(params[key].to_i)
+        @inventory_item = @inventory.repository_rows.find(params[key])
       end
 
       def load_project(key = :project_id)
@@ -120,6 +195,7 @@ module Api
 
       def load_task(key = :task_id)
         @task = @experiment.my_modules.find(params.require(key))
+        raise PermissionError.new(MyModule, :read) unless can_read_my_module?(@task)
       end
 
       def load_protocol(key = :protocol_id)
@@ -130,6 +206,59 @@ module Api
       def load_step(key = :step_id)
         @step = @protocol.steps.find(params.require(key))
         raise PermissionError.new(Protocol, :read) unless can_read_protocol_in_module?(@step.protocol)
+      end
+
+      def load_table(key = :table_id)
+        @table = @step.tables.find(params.require(key))
+        raise PermissionError.new(Protocol, :read) unless can_read_protocol_in_module?(@step.protocol)
+      end
+
+      def load_checklist(key = :checklist_id)
+        @checklist = @step.checklists.find(params.require(key))
+        raise PermissionError.new(Protocol, :read) unless can_read_protocol_in_module?(@step.protocol)
+      end
+
+      def load_step_text(key = :step_text_id)
+        @step_text = @step.step_texts.find(params.require(key))
+        raise PermissionError.new(Protocol, :read) unless can_read_protocol_in_module?(@step.protocol)
+      end
+
+      def load_checklist_item(key = :checklist_item_id)
+        @checklist_item = @checklist.checklist_items.find(params.require(key))
+        raise PermissionError.new(Protocol, :read) unless can_read_protocol_in_module?(@step.protocol)
+      end
+
+      def load_workflow(key = :workflow_id)
+        @workflow = MyModuleStatusFlow.find(params.require(key))
+      end
+
+      def archived_filter(archivable_collection)
+        return archivable_collection if params.dig(:filter, :archived).blank?
+
+        case params.dig(:filter, :archived)
+        when 'false'
+          archivable_collection.active
+        when 'true'
+          archivable_collection.archived
+        else
+          raise FilterParamError
+        end
+      end
+
+      def timestamps_filter(records)
+        from = Date.parse(params.dig(:filter, :created_at, :from)) if
+          params.dig(:filter, :created_at, :from).present?
+        to = Date.parse(params.dig(:filter, :created_at, :to)) if
+          params.dig(:filter, :created_at, :to).present?
+        records = records.where(created_at: (from..to)) if from || to
+
+        from = Date.parse(params.dig(:filter, :updated_at, :from)) if
+          params.dig(:filter, :updated_at, :from).present?
+        to = Date.parse(params.dig(:filter, :updated_at, :to)) if
+          params.dig(:filter, :updated_at, :to).present?
+        records = records.where(updated_at: (from..to)) if from || to
+
+        records
       end
     end
   end

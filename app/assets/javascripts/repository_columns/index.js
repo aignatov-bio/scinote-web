@@ -1,8 +1,8 @@
-/* global I18n HelperModule truncateLongString animateSpinner RepositoryListColumnType */
-/* global RepositoryDatatable RepositoryStatusColumnType RepositoryChecklistColumnType dropdownSelector */
+/* global I18n HelperModule truncateLongString animateSpinner RepositoryListColumnType RepositoryStockColumnType */
+/* global RepositoryDatatable RepositoryStatusColumnType RepositoryChecklistColumnType dropdownSelector RepositoryDateTimeColumnType */
+/* global RepositoryDateColumnType RepositoryDatatable _ */
 /* eslint-disable no-restricted-globals */
 
-//= require jquery-ui/widgets/sortable
 
 var RepositoryColumns = (function() {
   var TABLE_ID = '';
@@ -16,6 +16,7 @@ var RepositoryColumns = (function() {
     RepositoryDateTimeValue: 'RepositoryDateTimeColumnType',
     RepositoryTimeValue: 'RepositoryTimeColumnType',
     RepositoryChecklistValue: 'RepositoryChecklistColumnType',
+    RepositoryStockValue: 'RepositoryStockColumnType',
     RepositoryNumberValue: 'RepositoryNumberColumnType'
   };
 
@@ -33,10 +34,6 @@ var RepositoryColumns = (function() {
       $(response.html).appendTo($('.repository-show'));
       RepositoryDatatable.init('#' + $('.repository-table table').attr('id'));
       RepositoryDatatable.redrawTableOnSidebarToggle();
-      // show manage columns index modal
-      setTimeout(function() {
-        $(manageModal).find('.back-to-column-modal').trigger('click');
-      }, 500);
     });
   }
 
@@ -70,13 +67,18 @@ var RepositoryColumns = (function() {
   }
 
   function checkData() {
+    var status = true;
     var currentPartial = $('#repository-column-data-type').val();
-
-    if (columnTypeClassNames[currentPartial]) {
-      return eval(columnTypeClassNames[currentPartial])
-        .checkValidation();
+    if ($('#repository-column-name').val().length === 0) {
+      $('#repository-column-name').parent().addClass('error');
+      status = false;
+    } else {
+      $('#repository-column-name').parent().removeClass('error');
     }
-    return true;
+    if (columnTypeClassNames[currentPartial]) {
+      status = eval(columnTypeClassNames[currentPartial]).checkValidation() && status;
+    }
+    return status;
   }
 
   function addSpecificParams(type, params) {
@@ -167,9 +169,10 @@ var RepositoryColumns = (function() {
         labelHTML: true
       };
       $.get(modalUrl, (data) => {
-        $manageModal.find('.modal-content').html(data.html)
-          .find('#repository-column-name')
-          .focus();
+        var inputField = $manageModal.find('.modal-content').html(data.html)
+          .find('#repository-column-name');
+        var value = inputField.val()
+        inputField.focus().val('').val(value);
 
         if (button.data('action') !== 'destroy') {
           columnType = $('#repository-column-data-type').val();
@@ -179,16 +182,28 @@ var RepositoryColumns = (function() {
             closeOnSelect: true,
             optionClass: 'custom-option',
             selectAppearance: 'simple',
-            disableSearch: true
+            disableSearch: true,
+            labelHTML: true,
+            optionLabel: function(option) {
+              return `<div class="column-type-option" data-disabled="${option.params.disabled}">
+                        <span>${option.label}</span>
+                        <span class="text-description">${option.params.text_description || ''}</span>
+                      </div>`
+            }
           });
 
           dropdownSelector.init('.list-column-type .delimiter', delimiterDropdownConfig);
           RepositoryListColumnType.initListDropdown();
           RepositoryListColumnType.initListPlaceholder();
 
+          RepositoryDateTimeColumnType.initReminderUnitDropdown();
+          RepositoryDateColumnType.initReminderUnitDropdown();
+
           dropdownSelector.init('.checklist-column-type .delimiter', delimiterDropdownConfig);
           RepositoryChecklistColumnType.initChecklistDropdown();
           RepositoryChecklistColumnType.initChecklistPlaceholder();
+
+          RepositoryStockColumnType.initStockUnitDropdown();
 
           $manageModal
             .trigger('columnModal::partialLoadedFor' + columnType);
@@ -209,36 +224,23 @@ var RepositoryColumns = (function() {
     });
   }
 
-  function generateColumnNameTooltip(name) {
-    var maxLength = $(TABLE_ID).data('max-dropdown-length');
-    if ($.trim(name).length > maxLength) {
-      return `<div class="modal-tooltip">
-                ${truncateLongString(name, maxLength)}
-                <span class="modal-tooltiptext">${name}</span>
-              </div>`;
-    }
-    return name;
-  }
-
   function toggleColumnVisibility() {
-    var lis = $(columnsList).find('.vis');
-    lis.on('click', function(event) {
-      var self = $(this);
-      var li = self.closest('li');
-      var column = TABLE.column(li.attr('data-position'));
+    $(columnsList).find('.vis').on('click', function(event) {
+      const $this = $(this);
+      const li = $this.closest('li');
+      const column = TABLE.column(li.attr('data-position'));
 
       event.stopPropagation();
-
-      if (column.header.id !== 'row-name') {
+      if (!['row-name', 'archived-by', 'archived-on'].includes(column.header().id)) {
         if (column.visible()) {
-          self.addClass('fa-eye-slash');
-          self.removeClass('fa-eye');
+          $this.addClass('sn-icon-visibility-hide');
+          $this.removeClass('sn-icon-visibility-show');
           li.addClass('col-invisible');
           column.visible(false);
           TABLE.setColumnSearchable(column.index(), false);
         } else {
-          self.addClass('fa-eye');
-          self.removeClass('fa-eye-slash');
+          $this.addClass('sn-icon-visibility-show');
+          $this.removeClass('sn-icon-visibility-hide');
           li.removeClass('col-invisible');
           column.visible(true);
           TABLE.setColumnSearchable(column.index(), true);
@@ -249,34 +251,19 @@ var RepositoryColumns = (function() {
       if (!_.isEmpty(searchText)) {
         TABLE.search(searchText).draw();
       }
+      const scrollBody = $('.dataTables_scrollBody');
+      if (scrollBody[0].offsetWidth > scrollBody[0].clientWidth) {
+        scrollBody.css('width', `calc(100% + ${scrollBody[0].offsetWidth - scrollBody[0].clientWidth}px)`);
+      }
     });
   }
 
-  function getColumnTypeText(el, colId) {
-    var colType = '';
-    switch (colId) {
-      case 'row-id':
-        colType = 'RepositoryNumberValue';
-        break;
-      case 'row-name':
-        colType = 'RepositoryTextValue';
-        break;
-      case 'added-on':
-        colType = 'RepositoryDateTimeValue';
-        break;
-      case 'added-by':
-        colType = 'RepositoryListValue';
-        break;
-      case 'archived-on':
-        colType = 'RepositoryDateTimeValue';
-        break;
-      case 'archived-by':
-        colType = 'RepositoryListValue';
-        break;
-      default:
-        colType = $(el).attr('data-type');
-    }
-    return I18n.t('libraries.manange_modal_column.select.' + colType.split(/(?=[A-Z])/).join('_').toLowerCase());
+  function getColumnTypeText(el) {
+    let colType = $(el).attr('data-type');
+    if (!colType) return '';
+
+    return I18n.t('libraries.manange_modal_column.select.' + colType.split(/(?=[A-Z])/).join('_')
+      .toLowerCase());
   }
 
   // loads the columns names in the manage columns modal index
@@ -285,12 +272,12 @@ var RepositoryColumns = (function() {
     var scrollPosition = $columnsList.scrollTop();
     // Clear the list
     $columnsList.find('li[data-position]').remove();
-    _.each(TABLE.columns().header(), function(el, index) {
+    _.each(TABLE.columns().header(), (el) => {
       if (!el.dataset.unmanageable) {
         let colId = $(el).attr('id');
         let colIndex = $(el).attr('data-column-index');
         let visible = TABLE.column(colIndex).visible();
-        let visClass = (visible) ? 'fa-eye' : 'fa-eye-slash';
+        let visClass = (visible) ? 'sn-icon-visibility-show' : 'sn-icon-visibility-hide';
         let visLi = (visible) ? '' : 'col-invisible';
         let visText = $(TABLE_ID).data('columns-visibility-text');
         let customColumn = ($(el).attr('data-type')) ? 'editable' : '';
@@ -303,28 +290,39 @@ var RepositoryColumns = (function() {
         } else {
           thederName = el.innerText;
         }
+        thederName = _.escape(thederName);
+
         if (['row-name', 'archived-by', 'archived-on'].includes(el.id)) {
           visClass = '';
           visText = '';
         }
+
+        let destroyButton = '';
+
+        if (destroyUrl) {
+          destroyButton = `<button class="btn icon-btn btn-light btn-xs delete-repo-column manage-repo-column"
+                              data-action="destroy"
+                              data-modal-url="${destroyUrl}">
+                              <span class="sn-icon sn-icon-delete" title="Delete"></span>
+                          </button>`;
+        }
+
         let listItem = `<li class="col-list-el ${visLi} ${customColumn} ${editableRow}" data-position="${colIndex}" data-id="${colId}">
-          <i class="grippy"></i>
+          <i class="grippy sn-icon sn-icon-drag"></i>
           <span class="vis-controls">
-            <span class="vis fas ${visClass}" title="${visText}"></span>
+            <span class="vis sn-icon ${visClass}" title="${visText}"></span>
           </span>
-          <span class="text">${generateColumnNameTooltip(thederName)}</span>
-          <span class="column-type pull-right">${getColumnTypeText(el, colId)}</span>
+          <div class="text truncate" title="${thederName}">${thederName}</div>
+          <span class="column-type pull-right shrink-0">${
+            getColumnTypeText(el, colId) || '<i class="sn-icon sn-icon-locked-task"></i>'
+          }</span>
           <span class="sci-btn-group manage-controls pull-right" data-view-mode="active">
-            <button class="btn icon-btn btn-light edit-repo-column manage-repo-column"
+            <button class="btn icon-btn btn-light btn-xs edit-repo-column manage-repo-column"
                     data-action="edit"
                     data-modal-url="${editUrl}">
-              <span class="fas fa-pencil-alt" title="Edit"></span>
+              <span class="sn-icon sn-icon-edit" title="Edit"></span>
             </button>
-            <button class="btn icon-btn btn-light delete-repo-column manage-repo-column"
-                    data-action="destroy"
-                    data-modal-url="${destroyUrl}">
-              <span class="fas fa-trash" title="Delete"></span>
-            </button>
+            ${destroyButton}
           </span>
           <br>
         </li>`;
@@ -376,14 +374,16 @@ var RepositoryColumns = (function() {
 
   function initBackToManageColumns() {
     var $manageModal = $(manageModal);
-    $manageModal.on('click', '.back-to-column-modal', function() {
+    $manageModal.on('click', '.back-to-column-modal', function(e) {
+      e.stopImmediatePropagation();
       var button = $(this);
       initManageColumnModal(button);
     });
   }
 
   function initColumnsButton() {
-    $('.repo-datatables-buttons').on('click', '.manage-repo-column-index', function() {
+    $(document).on('click', '.manage-repo-column-index', function(e) {
+      e.stopImmediatePropagation();
       var button = $(this);
       initManageColumnModal(button);
     });
@@ -391,21 +391,24 @@ var RepositoryColumns = (function() {
 
   return {
     init: () => {
-      if ($('.repo-datatables-buttons').length > 0) {
-        initColumnTypeSelector();
-        initCreateSubmitAction();
-        initEditSubmitAction();
-        initDeleteSubmitAction();
-        initBackToManageColumns();
-        initColumnsButton();
-        initManageColumnAction();
-        RepositoryListColumnType.init();
-        RepositoryStatusColumnType.init();
-        RepositoryChecklistColumnType.init();
-      }
+      initColumnTypeSelector();
+      initCreateSubmitAction();
+      initEditSubmitAction();
+      initDeleteSubmitAction();
+      initBackToManageColumns();
+      initColumnsButton();
+      initManageColumnAction();
+      RepositoryListColumnType.init();
+      RepositoryStatusColumnType.init();
+      RepositoryStockColumnType.init();
+      RepositoryChecklistColumnType.init();
+      RepositoryDateTimeColumnType.init();
+      RepositoryDateColumnType.init();
     }
   };
 }());
+
+
 
 $(document).on('turbolinks:load', function() {
   RepositoryColumns.init();

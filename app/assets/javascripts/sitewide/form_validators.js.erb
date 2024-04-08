@@ -29,9 +29,6 @@ function textValidator(ev, textInput, textLimitMin, textLimitMax, clearErr, tiny
     var text = tinyMCEInput;
   } else {
     var text = $(textInput).val().trim();
-    $(textInput).val(text);
-    var text_from_html = $("<div/>").html(text).text();
-    if (text_from_html.length < text.length) text = text_from_html;
   }
 
   var nameTooShort = text.length < textLimitMin;
@@ -87,7 +84,7 @@ function checklistsValidator(ev, checklists, editMode) {
         }
       })
 
-      var $checklistInput = $checklist.find(".checklist_name");
+      var $checklistInput = $checklist.find(".checklist-name");
       // In edit mode, checklist's name can't be blank if any items present
       var allowBlankChklstName = !(anyChecklistItemFilled || editMode);
       var textLimitMin = allowBlankChklstName ? 0 : 1;

@@ -1,12 +1,17 @@
 class TagsController < ApplicationController
-  before_action :load_vars, only: [:create, :update, :destroy]
+  before_action :load_vars, only: %i(index create update destroy)
   before_action :load_vars_nested, only: [:update, :destroy]
   before_action :check_manage_permissions, only: %i(create update destroy)
+
+  def index
+    render json: @project.tags, each_serializer: TagSerializer
+  end
 
   def create
     @tag = Tag.new(tag_params)
     @tag.created_by = current_user
     @tag.last_modified_by = current_user
+    @tag.project ||= @project
 
     if @tag.name.blank?
       @tag.name = t("tags.create.new_name")
@@ -154,7 +159,9 @@ class TagsController < ApplicationController
   end
 
   def check_manage_permissions
-    render_403 unless can_manage_tags?(@project)
+    my_module = MyModule.find_by id: params[:my_module_id]
+
+    render_403 if my_module && !can_manage_my_module_tags?(my_module)
   end
 
   def tag_params
@@ -166,7 +173,7 @@ class TagsController < ApplicationController
       .call(activity_type: type_of,
             owner: current_user,
             subject: subject,
-            team: current_team,
+            team: @tag.project.team,
             project: @tag.project,
             message_items: message_items)
   end

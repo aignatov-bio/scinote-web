@@ -2,29 +2,89 @@
 // scss-lint:disable NestingDepth
 // scss-lint:disable SelectorFormat
 // scss-lint:disable ImportantRule
+// scss-lint:disable IdSelector
 
-@import "constants";
-@import "mixins";
+
+
+
+.my-module-header {
+  .my-module-title-row {
+    align-items: center;
+    background: $color-white;
+    display: flex;
+    height: 4em;
+    margin-left: -1.5rem;
+    padding: 0 0.5rem;
+    width: calc(100% + 3rem);
+
+    .my_module-name {
+      display: flex;
+      min-width: 5rem;
+      width: 100%;
+
+      .view-mode {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .fas {
+        margin-right: .5em;
+      }
+    }
+  }
+
+  .name-readonly-placeholder {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
 
 .content-pane.my-modules-protocols-index {
-  padding: 10px;
+  background-color: $color-alto;
+  min-height: calc(100vh - var(--navbar-height));
+
+  .title-row {
+    margin-left: -1rem;
+    width: calc(100% + 2rem);
+  }
+
+  .dropdown {
+    .dropdown-menu {
+      z-index: 102;
+    }
+
+    .dropdown-backdrop {
+      z-index: 101;
+    }
+  }
+}
+
+.content-pane.protocols-repository-edit-view {
+  margin: 0;
 }
 
 .task-section {
-  border-left: 3px solid $color-concrete;
-  margin: 16px 0;
-  padding-left: 16px;
+  background-color: var(--sn-white);
+  border-radius: .25rem;
+  margin: 1rem 0;
+  padding: 0 1rem;
 
   .task-section-caret {
-    color: $color-volcano;
-    display: inline-block;
+    align-items: center;
+    color: var(--sn-black);
+    display: inline-flex;
+    gap: 1rem;
+    padding: .5rem;
+    padding-left: 0;
     text-decoration: none;
 
     .fas {
       margin-right: 5px;
     }
 
-    &:not(.collapsed) .fas {
+    &:not(.collapsed) .sn-icon-right {
       @include rotate(90deg);
     }
   }
@@ -37,21 +97,26 @@
 
       &.assigned-items-title {
         &::after {
-          @include font-h3;
           color: $color-alto;
           content: '[' attr(data-assigned-items-count) ']';
           display: inline;
+          font-size: 1rem;
+          font-weight: normal;
           line-height: 22px;
-          padding-left: 5px;
+          padding-left: .25rem;
         }
       }
     }
   }
 
+  .task-section-body {
+    padding-bottom: 1rem;
+  }
+
   .task-section-header {
     align-items: center;
     display: flex;
-    flex-wrap: wrap;
+    min-height: 4rem;
 
     .actions-block {
       display: flex;
@@ -63,8 +128,7 @@
       }
 
       .repositories-assign-container {
-        flex-grow: 1;
-        max-width: 200px;
+        max-width: 150px;
 
         .btn {
           text-align: left;
@@ -75,11 +139,11 @@
         }
 
         .repositories-dropdown-menu {
+          max-height: 250px;
+          overflow: auto;
+          z-index: 251;
+
           .repository {
-            @include font-button;
-            cursor: pointer;
-            display: flex;
-            padding: 8px 16px;
 
             .assigned-items,
             .shared-icon {
@@ -112,25 +176,13 @@
           padding-right: 5px;
         }
       }
-
-      .dropdown {
-        margin-right: 5px;
-      }
     }
   }
 }
 
-.complete-button-container {
-  display: inline;
-  float: right;
-  width: 260px;
-
-  .my_module-state-buttons {
-    padding-top: 0;
-  }
-}
-
 .task-details {
+  padding-left: 2.5rem;
+
   .fas.block-icon {
     margin-right: 8px;
   }
@@ -196,6 +248,10 @@
       top: 0;
       width: 100%;
 
+      .dp__input_wrap {
+        opacity: 0;
+      }
+
       #calendarDueDate {
         opacity: 0;
       }
@@ -204,7 +260,7 @@
         opacity: 0;
       }
 
-      .fa-calendar-alt {
+      .sn-icon-calendar {
         display: none;
       }
     }
@@ -222,7 +278,7 @@
   }
 
   .module-tags {
-    #module-tags {
+    .tags-wrapper {
       align-items: center;
       display: flex;
       width: 100%;
@@ -234,15 +290,21 @@
       }
 
       .my-module-tags-color {
+        align-items: center;
         border-radius: 8px;
-        display: inline-block;
+        display: inline-flex;
         height: 16px;
+        justify-content: center;
         margin-right: 5px;
         width: 16px;
+
+        &.new {
+          color: $color-silver-chalice;
+        }
       }
 
       .my-module-tags-create-new {
-        opacity: .6;
+        margin-left: 3px;
       }
 
       .input-field {
@@ -277,14 +339,14 @@
       margin-right: 4px;
     }
 
-    .select-container {
+    .select-container,
+    .select-user-container {
       display: flex;
       flex-basis: 100px;
       flex-grow: 1;
       flex-shrink: 1;
       max-width: 100%;
       position: relative;
-      z-index: 110;
 
       select {
         display: none;
@@ -297,7 +359,7 @@
         right: 0;
         text-align: right;
         top: 0;
-        width: 120px;
+        width: 130px;
         z-index: 20;
 
         &.hidden {
@@ -305,24 +367,13 @@
         }
 
         a {
+          align-items: center;
           color: inherit;
-          display: inline-block;
-          line-height: 36px;
+          display: inline-flex;
+          gap: .25rem;
+          height: 36px;
           opacity: .7;
           text-decoration: none;
-
-          i {
-            float: left;
-            font-size: 16px;
-            line-height: 36px;
-            margin-right: 5px;
-            padding-top: 1px;
-          }
-
-          span {
-            float: left;
-            line-height: 36px;
-          }
         }
       }
     }
@@ -335,19 +386,18 @@
     }
   }
 
-  .task-assigned-users {
-    align-items: center;
-    border-radius: 17px;
-    display: flex;
-
-    &.empty {
-      border-radius: 4px;
-      padding: 0 4px;
+  .my-module-user-tags {
+    .user-full-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    &:hover {
-      background-color: $color-concrete;
-      text-decoration: none;
+    img {
+      border-radius: 50%;
+      display: inline;
+      margin-right: .5em;
+      max-height: 20px;
+      max-width: 20px;
     }
   }
 
@@ -362,8 +412,20 @@
   }
 }
 
+#manage-module-tags-modal {
+  .dropdown-toggle {
+    box-shadow: unset;
+    outline: unset;
+  }
+
+  .dropdown-menu {
+    outline: none;
+  }
+}
+
 .task-notes {
   display: inline-block;
+  padding-left: 40px;
   position: relative;
   width: 100%;
 
@@ -372,7 +434,11 @@
   }
 
   .task-notes-content {
-    margin-left: 10px;
+    overflow-x: auto;
+
+    .form-group.has-error {
+      border: 1px solid $brand-danger;
+    }
   }
 }
 
@@ -380,10 +446,11 @@
   position: relative;
 
   .status-label {
-    @include font-h3;
     color: $color-alto;
     float: left;
-    margin: 0 3px;
+    font-size: 1rem;
+    font-style: normal;
+    margin: 0 .25rem;
 
     &.linked {
       color: $brand-primary;
@@ -413,11 +480,40 @@
   .status-info-dropdown {
     left: -125px;
     max-width: 100vw;
-    width: 650px;
+    width: 534px;
+    padding: 0;
+
+    .dropdown-content {
+      padding: 12px 24px;
+    }
+
+    .dropdown-header,
+    .dropdown-body,
+    .dropdown-footer {
+      padding: 12px 0;
+    }
+
+    .dropdown-header {
+      background: $color-white;
+      border-bottom: $border-tertiary;
+
+      .protocol-name {
+        color: $color-black;
+        margin-top: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .protocol-header-info {
+        color: $color-black;
+        display: flex;
+        font-size: .875em;
+        font-weight: 400;
+        justify-content: space-between;
+      }
+    }
 
     .dropdown-body {
-      border-bottom: $border-tertiary;
-      padding: 10px 32px;
 
       .info-line {
         align-items: center;
@@ -448,16 +544,19 @@
           }
         }
       }
+    }
+
+    .dropdown-footer {
+      border-top: $border-tertiary;
 
       .notification-line {
         @include font-button;
         color: $color-silver-chalice;
         display: flex;
-        margin: 8px 0;
 
         .fas {
           line-height: 21px;
-          margin-right: 3px;
+          margin-right: 11px;
         }
 
         &.new-parent-version {
@@ -469,27 +568,18 @@
         }
       }
     }
-
-    .dropdown-footer {
-      padding: 16px;
-    }
   }
 }
 
 .task-details-dropdown-container {
-  .task-details-button {
-    @include font-h2;
-    cursor: pointer;
-    margin: 0 3px;
-  }
-
   .dropdown-menu {
     @include font-button;
     min-width: 500px;
     padding: 1em 2em;
+    z-index: 251;
 
     .task-details-value {
-      @include font-h3;
+      font-weight: bold;
     }
 
     .row-v-margin {
@@ -499,19 +589,48 @@
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 810px) {
+  .task-information .task-section-header {
+    display: block;
+  }
+
+  .task-information .expanded {
+    height: auto;
+  }
+
+  .content-pane.my-modules-protocols-index {
+    padding: 10px 0 0 0;
+  }
+
   .my-module-protocol-status {
     .status-info-dropdown {
       left: -75px;
       width: 300px;
 
       .dropdown-footer {
-        .btn {
-          float: left !important;
-          margin: 5px 0;
-          width: auto;
-        }
+        display: block;
       }
     }
+  }
+
+  .task-information {
+    grid-template-columns: auto;
+    row-gap: .5em;
+
+    .task-details {
+      grid-row: 3 / span 1;
+    }
+  }
+}
+
+#confirm-link-update-modal,
+.delete-steps-modal {
+  .modal-body p {
+    margin: 1.2em 0;
+  }
+
+  .warning {
+    font-weight: bold;
+    margin-bottom: 1.2em;
   }
 }

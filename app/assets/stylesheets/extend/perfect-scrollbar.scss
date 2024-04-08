@@ -1,6 +1,4 @@
 // scss-lint:disable all
-@import "constants";
-
 .ps {
   overflow: hidden !important;
   overflow-anchor: none;
@@ -18,10 +16,33 @@
   -webkit-transition: background-color .2s linear, opacity .2s linear;
   height: 16px;
   opacity: 0.6;
+  margin: 0 1rem 0 5px;
   /* there must be 'bottom' or 'top' for ps__rail-x */
   bottom: 0px;
   /* please don't change 'position' */
   position: absolute;
+
+  &::after,
+  &::before {
+    content: '';
+    display: block;
+    background-color: var(--sn-white);
+    height: 1rem;
+    position: absolute;
+    width: 1rem;
+    top: 0
+  }
+
+  &::after {
+    right: -1rem;
+    border-bottom-right-radius: 4px;
+  }
+
+  &::before {
+    left: -5px;
+    border-bottom-left-radius: 4px;
+    width: 5px;
+  }
 }
 
 .ps__rail-y {
@@ -30,44 +51,49 @@
   -webkit-transition: background-color .2s linear, opacity .2s linear;
   width: 16px;
   opacity: 0.6;
+  margin: 1rem 0;
   /* there must be 'right' or 'left' for ps__rail-y */
   right: 0;
   /* please don't change 'position' */
   position: absolute;
+
   cursor: pointer;
   z-index: 5;
+
+  &::after,
+  &::before {
+    content: '';
+    display: block;
+    position: absolute;
+    background-color: var(--sn-white);
+    height: 1rem;
+    width: 1rem;
+    left: 0
+  }
+
+  &::after {
+    bottom: -1rem;
+    border-bottom-right-radius: 4px;
+  }
+
+  &::before {
+    border-bottom-right-radius: 4px;
+    top: -1rem;
+  }
+
 }
 
 .ps--active-x > .ps__rail-x,
 .ps--active-y > .ps__rail-y {
   display: block;
-  background-color: transparent;
-}
-
-.ps:hover > .ps__rail-x,
-.ps:hover > .ps__rail-y,
-.ps--focus > .ps__rail-x,
-.ps--focus > .ps__rail-y,
-.ps--scrolling-x > .ps__rail-x,
-.ps--scrolling-y > .ps__rail-y {
-  opacity: 0.6;
-}
-
-.ps .ps__rail-x:hover,
-.ps .ps__rail-y:hover,
-.ps .ps__rail-x:focus,
-.ps .ps__rail-y:focus,
-.ps .ps__rail-x.ps--clicking,
-.ps .ps__rail-y.ps--clicking {
-  background-color: $color-gainsboro;
-  opacity: 0.9;
+  background-color: var(--sn-white);
 }
 
 /*
  * Scrollbar thumb styles
  */
 .ps__thumb-x {
-  background-color: $color-silver-chalice;
+  background-color: $color-black;
   border-radius: 4px;
   transition: background-color .2s linear, height .2s ease-in-out;
   -webkit-transition: background-color .2s linear, height .2s ease-in-out;
@@ -75,11 +101,12 @@
   /* there must be 'bottom' for ps__thumb-x */
   bottom: 2px;
   /* please don't change 'position' */
+  opacity: .5;
   position: absolute;
 }
 
 .ps__thumb-y {
-  background-color: $color-silver-chalice;
+  background-color: $color-black;
   border-radius: 3px;
   transition: background-color .2s linear, width .2s ease-in-out;
   -webkit-transition: background-color .2s linear, width .2s ease-in-out;
@@ -87,19 +114,8 @@
   /* there must be 'right' for ps__thumb-y */
   right: 2px;
   /* please don't change 'position' */
+  opacity: .5;
   position: absolute;
-}
-
-.ps__rail-x:hover > .ps__thumb-x,
-.ps__rail-x:focus > .ps__thumb-x,
-.ps__rail-x.ps--clicking .ps__thumb-x {
-  height: 10px;
-}
-
-.ps__rail-y:hover > .ps__thumb-y,
-.ps__rail-y:focus > .ps__thumb-y,
-.ps__rail-y.ps--clicking .ps__thumb-y {
-  width: 10px;
 }
 
 /* MS supports */

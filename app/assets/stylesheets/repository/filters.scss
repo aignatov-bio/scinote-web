@@ -1,0 +1,310 @@
+// scss-lint:disable SelectorDepth unknownProperties
+// scss-lint:disable NestingDepth
+
+.repository-show {
+  .active-filters {
+    position: relative;
+
+    &::after {
+      background: $brand-danger;
+      border-radius: 50%;
+      border: 2px solid $color-white;
+      content: "";
+      display: block;
+      height: 10px;
+      position: absolute;
+      right: .3em;
+      top: .3em;
+      width: 10px;
+    }
+
+    &:hover {
+      &::after {
+        border-color: $color-concrete;
+      }
+    }
+  }
+
+  #filterContainer {
+    padding: 0;
+  }
+
+  #savedFiltersContainer {
+    .fas {
+      cursor: pointer;
+    }
+
+    &.open .sn-icon-down::before {
+      content: $font-fas-caret-up;
+    }
+
+    .saved-filters-list {
+      max-height: 300px;
+      overflow-y: auto;
+      width: 250px;
+    }
+  }
+
+  .filters-container {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 300px);
+    min-height: 300px;
+    padding: 0;
+
+    .dropdown-selector {
+      .ps__rail-x,
+      .ps__rail-x::after,
+      .ps__rail-x::before,
+      .ps__rail-y,
+      .ps__rail-y::after,
+      .ps__rail-y::before {
+        background-color: transparent !important;
+      }
+    }
+
+    .header {
+      align-items: center;
+      display: flex;
+      flex-shrink: 0;
+      margin-bottom: 1.5rem;
+
+      .title {
+        @include font-h2;
+      }
+
+      .close {
+        margin-left: auto;
+      }
+    }
+
+    .saved-filters-container {
+      .filter-name {
+        cursor: pointer;
+      }
+
+      .saved-filters-list {
+        padding: 0;
+      }
+
+      .saved-filters-element {
+        align-items: center;
+        display: flex;
+        padding: 0 1em;
+        cursor: pointer;
+
+        .saved-filter-name {
+          padding: 8px 0;
+        }
+
+        &:hover {
+          background: $color-concrete;
+        }
+
+        span {
+          flex-grow: 1;
+        }
+
+        .btn-light {
+          color: $color-silver-chalice;
+          flex-shrink: 0;
+          margin-left: auto;
+
+          &:hover {
+            color: $color-black;
+          }
+        }
+      }
+    }
+
+    .sci-flyout-footer {
+      .filters-columns-list {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .column-filters-element {
+        cursor: pointer;
+        padding: .5em 1em;
+
+        &:hover {
+          background: $color-concrete;
+        }
+      }
+    }
+
+    .filters-list {
+      flex-grow: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .filter-container {
+      margin-bottom: 1.5rem;
+      width: 552px;
+
+      .filter-title {
+        color: var(--sn-grey);
+        margin-bottom: .25rem;
+      }
+
+      .filter-element {
+        display: flex;
+      }
+
+      .filter-attributes {
+        display: grid;
+        gap: .5em;
+        grid-auto-flow: column;
+        grid-template-columns: min-content auto;
+
+        .between-delimiter {
+          align-self: center;
+
+          &.vertical {
+            background-color: $color-silver-chalice;
+            height: 12px;
+            margin: auto;
+            width: 2px;
+          }
+        }
+
+        &.stock-filter-attributes {
+          grid-template-columns: min-content auto 100px;
+        }
+
+        .number-range-selector {
+          align-items: center;
+          display: grid;
+          gap: .5em;
+          grid-auto-flow: column;
+          height: 2em;
+        }
+
+        .dropdown-selector-container {
+          width: 100%;
+        }
+
+        .operator-selector {
+          height: 2em;
+
+          .dropdown-selector-container {
+            width: 120px;
+          }
+        }
+
+        input {
+          margin: 0;
+          width: 100%;
+        }
+
+        .date-time-picker {
+          display: grid;
+          gap: .5em;
+          grid-auto-flow: column;
+          grid-template-columns: minmax(52%, 100%);
+        }
+
+        .datetime-filter-attributes {
+          display: grid;
+          gap: .5em;
+        }
+      }
+
+      .filter-body {
+        flex-grow: 1;
+      }
+
+      .filter-remove {
+        margin-left: .5em;
+        margin-right: 1rem;
+
+        .icon-btn {
+          color: $color-silver-chalice;
+
+          &:hover {
+            color: $color-black;
+          }
+        }
+      }
+    }
+  }
+
+  @media (max-width: 992px) {
+    .filters-container {
+      .filter-container {
+        .filter-attributes {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-start;
+
+          .operator-selector {
+            .dropdown-selector-container {
+              width: 125px;
+            }
+          }
+
+          .date-time-picker {
+            display: flex;
+            flex-wrap: wrap;
+          }
+
+          .between-delimiter {
+            height: 10px;
+            margin: 5px auto;
+            transform: rotate(90deg);
+          }
+        }
+      }
+
+      .footer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+
+        .apply-button {
+          margin-left: 0;
+          margin-top: .5em;
+        }
+
+        .clear-filters-btn {
+          margin-left: 0;
+          margin-top: .5em;
+          padding-left: 38px;
+          padding-right: 38px;
+        }
+      }
+    }
+  }
+
+  .task-option {
+    background-image: image-url("icon_small/task-black.svg");
+    background-position: left center;
+    background-repeat: no-repeat;
+    background-size: 1em;
+    padding-left: 1.5em;
+  }
+}
+
+#saveRepositoryFilters {
+  padding-left: 0;
+
+  .dropdown-menu {
+    width: 320px;
+
+    .overwrite-link {
+      display: flex;
+
+      .fa-save {
+        flex-shrink: 0;
+        line-height: 20px;
+        margin-right: .25em;
+      }
+
+      .overwrite-title {
+        white-space: normal;
+      }
+    }
+  }
+}

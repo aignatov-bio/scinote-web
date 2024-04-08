@@ -6,81 +6,15 @@ class ResultTextsController < ApplicationController
   include Rails.application.routes.url_helpers
 
   before_action :load_vars, only: [:edit, :update, :download]
-  before_action :load_vars_nested, only: [:new, :create]
 
-  before_action :check_manage_permissions, only: %i(new create edit update)
+  before_action :check_manage_permissions, only: %i(edit update)
   before_action :check_archive_permissions, only: [:update]
-
-  def new
-    @result = Result.new(
-      user: current_user,
-      my_module: @my_module
-    )
-    @result.build_result_text
-
-    respond_to do |format|
-      format.json {
-        render json: {
-          html: render_to_string({
-            partial: "new.html.erb"
-          })
-        }, status: :ok
-      }
-    end
-  end
-
-  def create
-    @result_text = ResultText.new(result_params[:result_text_attributes])
-    @result = Result.new(
-      user: current_user,
-      my_module: @my_module,
-      name: result_params[:name],
-      result_text: @result_text
-    )
-    @result.last_modified_by = current_user
-
-    respond_to do |format|
-      if @result.save && @result_text.save
-        # link tiny_mce_assets to the text result
-        TinyMceAsset.update_images(@result_text, params[:tiny_mce_images], current_user)
-
-        result_annotation_notification
-        log_activity(:add_result)
-
-        format.html {
-          flash[:success] = t(
-            "result_texts.create.success_flash",
-            module: @my_module.name)
-          redirect_to results_my_module_path(@my_module)
-        }
-        format.json {
-          render json: {
-            html: render_to_string({
-              partial: "my_modules/result.html.erb",
-              locals: {
-                result: @result
-              }
-            })
-          }, status: :ok
-        }
-      else
-        format.json {
-          render json: @result.errors, status: :bad_request
-        }
-      end
-    end
-  end
+  before_action :check_view_permissions, except: %i(edit update)
 
   def edit
-    respond_to do |format|
-      format.json {
-        render json: {
-          html: render_to_string({
-            partial: "edit.html.erb"
-          })
-        }, status: :ok
-      }
-    end
+    render json: {
+      html: render_to_string({ partial: 'edit', formats: :html })
+    }, status: :ok
   end
 
   def update
@@ -120,20 +54,19 @@ class ResultTextsController < ApplicationController
 
     respond_to do |format|
       if saved
-        format.html {
+        format.html do
           flash[:success] = success_flash
           redirect_to results_my_module_path(@my_module)
-        }
-        format.json {
+        end
+        format.json do
           render json: {
-            html: render_to_string({
-              partial: "my_modules/result.html.erb",
-              locals: {
-                result: @result
-              }
-            })
-          }, status: :ok
-        }
+            html: render_to_string(
+              partial: 'my_modules/result',
+              locals: { result: @result },
+              formats: :html
+            )
+          }
+        end
       else
         format.json {
           render json: @result.errors, status: :bad_request
@@ -160,22 +93,18 @@ class ResultTextsController < ApplicationController
     end
   end
 
-  def load_vars_nested
-    @my_module = MyModule.find_by_id(params[:my_module_id])
-
-    unless @my_module
-      render_404
-    end
-  end
-
   def check_manage_permissions
-    render_403 unless can_manage_module?(@my_module)
+    render_403 unless can_manage_result?(@result)
   end
 
   def check_archive_permissions
     if result_params[:archived].to_s != '' && !can_manage_result?(@result)
       render_403
     end
+  end
+
+  def check_view_permissions
+    render_403 unless can_read_result?(@result)
   end
 
   def result_params
@@ -192,6 +121,7 @@ class ResultTextsController < ApplicationController
     smart_annotation_notification(
       old_text: (old_text if old_text),
       new_text: @result_text.text,
+      subject: @result,
       title: t('notifications.result_annotation_title',
                result: @result.name,
                user: current_user.full_name),
@@ -201,8 +131,8 @@ class ResultTextsController < ApplicationController
                                                    .experiment
                                                    .project)),
                  experiment: link_to(@result.my_module.experiment.name,
-                                     canvas_experiment_url(@result.my_module
-                                                                  .experiment)),
+                                     my_modules_experiment_url(@result.my_module
+                                                                      .experiment)),
                  my_module: link_to(@result.my_module.name,
                                     protocols_my_module_url(
                                       @result.my_module
@@ -215,8 +145,8 @@ class ResultTextsController < ApplicationController
       .call(activity_type: type_of,
             owner: current_user,
             subject: @result,
-            team: @my_module.experiment.project.team,
-            project: @my_module.experiment.project,
+            team: @my_module.team,
+            project: @my_module.project,
             message_items: {
               result: @result.id,
               type_of_result: t('activities.result_type.text')

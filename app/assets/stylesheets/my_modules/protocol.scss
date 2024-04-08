@@ -1,0 +1,111 @@
+.my-module-position-container .protocol-content {
+  margin-left: 2.5rem;
+}
+
+.task-protocol {
+  .protocol-step-actions {
+    align-items: center;
+    display: flex;
+    margin-left: -6px;
+    padding-left: 1em;
+  }
+
+  .protocol-buttons-group {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 1rem;
+    row-gap: .4rem;
+  }
+
+  .portocol-header-left-part {
+    align-items: center;
+    display: flex;
+
+    a:first-of-type:focus {
+      outline: none;
+    }
+
+    .task-section-caret {
+      padding-right: .25em;
+    }
+
+    .status-info {
+      display: flex;
+      height: 24px;
+    }
+  }
+
+  .insert-step {
+    align-items: center;
+    color: var(--sn-blue);
+    cursor: pointer;
+    display: flex;
+    margin: .5rem 0;
+
+    &::before,
+    &::after {
+      background-image: linear-gradient(to right, var(--sn-sleepy-grey) 20%, rgba(255, 255, 255, 0) 0%);
+      background-position: top;
+      background-size: 5px 1px;
+      background-repeat: repeat-x;
+      border-bottom: 1px dotted transparent;
+      content: "";
+      display: inline-block;
+      flex-grow: 1;
+      height: 0;
+    }
+
+    .sn-icon-new-task {
+      margin: 0 .5em;
+    }
+
+    &:hover {
+      color: $brand-primary;
+
+      &::before,
+      &::after {
+        background-image: linear-gradient(to right, $brand-primary 15%, rgba(255, 255, 255, 0) 0%);
+      }
+    }
+  }
+  .protocol-description {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+  }
+
+  .empty-protocol-description {
+    color: $color-silver-chalice;
+  }
+
+  .protocol-options-dropdown {
+    a {
+      cursor: pointer;
+
+      &.disabled {
+        cursor: default;
+        pointer-events: none;
+      }
+    }
+  }
+}
+
+.share-task-modal {
+  .share-link-copy {
+    border-radius: 0 4px 4px 0;
+  }
+
+  .shareable-link-error {
+    color: var(--sn-coral);
+  }
+
+  .shareable-link-disclaimer {
+    color: var(--sn-grey);
+  }
+
+  .sci-input-container-v2 {
+    textarea::placeholder {
+      color: var(--sn-grey);
+    }
+  }
+}

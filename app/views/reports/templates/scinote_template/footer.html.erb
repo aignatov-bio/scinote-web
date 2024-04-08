@@ -1,0 +1,16 @@
+<style>
+  .print-footer {
+    line-height: 50px;
+    font-size: 13px;
+    padding-right: 30px; 
+    text-align: right;
+    width: 100%;
+  }
+</style>
+
+<div class="print-footer">
+  <p>
+    <% Time.zone = user.settings.dig(:time_zone) || 'UTC' %>
+    <%= t('projects.reports.new.generate_PDF.generated_on', timestamp: I18n.l(Time.zone.now, format: :full)) %>
+  </p>
+</div>

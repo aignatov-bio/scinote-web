@@ -88,10 +88,11 @@ $.fn.checkboxTreeLogic = function(dependencies, checkAll) {
  * submit gets JSON response, displays errors if any or either refreshes the
  * page or redirects it (if 'url' parameter is specified in JSON response).
  * @param  {string} modalID Modal ID
+ * @param  {string} modelName Modal Name
  * @param  {object} $fn     Link objects for opening the modal (can have more
  *         links for same modal)
  */
-$.fn.initializeModal = function(modalID) {
+$.fn.initSubmitModal = function(modalID, modelName) {
   /**
    * Popup modal validator
    * @param  {object} $modal Modal object
@@ -107,7 +108,7 @@ $.fn.initializeModal = function(modalID) {
         }
       })
       .on('ajax:error', function(e, data) {
-        $(this).renderFormErrors('repository', data.responseJSON);
+        $(this).renderFormErrors(modelName, data.responseJSON);
       })
       .animateSpinner(true);
   }
@@ -134,3 +135,30 @@ $.fn.initializeModal = function(modalID) {
     })
     .animateSpinner();
 };
+
+/**
+ * Wraps tables in HTML with a specified wrapper.
+ * @param {string || Element} htmlStringOrDomEl - HTML containing tables to be wrapped.
+ * @returns {string} - HTML with tables wrapped.
+ */
+function wrapTables(htmlStringOrDomEl) {
+  if (typeof htmlStringOrDomEl === 'string') {
+    const container = $(`<span class="text-base">${htmlStringOrDomEl}</span>`);
+    container.find('table').toArray().forEach((table) => {
+      if ($(table).parent().hasClass('table-wrapper')) return;
+      $(table).css('float', 'none').wrapAll(`
+          <div class="table-wrapper" style="overflow: auto; width: 100%"></div>
+        `);
+    });
+    return container.prop('outerHTML');
+  }
+  // Check if the value is a DOM element
+  if (htmlStringOrDomEl instanceof Element) {
+    const tableElement = $(htmlStringOrDomEl).find('table');
+    if (tableElement.length > 0) {
+      tableElement.wrap('<div class="table-wrapper" style="overflow: auto; width: 100%"></div>');
+      const updatedHtml = $(htmlStringOrDomEl).html();
+      $(htmlStringOrDomEl).replaceWith(updatedHtml);
+    }
+  }
+}

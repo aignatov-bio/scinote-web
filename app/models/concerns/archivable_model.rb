@@ -5,17 +5,20 @@ module ArchivableModel
     validates :archived, inclusion: { in: [true, false] }
     before_save :set_archive_timestamp
     before_save :set_restore_timestamp
+
+    scope :active, -> { where(archived: false) }
+    scope :archived, -> { where(archived: true) }
   end
 
   # Not archived
   def active?
-    not archived?
+    !archived?
   end
 
   # Helper for archiving project. Timestamp of archiving is handler by
   # before_save callback.
   # Sets the archived_by value to the current user.
-  def archive (current_user)
+  def archive(current_user)
     self.archived = true
     self.archived_by = current_user
     save
@@ -24,12 +27,14 @@ module ArchivableModel
   # Same as archive but raises exception if archive fails.
   # Sets the archived_by value to the current user.
   def archive!(current_user)
-    archive(current_user) || raise(ActiveRecord::RecordNotSaved)
+    self.archived = true
+    self.archived_by = current_user
+    save!
   end
 
   # Helper for restoring project from archive.
   # Sets the restored_by value to the current user.
-  def restore (current_user)
+  def restore(current_user)
     self.archived = false
     self.restored_by = current_user
     save
@@ -38,7 +43,16 @@ module ArchivableModel
   # Same as restore but raises exception if restore fails.
   # Sets the restored_by value to the current user.
   def restore!(current_user)
-    restore(current_user) || raise(ActiveRecord::RecordNotSaved)
+    self.archived = false
+    self.restored_by = current_user
+    save!
+  end
+
+  def name_with_label
+    raise NotImplementedError, "Archivable model must implement the '.archived_branch?' method!" unless respond_to?(:archived_branch?)
+    return "#{I18n.t('labels.archived')} #{name || parent&.name}" if archived_branch?
+
+    name || parent&.name
   end
 
   protected

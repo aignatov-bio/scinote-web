@@ -1,6 +1,3 @@
-@import "constants";
-@import "mixins";
-
 .mce-image-loader {
   display: none !important;
 
@@ -66,7 +63,7 @@
 }
 
 .mce-widget.mce-btn {
-  border-color: $color-white !important;
+  border-color: transparent !important;
 
   &:not(.mce-active):hover,
   &:not(.mce-active):active {
@@ -97,4 +94,9 @@
 // Selected item list should be $brand-primary
 .mce-menu-item.mce-active.mce-menu-item-normal {
   background-color: $brand-primary !important;
+}
+
+// Fix for Safari artefacts
+.mce-menu.mce-animate {
+  transform: none !important;
 }

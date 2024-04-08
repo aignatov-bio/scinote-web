@@ -4,7 +4,10 @@
 // scss-lint:disable SelectorDepth SelectorFormat
 // scss-lint:disable NestingDepth QualifyingElement
 
-@import "constants";
+// Fix for elements being scrolled to being hidden behind sticky navigation
+html {
+  scroll-padding-top: 128px;
+}
 
 .protocol-description-content {
   margin: 20px 0 20px 10px;
@@ -30,8 +33,12 @@
 
 /* Results index page */
 
-#results {
-  margin-top: 20px;
+.navigation-results-counter {
+  background-color: $color-concrete;
+  border-radius: $border-radius-circle;
+  color: $color-volcano;
+  font-weight: bold;
+  padding: .1em .5em;
 }
 
 .btn-colorselector{
@@ -44,6 +51,21 @@
 }
 
 .module-large {
+
+  .nav-tabs {
+    display: flex;
+  }
+
+  .task-code {
+    align-items: center;
+    color: $color-volcano;
+    display: flex;
+    height: 30px;
+    margin-left: auto;
+    padding-right: .5em;
+    text-align: end;
+  }
+
   .description-label {
     word-break: break-all;
     word-wrap: break-word;
@@ -55,11 +77,19 @@
   }
 }
 
+.archived-task-card-code {
+  bottom: 30px;
+  position: absolute;
+  right: 25px;
+}
+
 // Create wopi file
 .create-wopi-file-btn {
+  cursor: pointer;
+
   img {
-    margin-right: 5px;
-    height: 20px;
+    height: 1.5em;
+    width: 1.5em;
   }
 }
 
@@ -98,6 +128,20 @@
       color: $color-white;
     }
 
+    .act {
+      display: none;
+    }
+
+    &.active {
+      .inactive {
+        display: none;
+      }
+
+      .act {
+        display: inline-block;
+      }
+    }
+
     span {
       display: inline-block;
       margin-left: 15px;
@@ -114,6 +158,11 @@
       width: 100%;
     }
   }
+}
+
+.mce-toc ul,
+.mce-toc li {
+  list-style-type: none;
 }
 
 // Mobile view
@@ -166,10 +215,6 @@
       display: flex;
       flex-wrap: wrap;
       max-width: 100%;
-
-      .complete-step-btn {
-        width: 100%;
-      }
     }
   }
 
@@ -190,5 +235,197 @@
         width: 90%;
       }
     }
+  }
+}
+
+.nav {
+  margin-right: 0px;
+}
+
+#module-archive {
+  [data-view-mode="active"] {
+    display: none;
+  }
+
+  .toolbar {
+    margin-top: 1em;
+    display: flex;
+    justify-content: space-between;
+
+    .left {
+      justify-self: flex-start;
+    }
+
+    .middle {
+      margin: .5rem auto;
+    }
+
+    .view-switch,
+    .filter-container {
+      display: inline-block;
+    }
+
+    .view-switch-button {
+      outline: 1px solid $color-alto;
+    }
+
+    .view-switch {
+      margin-left: auto;
+
+      .caret {
+        margin: 8px 0 8px 8px;
+      }
+
+      &.open {
+        .caret {
+          transform: rotateX(180deg);
+        }
+
+        .sn-icon-down {
+          transform: rotateX(180deg);
+        }
+      }
+
+      .dropdown-menu {
+        @include font-button;
+        min-width: 100%;
+        padding: 0;
+
+        .divider-label {
+          @include font-small;
+          color: $color-silver-chalice;
+          padding: .25em 1em;
+        }
+
+        .divider {
+          margin: 0;
+        }
+
+        li {
+          cursor: pointer;
+          padding: .5em 1em;
+          white-space: nowrap;
+
+          .button-icon {
+            margin-right: .5em;
+          }
+
+          &:hover:not(.divider-label) {
+            background: $color-concrete;
+          }
+
+          .btn {
+            height: 36px;
+          }
+
+          a {
+            display: inline-block;
+            margin: -1em;
+            padding: .5em 1em;
+            width: calc(100% + 2em);
+
+            &.selected::after {
+              @include font-awesome;
+              content: $font-fas-check;
+              margin-left: auto;
+              position: absolute;
+              right: 1em;
+            }
+          }
+        }
+      }
+
+      .cards-switch {
+        &.active::after {
+          @include font-awesome;
+          content: "\f00c";
+          position: absolute;
+          right: 1em;
+        }
+      }
+    }
+  }
+
+  .module-container {
+    min-width: 220px;
+
+    &.active-card {
+      z-index: 1000;
+    }
+  }
+
+  .panel-default {
+    border: 0;
+    box-shadow: unset;
+    position: unset;
+    width: unset;
+
+    .task-selector-container {
+      padding: .75em .75em 0 1em;
+
+      &.archived-task {
+        display: flex;
+        height: 2rem;
+        margin: 0 .75rem;
+        padding: 0;
+
+        .sci-checkbox-container {
+          display: flex;
+          margin: auto;
+        }
+      }
+    }
+
+    .panel-heading {
+      background-color: $color-concrete;
+      border-color: $color-white;
+
+      .panel-title {
+        color: $color-volcano;
+      }
+    }
+
+    .panel-body {
+      background-color: $color-concrete;
+      font-weight: normal;
+
+      .archived-overdue-date {
+        .date-label {
+          color: $color-volcano;
+          display: inline-block;
+          font-weight: normal;
+          width: 90px;
+        }
+
+        .date-value {
+          color: $color-black;
+        }
+      }
+    }
+
+    .panel-footer-scinote {
+      background: $color-concrete;
+      border-color: $color-white;
+      height: 2.5em;
+
+      .nav {
+        border: 0;
+      }
+
+      .tab-content {
+        background-color: $color-concrete;
+        box-shadow: $flyout-shadow;
+
+        .tab-pane > .text-center {
+          margin-top: .3em;
+        }
+      }
+    }
+  }
+}
+
+.print-protocol-form {
+  .sci-checkbox-container {
+    margin-right: .25em;
   }
 }

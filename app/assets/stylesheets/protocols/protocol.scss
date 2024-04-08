@@ -1,103 +1,257 @@
 // scss-lint:disable SelectorDepth
 // scss-lint:disable NestingDepth
 
-@import "constants";
-@import "mixins";
 
-.protocol-repository-header {
+.content-pane.protocols-show {
 
-  .protocol-info {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    min-height: 40px;
-    position: relative;
+  .dropdown-menu {
+    z-index: 102;
+  }
 
-    .created-at-block,
-    .last-modified-block,
-    .edit-authors-block,
-    .keywords-block,
-    .added-by-block, {
-      flex-grow: 1;
-      margin-bottom: 10px;
-      margin-right: 20px;
+  .dropdown-backdrop {
+    z-index: 101;
+  }
 
-      .block-icon {
-        color: $color-silver;
-        font-size: 18px;
+  .protocol-section {
+    background-color: var(--sn-white);
+    border-radius: .25rem;
+    display: inline-block;
+    padding: .25rem 1rem;
+    width: 100%;
+
+    &.protocol-steps-section {
+      margin-left: 0;
+    }
+
+    .protocol-section-caret {
+      align-items: center;
+      color: var(--sn-black);
+      display: inline-flex;
+      gap: .5rem;
+      padding: .5rem .5rem .5rem 0;
+      text-decoration: none;
+
+      .fas {
         margin-right: 5px;
       }
 
-      .block-label {
-        align-items: center;
-        display: flex;
-        flex-shrink: 0;
+      &:not(.collapsed) .sn-icon {
+        @include rotate(90deg);
       }
     }
 
-    .edit-authors-block {
+    .protocol-section-title {
+      display: inline-block;
+
+      h2 {
+        display: inline-block;
+        margin: 10px 0;
+      }
+
+      .protocol-code {
+        color: $color-volcano;
+        margin-left: .5em;
+      }
+
+    }
+
+    .protocol-section-header {
       align-items: center;
       display: flex;
-      flex-basis: 30%;
+      flex-wrap: wrap;
 
-      .edit-authors-container {
+      .actions-block {
         display: flex;
         flex-grow: 1;
-        margin-left: 10px;
-        position: relative;
+        justify-content: flex-end;
+        padding: 0 25px;
 
-        .view-mode,
-        .input-field {
-          font-weight: bold;
+        .btn {
+          margin-left: .25em;
+        }
+
+        .caret {
+          margin-left: 25px;
+        }
+
+        button,
+        a {
+          margin-right: 5px;
         }
       }
     }
 
-    .protocol-description {
-      flex-basis: 100%;
-      margin-bottom: 10px;
-
-      .form-group {
-        margin: 0;
-      }
+    .protocol-details {
+      padding-left: 2rem;
     }
+  }
 
-    .keywords-block {
-      align-items: center;
-      display: flex;
-      flex-basis: 100%;
+  .protocol-details {
+    .protocol-metadata {
+      margin-bottom: 2em;
 
-      .key-words-container {
-        display: inline-block;
-        flex-grow: 1;
-        margin: 0 40px 0 5px;
+      .data-block {
+        display: flex;
+        gap: .5rem;
+        margin-bottom: 16px;
+      }
 
-        .dropdown-selector-container {
-          .input-field {
-            border-color: transparent;
+      .authors-data {
+        align-items: baseline;
+        display: flex;
+        margin-top: -12px;
+        min-height: 36px;
 
-            &:hover {
-              border-color: $color-alto;
-            }
+        .authors-list {
+          font-weight: bold;
+          line-height: 32px;
+          margin-left: 8px;
+          max-width: calc(100% - 90px);
+          position: relative;
+        }
+
+        * {
+          flex-shrink: 0;
+        }
+
+        .sci-inline-edit__view,
+        textarea {
+          padding-left: 10px;
+
+          &::placeholder {
+            font-weight: normal;
           }
+        }
 
-          &.active {
+        .sci-inline-edit__view.blank {
+          font-weight: normal;
+
+          &:hover {
+            border: $border-default;
+          }
+        }
+      }
+
+      .keywords-data {
+        align-items: center;
+        display: flex;
+        margin-top: -12px;
+        min-height: 36px;
+
+        .keywords-list {
+          flex-basis: calc(100% - 90px);
+          flex-grow: 1;
+          margin-left: .5em;
+
+          .dropdown-selector-container {
+            padding-right: 10px;
+            margin-left: 0;
+
             .input-field {
-              border-color: $color-alto;
+              margin-left: 0;
             }
-          }
 
-          &.view-mode {
-            .input-field {
-              border-color: transparent;
+            &:not(.disabled) {
+              &:not(.active) {
+                .input-field {
+                  border-color: transparent;
+
+                  &:hover {
+                    border: 1px solid $color-alto;
+                  }
+                }
+              }
+
+              &.active {
+                .input-field {
+                  border: 1px solid $brand-focus;
+                }
+              }
+            }
+
+            &.disabled {
+              .input-field,
+              .input-field:hover,
+              .input-field:active {
+                border-color: transparent;
+              }
             }
           }
+        }
+
+        * {
+          flex-shrink: 0;
         }
       }
     }
   }
 
-  .repository-protocol-name {
-    font-size: 18px;
+  .protocol-description {
+    margin-bottom: 2em;
+
+    .data-block {
+      img {
+        border-radius: 50%;
+        height: 24px;
+        width: 24px;
+      }
+    }
+
+    .fas.block-icon {
+      margin-right: 6px;
+
+      &.fa-graduation-cap,
+      &.fa-font {
+        margin-right: 10px;
+      }
+    }
+  }
+
+  .protocol-step-actions {
+    margin-left: -6px;
+    margin-top: 2em;
+  }
+
+  .publish-modal {
+    .modal-body {
+      @include font-button;
+    }
+
+    .sci-input-container {
+      margin-bottom: 1em;
+    }
+
+    textarea {
+      min-height: 64px;
+    }
+
+    .modal-footer {
+      margin-top: -25px;
+    }
+  }
+}
+
+
+.protocol-content {
+  .protocol-name {
+    display: inline-block;
+    font-size: 1.125rem;
+    font-weight: bold;
+    position: relative;
+    width: 100%;
+  }
+
+  .repository-new-step {
+    margin-left: 1.5em;
+  }
+}
+
+#protocol-description-container {
+  overflow-x: auto;
+}
+
+.delete-steps-modal {
+  .btn {
+    float: initial;
   }
 }

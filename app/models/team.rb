@@ -3,14 +3,17 @@
 class Team < ApplicationRecord
   include SearchableModel
   include ViewableModel
-  include TeamBySubjectModel
+  include Assignable
+  include PermissionCheckableModel
   include TinyMceImages
 
   # Not really MVC-compliant, but we just use it for logger
   # output in space_taken related functions
   include ActionView::Helpers::NumberHelper
 
+  before_save -> { shareable_links.destroy_all }, if: -> { !shareable_links_enabled? }
   after_create :generate_template_project
+  after_create :create_default_label_templates
   scope :teams_select, -> { select(:id, :name).order(name: :asc) }
   scope :ordered, -> { order('LOWER(name)') }
 
@@ -20,50 +23,72 @@ class Team < ApplicationRecord
                       maximum: Constants::NAME_MAX_LENGTH }
   validates :description, length: { maximum: Constants::TEXT_MAX_LENGTH }
 
-  belongs_to :created_by,
-             foreign_key: 'created_by_id',
-             class_name: 'User',
-             optional: true
-  belongs_to :last_modified_by,
-             foreign_key: 'last_modified_by_id',
-             class_name: 'User',
-             optional: true
-  has_many :user_teams, inverse_of: :team, dependent: :destroy
-  has_many :users, through: :user_teams
-  has_many :samples, inverse_of: :team
-  has_many :samples_tables, inverse_of: :team, dependent: :destroy
-  has_many :sample_groups, inverse_of: :team
-  has_many :sample_types, inverse_of: :team
-  has_many :projects, inverse_of: :team
-  has_many :custom_fields, inverse_of: :team
+  belongs_to :created_by, class_name: 'User', optional: true
+  belongs_to :last_modified_by, class_name: 'User', optional: true
+  has_many :users, through: :user_assignments, dependent: :destroy
+  has_many :projects, inverse_of: :team, dependent: :destroy
+  has_many :project_folders, inverse_of: :team, dependent: :destroy
   has_many :protocols, inverse_of: :team, dependent: :destroy
+  has_many :repository_protocols,
+           (lambda do
+             where(protocol_type: %i(in_repository_published_original
+                                     in_repository_draft
+                                     in_repository_published_version))
+           end),
+           class_name: 'Protocol',
+           dependent: :destroy
   has_many :protocol_keywords, inverse_of: :team, dependent: :destroy
   has_many :tiny_mce_assets, inverse_of: :team, dependent: :destroy
   has_many :repositories, dependent: :destroy
   has_many :reports, inverse_of: :team, dependent: :destroy
   has_many :activities, inverse_of: :team, dependent: :destroy
   has_many :assets, inverse_of: :team, dependent: :destroy
-  has_many :team_repositories, inverse_of: :team, dependent: :destroy
-  has_many :shared_repositories, through: :team_repositories, source: :repository
+  has_many :label_templates, dependent: :destroy
+  has_many :team_shared_objects, inverse_of: :team, dependent: :destroy
+  has_many :team_shared_repositories,
+           -> { where(shared_object_type: 'RepositoryBase') },
+           class_name: 'TeamSharedObject',
+           inverse_of: :team,
+           dependent: :destroy
+  has_many :shared_repositories,
+           through: :team_shared_objects,
+           source: :shared_object,
+           source_type: 'RepositoryBase',
+           dependent: :destroy
+  has_many :repository_sharing_user_assignments,
+           (lambda do |team|
+             joins(
+               "INNER JOIN repositories "\
+               "ON user_assignments.assignable_type = 'RepositoryBase' "\
+               "AND user_assignments.assignable_id = repositories.id"
+             ).where(team_id: team.id)
+             .where.not('user_assignments.team_id = repositories.team_id')
+           end),
+           class_name: 'UserAssignment',
+           dependent: :destroy
+  has_many :shared_by_user_repositories,
+           through: :repository_sharing_user_assignments,
+           source: :assignable,
+           source_type: 'RepositoryBase',
+           dependent: :destroy
+  has_many :shareable_links, inverse_of: :team, dependent: :destroy
 
   attr_accessor :without_templates
-  attr_accessor :without_intro_demo
-  after_create :generate_intro_demo
 
   def default_view_state
-    { 'projects' =>
-      { 'cards' => { 'sort' => 'new' },
-        'table' =>
-          { 'time' => Time.now.to_i,
-            'order' => [[2, 'asc']],
-            'start' => 0,
-            'length' => 10 },
-        'filter' => 'active' } }
+    {
+      projects: {
+        active: { sort: 'new' },
+        archived: { sort: 'new' },
+        view_type: 'table'
+      }
+    }
   end
 
   def validate_view_state(view_state)
-    unless %w(new old atoz ztoa).include?(view_state.state.dig('projects', 'cards', 'sort')) &&
-           %w(all active archived).include?(view_state.state.dig('projects', 'filter'))
+    if %w(new old atoz ztoa id_asc id_desc).exclude?(view_state.state.dig('projects', 'active', 'sort')) ||
+       %w(new old atoz ztoa id_asc id_desc archived_new archived_old).exclude?(view_state.state.dig('projects', 'archived', 'sort')) ||
+       %w(cards table).exclude?(view_state.state.dig('projects', 'view_type'))
       view_state.errors.add(:state, :wrong_state)
     end
   end
@@ -72,84 +97,6 @@ class Team < ApplicationRecord
     a_query = "%#{query}%"
     users.where.not(confirmed_at: nil)
          .where('full_name ILIKE ? OR email ILIKE ?', a_query, a_query)
-  end
-
-  def to_csv(samples, headers)
-    require "csv"
-
-    # Parse headers (magic numbers should be refactored - see
-    # sample-datatable.js)
-    header_names = []
-    headers.each do |header|
-      if header == "-1"
-        header_names << I18n.t("samples.table.sample_name")
-      elsif header == "-2"
-        header_names << I18n.t("samples.table.sample_type")
-      elsif header == "-3"
-        header_names << I18n.t("samples.table.sample_group")
-      elsif header == "-4"
-        header_names << I18n.t("samples.table.added_by")
-      elsif header == "-5"
-        header_names << I18n.t("samples.table.added_on")
-      else
-        cf = CustomField.find_by_id(header)
-
-        if cf
-          header_names << cf.name
-        else
-          header_names << nil
-        end
-      end
-    end
-
-    CSV.generate do |csv|
-      csv << header_names
-      samples.each do |sample|
-        sample_row = []
-        headers.each do |header|
-          if header == "-1"
-            sample_row << sample.name
-          elsif header == "-2"
-            sample_row << (sample.sample_type.nil? ? I18n.t("samples.table.no_type") : sample.sample_type.name)
-          elsif header == "-3"
-            sample_row << (sample.sample_group.nil? ? I18n.t("samples.table.no_group") : sample.sample_group.name)
-          elsif header == "-4"
-            sample_row << sample.user.full_name
-          elsif header == "-5"
-            sample_row << I18n.l(sample.created_at, format: :full)
-          else
-            scf = SampleCustomField.where(
-              custom_field_id: header,
-              sample_id: sample.id
-            ).take
-
-            if scf
-              sample_row << scf.value
-            else
-              sample_row << nil
-            end
-          end
-        end
-        csv << sample_row
-      end
-    end
-  end
-
-  # Get all header fields for samples (used in importing for mappings - dropdowns)
-  def get_available_sample_fields
-    fields = {};
-
-    # First and foremost add sample name
-    fields["-1"] = I18n.t("samples.table.sample_name")
-    fields["-2"] = I18n.t("samples.table.sample_type")
-    fields["-3"] = I18n.t("samples.table.sample_group")
-
-    # Add all other custom fields
-    CustomField.where(team_id: id).order(:created_at).each do |cf|
-      fields[cf.id] = cf.name
-    end
-
-    fields
   end
 
   def storage_used
@@ -223,14 +170,26 @@ class Team < ApplicationRecord
     ProtocolKeyword.where(team: self).pluck(:name)
   end
 
-  def self.global_activity_filter(filters, search_query)
-    query = where('name ILIKE ?', "%#{search_query}%")
-    if filters[:users]
-      users_team = User.where(id: filters[:users]).joins(:user_teams).group(:team_id).pluck(:team_id)
-      query = query.where(id: users_team)
+  def self.by_activity_subjects(subjects)
+    team_ids = []
+    valid_subjects = subjects.select { |k| Extends::SEARCHABLE_ACTIVITY_SUBJECT_TYPES.include?(k.to_s) }
+    valid_subjects.each do |subject_name, subject_id|
+      subject = subject_name.to_s.constantize.find_by(id: subject_id)
+      next if subject.blank?
+
+      team_ids << subject.team.id
     end
-    query = query.where(id: team_by_subject(filters[:subjects])) if filters[:subjects]
-    query.select(:id, :name).map { |i| { value: i[:id], label: ApplicationController.helpers.escape_input(i[:name]) } }
+    where(id: team_ids.uniq)
+  end
+
+  def self.global_activity_filter(filters, search_query)
+    query = where_attributes_like(:name, search_query)
+    if filters[:users]
+      user_teams = User.where(id: filters[:users]).joins(:teams).group(:team_id).select(:team_id)
+      query = query.where(id: user_teams)
+    end
+    query = query.by_activity_subjects(filters[:subjects]) if filters[:subjects].present?
+    query
   end
 
   def self.search_by_object(obj)
@@ -238,12 +197,18 @@ class Team < ApplicationRecord
       case obj.class.name
       when 'Protocol'
         obj.team_id
+      when 'StepText'
+        obj.step.protocol.team_id
       when 'MyModule', 'Step'
         obj.protocol.team_id
       when 'ResultText'
         obj.result.my_module.protocol.team_id
       end
     )
+  end
+
+  def number_of_task_shared
+    shareable_links.count
   end
 
   private
@@ -253,14 +218,8 @@ class Team < ApplicationRecord
     TemplatesService.new.delay(queue: :templates).update_team(self)
   end
 
-  include FirstTimeDataGenerator
-
-  def generate_intro_demo
-    return if without_intro_demo
-
-    user = User.find(created_by_id)
-    if user.created_teams.order(:created_at).first == self
-      seed_demo_data(user, self)
-    end
+  def create_default_label_templates
+    ZebraLabelTemplate.default.update(team: self, default: true)
+    FluicsLabelTemplate.default.update(team: self, default: true)
   end
 end

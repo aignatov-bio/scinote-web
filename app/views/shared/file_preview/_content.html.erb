@@ -1,0 +1,112 @@
+<div class="modal-header">
+  <span class="file-name"><%= asset.file.metadata[:name] || asset.file_name %></span>
+  <div class="sci-btn-group">
+    <% if can_edit && !preview %>
+      <% if wopi_enabled? && wopi_file?(asset) %>
+        <div id="openLocallyMenu" data-behaviour="vue">
+          <open-locally-menu :disable-local-open="<%= asset.repository_asset_value.present? %>" :attachment="<%= { attributes: AssetSerializer.new(asset, scope: { user: current_user }).as_json }.to_json %>" />
+        </div>
+      <% elsif asset.file.metadata[:asset_type] == 'marvinjs' %>
+        <button class="btn btn-light marvinjs-edit-button"
+          data-sketch-id="<%= asset.id %>"
+          data-update-url="<%= marvin_js_asset_path(asset) %>"
+          data-sketch-start-edit-url="<%= start_editing_marvin_js_asset_path(asset) %>"
+          data-sketch-name="<%= asset.file.metadata[:name] %>"
+          data-sketch-description="<%= asset.file.metadata[:description] %>"
+        >
+          <span class="sn-icon sn-icon-edit"></span>
+          <%= t('assets.file_preview.edit_in_marvinjs') %>
+        </button>
+
+      <% elsif asset.blob.metadata["asset_type"] == 'gene_sequence' %>
+        <button class="btn btn-light gene-sequence-edit-button"
+          data-sequence-edit-url="<%= edit_gene_sequence_asset_path(asset) %>"
+        >
+          <span class="sn-icon sn-icon-sequence-editor"></span>
+          <%= t('open_vector_editor.edit_sequence') %>
+        </button>
+
+      <% elsif asset.editable_image? %>
+        <button id="editImageButton" class="btn btn-light image-edit-button hidden"
+          data-image-id="<%= asset.id %>"
+          data-image-name="<%= asset.file_name %>"
+          data-image-url="<%= asset_file_url_path(asset) %>"
+          data-image-quality="<%= asset.file_image_quality || 80 %>"
+          data-image-mime-type="<%= asset.file.content_type %>"
+          data-image-start-edit-url="<%= start_edit_image_path(asset) %>"
+        >
+          <span class="sn-icon sn-icon-edit"></span>
+          <%= t('assets.file_preview.edit_in_scinote') %>
+        </button>
+      <% end %>
+      <div id="openLocallyMenu" data-behaviour="vue">
+        <open-locally-menu :disable-local-open="<%= asset.repository_asset_value.present? %>" :attachment="<%= { attributes: AssetSerializer.new(asset, scope: { user: current_user }).as_json }.to_json %>" />
+      </div>
+    <% end %>
+    <a class="btn btn-light file-download-link" href="<%= rails_blob_path(asset.file, disposition: 'attachment') %>" data-turbolinks="false">
+      <span class="sn-icon sn-icon-export"></span> <%= t('Download')%>
+    </a>
+    <button type="button" class="btn icon-btn btn-light" data-dismiss="modal"><span class="sn-icon sn-icon-close"></span></button>
+  </div>
+</div>
+<div class="modal-body">
+  <div class="file-preview-container <%= 'file-preview-container__wopi' if wopi_file?(asset) %>">
+    <% if asset.previewable? %>
+      <% if wopi_enabled? && wopi_file?(asset) %>
+        <iframe class="wopi-file-preview" src="<%= asset.get_action_url(current_user, 'embedview') %>"></iframe>
+      <% elsif asset.pdf_previewable? %>
+        <%= render partial: 'shared/pdf_viewer', locals: { asset: asset, report_document: false } %>
+      <% else %>
+        <%= image_tag asset.large_preview,
+          class: class_names('asset-image', 'gene-sequence-asset': asset.blob&.metadata["asset_type"] == 'gene_sequence'),
+          style: 'opacity: 1' %>
+      <% end %>
+    <% else %>
+      <%= render partial: 'shared/file_preview/file_icon', locals: { asset: asset } %>
+    <% end %>
+  </div>
+</div>
+<% if gallery.present? %>
+  <div class="modal-footer">
+    <div class="gallery">
+      <% previous_asset = Asset.find_by(id: gallery.split(asset.id.to_s)[0]&.last) %>
+      <% next_asset = Asset.find_by(id: gallery.split(asset.id.to_s)[1]&.first) %>
+      <% if previous_asset && can_read_asset?(previous_asset) %>
+        <%= link_to asset_file_preview_path(previous_asset),
+          class: "previous-asset gallery-switcher",
+          data: {id: previous_asset.id, gallery_elements: gallery} do %>
+          <i class="sn-icon sn-icon-arrow-left"></i>
+          <% if previous_asset.previewable? %>
+            <%= image_tag previous_asset.medium_preview,
+                class: 'asset-image',
+                style: 'opacity: 1' %>
+          <% else %>
+            <i class="fas <%= file_fa_icon_class(previous_asset) if previous_asset.file_name %>"></i>
+          <% end %>
+          <span class="file-name"><%= previous_asset.file_name %></span>
+        <% end %>
+      <% end %>
+      <span class="file-counter">
+        <%= gallery.split(asset.id.to_s)[0].length + 1 %> of <%= gallery.length %> attachments
+      </span>
+      <% if next_asset && can_read_asset?(next_asset) %>
+        <%= link_to asset_file_preview_path(next_asset),
+          class: "next-asset gallery-switcher",
+          data: {id: next_asset.id, gallery_elements: gallery} do %>
+          <% if next_asset.previewable? %>
+            <%= image_tag next_asset.medium_preview,
+                class: 'asset-image',
+                style: 'opacity: 1' %>
+          <% else %>
+            <i class="fas <%= file_fa_icon_class(next_asset) if next_asset.file_name %>"></i>
+          <% end %>
+          <span class="file-name"><%= next_asset.file_name %></span>
+          <i class="sn-icon sn-icon-arrow-right"></i>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<%= javascript_include_tag 'shared/file_preview', nonce: true %>
+<%= javascript_include_tag "vue_open_locally_menu", nonce: true %>

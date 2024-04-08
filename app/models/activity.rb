@@ -1,7 +1,26 @@
 # frozen_string_literal: true
 
 class Activity < ApplicationRecord
+  ASSIGNMENT_TYPES = %w(
+    assign_user_to_project
+    change_user_role_on_project
+    unassign_user_from_project
+    designate_user_to_my_module
+    undesignate_user_from_my_module
+    invite_user_to_team
+    remove_user_from_team
+    change_users_role_on_team
+    change_user_role_on_experiment
+    change_user_role_on_my_module
+  ).freeze
+
+  # invert the children hash to get a hash defining parents
+  ACTIVITY_SUBJECT_PARENTS = Extends::ACTIVITY_SUBJECT_CHILDREN.invert.map do |k, v|
+    k&.map { |s| [s.to_s.classify, v.to_s.classify.constantize.reflect_on_association(s)&.inverse_of&.name || v] }
+  end.compact.sum.to_h.freeze
+
   include ActivityValuesModel
+  include GenerateNotificationModel
 
   enum type_of: Extends::ACTIVITY_TYPES
 
@@ -62,6 +81,9 @@ class Activity < ApplicationRecord
     breadcrumbs: {}
   )
 
+  after_create ->(activity) { Activities::DispatchWebhooksJob.perform_later(activity) },
+               if: -> { Rails.application.config.x.webhooks_enabled }
+
   def self.activity_types_list
     activity_list = type_ofs.map do |key, value|
       [
@@ -95,19 +117,31 @@ class Activity < ApplicationRecord
   def self.url_search_query(filters)
     result = []
     filters.each do |filter, values|
-      result.push(values.to_query(filter))
+      result.push(values.transform_values { |v| v.collect(&:id) }.to_query(filter))
     end
     if filters[:subjects]
       subject_labels = []
       filters[:subjects].each do |object, values|
         values.each do |value|
-          label = object.to_s.constantize.find_by_id(value).name
-          subject_labels.push({ value: value, label: label, object: object.downcase, group: '' }.as_json)
+          label = value.name
+          subject_labels.push({ value: value.id, label: label, object: object.downcase, group: '' }.as_json)
         end
       end
       result.push(subject_labels.to_query('subject_labels'))
     end
     result.join('&')
+  end
+
+  def subject_parents
+    recursive_subject_parents(subject, []).compact
+  end
+
+  def recursive_subject_parents(activity_subject, parents)
+    parent_model_name = ACTIVITY_SUBJECT_PARENTS[activity_subject.class.name]
+    return parents if parent_model_name.nil?
+
+    parent = activity_subject.public_send(parent_model_name)
+    recursive_subject_parents(parent, parents << parent)
   end
 
   private
@@ -138,9 +172,21 @@ class Activity < ApplicationRecord
       generate_breadcrumb(subject.my_module)
     when Team
       breadcrumbs[:team] = subject.name
+    when LabelTemplate
+      breadcrumbs[:label_template] = subject.name
+      generate_breadcrumb(subject.team) if subject.team
     when Report
       breadcrumbs[:report] = subject.name
       generate_breadcrumb(subject.team) if subject.team
+    when ProjectFolder
+      breadcrumbs[:project_folder] = subject.name
+      generate_breadcrumb(subject.team)
+    when Step
+      breadcrumbs[:step] = subject.name
+      generate_breadcrumb(subject.protocol)
+    when Asset
+      breadcrumbs[:asset] = subject.blob.filename.to_s
+      generate_breadcrumb(subject.result || subject.step || subject.repository_cell.repository_row.repository)
     end
   end
 

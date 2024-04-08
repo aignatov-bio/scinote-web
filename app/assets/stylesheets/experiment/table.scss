@@ -1,0 +1,23 @@
+// scss-lint:disable SelectorDepth NestingDepth IdSelector
+
+#experimentTable {
+  --content-header-size: 5em;
+  --toolbar-height: 4.5em;
+  position: relative;
+
+  .title-row {
+    .header-actions {
+      &.experiment-header {
+        column-gap: .25em;
+      }
+
+      .sort-task-menu {
+        &:not(.archived) {
+          [data-view-mode="archived"] {
+            display: none;
+          }
+        }
+      }
+    }
+  }
+}

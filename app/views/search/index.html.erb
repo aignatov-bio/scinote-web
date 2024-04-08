@@ -1,5 +1,4 @@
 <% provide(:head_title, t("search.index.head_title")) %>
-<%= render partial: "protocols/index/protocol_preview_modal.html.erb" %>
 <div class="content-pane">
   <div class="page-header">
     <h1><%= t('search.index.results_title_html', query: @display_query) %></h1>
@@ -12,14 +11,14 @@
                      role: 'search' do %>
           <div class="form-group">
             <div class="input-group">
-              <input class="form-control"
+              <input class="form-control min-h-[2.5rem]"
                      type="text"
                      name="q"
                      placeholder="<%= t('nav.search') %>"
                      value="<%= @display_query %>">
                <span class="input-group-btn">
-                <button class="btn btn-default" type="submit">
-                  <span class="fas fa-search"></span>
+                <button class="btn btn-secondary" type="submit">
+                  <span class="sn-icon sn-icon-search"></span>
                 </button>
               </span>
             </div>
@@ -55,8 +54,22 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @project_search_count %></span>
-              <span class="fas fa-folder"></span>
+              <span class="sn-icon sn-icon-projects"></span>
               <%= t'Projects' %>
+            </a>
+          </li>
+          <li role="presentation"
+            class="
+            <%= "active" if @search_category.present? and @search_category == :project_folders %>
+            <%= "disabled" if @project_folder_search_count == 0 %>"
+          >
+            <a href="?<%= { category: 'project_folders', q: @search_query,
+                            whole_word: @search_whole_word, whole_phrase: @search_whole_phrase,
+                            match_case: @search_case, utf8: '✓',
+                            search_id: @search_id }.to_query %>">
+              <span class="badge pull-right"><%= @project_folder_search_count %></span>
+              <span class="sn-icon sn-icon-folder"></span>
+              <%= t('ProjectFolders') %>
             </a>
           </li>
           <li role="presentation"
@@ -69,7 +82,7 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @experiment_search_count %></span>
-              <i class="fas fa-flask"></i>
+              <i class="sn-icon sn-icon-experiment"></i>
               <%= t'Experiments' %>
             </a>
           </li>
@@ -83,7 +96,7 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @module_search_count %></span>
-              <span class="fas fa-credit-card"></span>
+              <span class="sn-icon sn-icon-task"></span>
               <%= t'Modules' %>
             </a>
           </li>
@@ -97,7 +110,7 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @result_search_count %></span>
-              <span class="fas fa-columns"></span>
+              <span class="sn-icon sn-icon sn-icon-reports"></span>
               <%= t'Results' %>
             </a>
           </li>
@@ -111,7 +124,7 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @tag_search_count %></span>
-              <span class="fas fa-tags"></span>
+              <span class="sn-icon sn-icon-tag"></span>
               <%= t'Tags' %>
             </a>
           </li>
@@ -125,7 +138,7 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @report_search_count %></span>
-              <span class="fas fa-clipboard-check"></span>
+              <span class="sn-icon sn-icon-reports"></span>
               <%= t'Reports' %>
             </a>
           </li>
@@ -139,7 +152,7 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @protocol_search_count %></span>
-              <span class="fas fa-edit"></span>
+              <span class="sn-icon sn-icon-protocols-templates"></span>
               <%= t'Protocols' %>
             </a>
           </li>
@@ -153,7 +166,7 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @step_search_count %></span>
-              <span class="fas fa-arrow-circle-right"></span>
+              <span class="sn-icon sn-icon-steps"></span>
               <%= t'Steps' %>
             </a>
           </li>
@@ -167,7 +180,7 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @checklist_search_count %></span>
-              <span class="fas fa-tasks"></span>
+              <span class="sn-icon sn-icon-checkllist"></span>
               <%= t'Checklists' %>
             </a>
           </li>
@@ -182,7 +195,7 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @asset_search_count %></span>
-              <span class="fas fa-paperclip"></span>
+              <span class="sn-icon sn-icon-files"></span>
               <%= t'Assets' %>
             </a>
           </li>
@@ -196,7 +209,7 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @table_search_count %></span>
-              <span class="fas fa-table"></span>
+              <span class="sn-icon sn-icon-tables"></span>
               <%= t'Tables' %>
             </a>
           </li>
@@ -210,14 +223,14 @@
                            match_case: @search_case, utf8: '✓',
                            search_id: @search_id}.to_query %>">
               <span class="badge pull-right"><%= @comment_search_count %></span>
-              <span class="fas fa-comment"></span>
+              <span class="sn-icon sn-icon-comments"></span>
               <%= t'Comments' %>
             </a>
           </li>
 
           <% @repository_search_count.each do |team, results| %>
-            <li class="repositories-team <%= 'active' if results[:count] > 0 %>">
-              <i class="fas fa-list-alt"></i>
+            <li class="repositories-team <%= 'active' if results[:count].positive? %>">
+              <i class="sn-icon sn-icon-inventory"></i>
               <%= t('Repositories_team', team: team) %>
             </li>
             <% results[:repositories].each do |repository, values| %>
@@ -241,7 +254,7 @@
         </ul>
       </div>
 
-      <% if not @search_category.empty? %>
+      <% if not @search_category.blank? %>
       <div class="col-xs-12 col-sm-9" id="search-content">
 
         <div class="container-fluid" id="search-container">
@@ -251,43 +264,46 @@
 
         <hr class="visible-xs">
 
-        <% if @search_category == :projects and @project_search_count > 0 %>
+        <% if @search_category == :projects and @project_search_count.positive? %>
           <%= render 'search/results/projects', search_query: @search_query, results: @project_results %>
         <% end %>
-        <% if @search_category == :experiments and @experiment_search_count > 0 %>
+        <% if @search_category == :project_folders and @project_folder_search_count.positive? %>
+          <%= render 'search/results/project_folders', search_query: @search_query, results: @project_folder_results %>
+        <% end %>
+        <% if @search_category == :experiments and @experiment_search_count.positive? %>
           <%= render 'search/results/experiments', search_query: @search_query, results: @experiment_results %>
         <% end %>
-        <% if @search_category == :modules and @module_search_count > 0 %>
+        <% if @search_category == :modules and @module_search_count.positive? %>
           <%= render 'search/results/modules', search_query: @search_query, results: @module_results %>
         <% end %>
-        <% if @search_category == :results and @result_search_count > 0 %>
+        <% if @search_category == :results and @result_search_count.positive? %>
           <%= render 'search/results/results', search_query: @search_query, results: @result_results %>
         <% end %>
-        <% if @search_category == :tags and @tag_search_count > 0 %>
+        <% if @search_category == :tags and @tag_search_count.positive? %>
           <%= render 'search/results/tags', search_query: @search_query, results: @tag_results %>
         <% end %>
-        <% if @search_category == :reports and @report_search_count > 0 %>
+        <% if @search_category == :reports and @report_search_count.positive? %>
           <%= render 'search/results/reports', search_query: @search_query, results: @report_results %>
         <% end %>
-        <% if @search_category == :protocols and @protocol_search_count > 0 %>
+        <% if @search_category == :protocols and @protocol_search_count.positive? %>
           <%= render 'search/results/protocols', search_query: @search_query, results: @protocol_results %>
         <% end %>
-        <% if @search_category == :steps and @step_search_count > 0 %>
+        <% if @search_category == :steps and @step_search_count.positive? %>
           <%= render 'search/results/steps', search_query: @search_query, results: @step_results %>
         <% end %>
-        <% if @search_category == :checklists and @checklist_search_count > 0 %>
+        <% if @search_category == :checklists and @checklist_search_count.positive? %>
           <%= render 'search/results/checklists', search_query: @search_query, results: @checklist_results %>
         <% end %>
-        <% if @search_category == :repositories and @repository_search_count_total > 0 %>
+        <% if @search_category == :repositories and @repository_search_count_total.positive? %>
           <%= render 'search/results/repositories', search_query: @search_query, results: @repository_results, repository: @repository %>
         <% end %>
-        <% if @search_category == :assets and @asset_search_count > 0 %>
+        <% if @search_category == :assets and @asset_search_count.positive? %>
           <%= render 'search/results/assets', search_query: @search_query, results: @asset_results %>
         <% end %>
-        <% if @search_category == :tables and @table_search_count > 0 %>
+        <% if @search_category == :tables and @table_search_count.positive? %>
           <%= render 'search/results/tables', search_query: @search_query, results: @table_results %>
         <% end %>
-        <% if @search_category == :comments and @comment_search_count > 0 %>
+        <% if @search_category == :comments and @comment_search_count.positive? %>
           <%= render 'search/results/comments', search_query: @search_query, results: @comment_results %>
         <% end %>
 

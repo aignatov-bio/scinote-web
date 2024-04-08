@@ -6,11 +6,11 @@ var DasboardCalendarWidget = (function() {
     return `<script id="calendar-template" type="text/template">
               <div class="controls">
                 <div class="clndr-previous-button">
-                  <div class="btn btn-light icon-btn"><i class="fas fa-angle-double-left"></i></div>
+                  <div class="btn btn-light icon-btn"><i class="sn-icon sn-icon-left"></i></div>
                 </div>
                 <div class="clndr-title"><%= month %> <%= year %></div>
                 <div class="clndr-next-button">
-                  <div class="btn btn-light icon-btn"><i class="fas fa-angle-double-right"></i></div>
+                  <div class="btn btn-light icon-btn"><i class="sn-icon sn-icon sn-icon-right"></i></div>
                 </div>
               </div>
               <div class="days-container">
@@ -19,7 +19,7 @@ var DasboardCalendarWidget = (function() {
                 <% }); %>
                 <% _.each(days, function(day) { %>
                   <% if (day.classes.includes('event')){ %>
-                    <div class="<%= day.classes %>" id="<%= day.id %>">
+                    <div class="<%= day.classes %> dropdown" id="<%= day.id %>">
                       <div class="event-day" data-toggle="dropdown"><%= day.day %></div>
                       <div class="dropdown-menu events-container dropdown-menu-right" role="menu">
                         <div class="title">${I18n.t('dashboard.calendar.due_on')} <%= day.date.format(formatJS) %></div>
@@ -83,6 +83,8 @@ var DasboardCalendarWidget = (function() {
   };
 }());
 
+var formatJS;
 $(document).on('turbolinks:load', function() {
   DasboardCalendarWidget.init();
+  formatJS = $('body').data('datetime-picker-format');
 });

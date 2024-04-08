@@ -25,17 +25,21 @@
           <%= f.email_field :email, class: 'form-control sci-input-field' %>
         </div>
 
-        <div class="form-group sci-input-container">
+        <div class="form-group sci-input-container password-input-container">
           <%= f.label :password, t('users.registrations.new.password_label') %>
           <% if @minimum_password_length %>
           <em class="minimum-password-length"><%= t('users.registrations.new.minimum_password_length', password_length: @minimum_password_length) %></em>
           <% end %>
-          <%= f.password_field :password, autocomplete: 'off', class: 'form-control sci-input-field' %>
+          <div class="password-icon-wrapper">
+            <%= f.password_field :password, autocomplete: 'off', class: 'form-control sci-input-field' %>
+          </div>
         </div>
 
-        <div class="form-group sci-input-container" id="password_confirmation_form">
+        <div class="form-group sci-input-container password-input-container" id="password_confirmation_form">
           <%= f.label :password_confirmation, t('users.registrations.new.password_confirmation_label') %>
-          <%= f.password_field :password_confirmation, autocomplete: 'off', class: 'form-control sci-input-field' %>
+          <div class="password-icon-wrapper">
+            <%= f.password_field :password_confirmation, autocomplete: 'off', class: 'form-control sci-input-field' %>
+          </div>
         </div>
         <% if Rails.configuration.x.new_team_on_signup %>
           <div class="form-group sci-input-container" id="team_name_form">
@@ -52,7 +56,7 @@
         <%= recaptcha_input_tag %>
 
         <div class="form-group" data-hook="sign-up-form-submit">
-          <%= f.submit 'Sign up', class: 'btn btn-primary sign-up-button' %>
+          <%= f.button 'Sign up', class: 'btn btn-primary sign-up-button' %>
         </div>
       <% end %>
       </div>
@@ -61,30 +65,31 @@
   </div>
 </div>
 
-<% if resource and not resource.errors.empty? %>
-<script>
-(function () {
-  var formErrors = {};
+<%= render partial: 'users/sessions/login_disclaimer'%>
 
-  <% resource.errors.each do |err, m| %>
-  formErrors["<%= err %>"] =["<%= m %>"];
+<% if resource && resource.errors.present? %>
+  <% form_errors = {} %>
+
+  <% resource.errors.as_json.each do |err, messages| %>
+    <% form_errors[err] = [] %>
+    <% messages.each do |message| %>
+      <% form_errors[err].push(message) %>
+    <% end %>
   <% end %>
-
-  $("form").renderFormErrors("user", formErrors, false);
-}());
-</script>
+  <div class="hidden" id="resource-error-data" data-form-errors="<%= form_errors.to_json %>"></div>
+  <%= javascript_include_tag 'users/registrations/resource_errors' %>
 <% end %>
 
-<% if @team and not @team.errors.empty? %>
-<script>
-(function () {
-  var formErrors = {};
+<% if @team && @team.errors.present? %>
 
-  <% @team.errors.each do |err, m| %>
-  formErrors["<%= err %>"] =["<%= m %>"];
+  <% form_errors = {} %>
+
+  <% @team.errors.as_json.each do |err, messages| %>
+    <% form_errors[err] = [] %>
+    <% messages.each do |message| %>
+      <% form_errors[err].push(message) %>
+    <% end %>
   <% end %>
-
-  $("form").renderFormErrors('team', formErrors, false);
-}());
-</script>
+  <div class="hidden" id="team-error-data" data-form-errors="<%= form_errors.to_json %>"></div>
+  <%= javascript_include_tag 'users/registrations/team_errors' %>
 <% end %>

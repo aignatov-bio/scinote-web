@@ -1,0 +1,19 @@
+<div class="content__checklist-container" >
+  <div class="sci-divider my-6"></div>
+  <div class="checklist-header flex rounded mb-1 items-center relative w-full group/checklist-header">
+    <div class="grow-1 text-ellipsis whitespace-nowrap grow my-1 font-bold">
+      <%= render partial: "shareable_links/my_modules/inline_view", locals: { text: element.name, smart_annotation_enabled: true } %>
+    </div>
+  </div>
+  <% if element.checklist_items.count > 0 %>
+    <div class="step-checklist-items">
+      <% element.checklist_items.sort_by(&:position).each do |checklist_item| %>
+        <%= render partial: "shareable_links/my_modules/step_elements/checklist_item", locals: { checklist_item: checklist_item } %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="empty-checklist-element">
+      <%= t("protocols.steps.checklist.empty_checklist") %>
+    </div>
+  <% end %>
+</div>

@@ -64,6 +64,7 @@ module MarvinJsActions
       asset_type = 'asset_name'
     else
       asset_type = 'tiny_mce_asset_name'
+      step = asset.object.step
     end
 
     protocol = step&.protocol
@@ -117,8 +118,8 @@ module MarvinJsActions
       .call(activity_type: (activity + '_chemical_structure_on_result').to_sym,
             owner: current_user,
             subject: result,
-            team: my_module.experiment.project.team,
-            project: my_module.experiment.project,
+            team: my_module.team,
+            project: my_module.project,
             message_items: message_items)
   end
 
@@ -136,8 +137,8 @@ module MarvinJsActions
       .call(activity_type: (activity + '_chemical_structure_on_task').to_sym,
             owner: current_user,
             subject: my_module,
-            team: my_module.experiment.project.team,
-            project: my_module.experiment.project,
+            team: my_module.team,
+            project: my_module.project,
             message_items: message_items)
   end
 

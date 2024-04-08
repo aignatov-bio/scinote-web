@@ -1,29 +1,20 @@
-<%= link_to view_asset_url(id: asset),
-        id: 'wopi_file_view_button',
-        class: 'btn btn-default btn-sm',
-        target: '_blank',
-        style: 'display: inline-block' do %>
-  <%= file_application_icon(asset) %>
-  <%= wopi_button_text(asset, 'view') %>
-<% end %>
-<% if can_edit && edit_supported %>
+<% if edit_supported %>
   <%= link_to edit_asset_url(id: asset),
           id: 'wopi_file_edit_button',
-          class: 'btn btn-default btn-sm',
-          target: '_blank',
-          style: 'display: inline-block' do %>
-    <%= file_application_icon(asset) %>
+          class: 'btn btn-light',
+          target: '_blank' do %>
+    <i class="sn-icon sn-icon-<%= sn_icon_for(asset) %>"></i>
     <%= wopi_button_text(asset, 'edit') %>
   <% end %>
-<% elsif can_edit %>
-  <%= link_to edit_asset_url(id: asset),
+<% else %>
+  <%= content_tag :button, '',
           id: 'wopi_file_edit_button',
-          class: 'btn btn-default btn-sm',
+          class: 'btn btn-light  cursor-not-allowed',
+          style: "pointer-events: all;",
           target: '_blank',
           title: title,
-          disabled: true,
-          style: 'display: inline-block' do %>
-    <%= file_application_icon(asset) %>
+          disabled: true do %>
+    <i class="sn-icon sn-icon-<%= sn_icon_for(asset) %>"></i>
     <%= wopi_button_text(asset, 'edit') %>
   <% end %>
 <% end %>

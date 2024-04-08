@@ -1,8 +1,10 @@
-<div class="well">
-  <%= bootstrap_form_for(@result, url: result_text_path(format: :json),
-                                  data: { 'name-max-length': Constants::NAME_MAX_LENGTH, 'rich-text-max-length': Constants::RICH_TEXT_MAX_LENGTH },
-                                  remote: :true) do |f| %>
-    <%= f.text_field :name, style: "margin-top: 10px;" %><br />
+<div class="well edit-text-result">
+  <%= form_with(model: @result, url: result_text_path(format: :json),
+                                  builder: SciFormHelper::SciFormBuilder,
+                                  data: { remote: true, 'name-max-length': Constants::NAME_MAX_LENGTH, 'rich-text-max-length': Constants::RICH_TEXT_MAX_LENGTH }) do |f| %>
+    <div class="sci-input-container mb-4">
+      <%= f.text_field :name, style: "margin-top: 10px;", class: "sci-input-field" %><br />
+    </div>
     <%= f.fields_for :result_text do |ff| %>
       <%= ff.tiny_mce_editor(:text,
                              id: :result_text_attributes_textarea,
@@ -10,16 +12,14 @@
                              autocomplete: 'off',
                              data: { object_type: 'result_text',
                                      object_id: @result.result_text.id,
-                                     highlightjs_path: asset_path('highlightjs-github-theme.css'),
+                                     my_module_id: @result.my_module_id,
                                      last_updated: @result.updated_at.to_i * 1000 }) %>
     <% end %><br />
-    <div class="align-right">
+    <div class="align-right edit-result-texts-buttons'">
       <button type="button" class="btn btn-secondary cancel-edit">
         <%= t("general.cancel")%>
       </button>
-      <%= f.submit t("general.save"),
-                   class: 'btn btn-primary save-result',
-                   onclick: "Results.processResult(event, Results.ResultTypeEnum.TEXT);" %>
+      <%= f.submit t("general.save"), class: 'btn btn-primary save-result' %>
     </div>
   <% end %>
 </div>

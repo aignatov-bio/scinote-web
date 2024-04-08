@@ -1,0 +1,147 @@
+// scss-lint:disable SelectorDepth SelectorFormat QualifyingElement
+// scss-lint:disable NestingDepth ImportantRule
+
+.label-printer-show {
+  .printer-title {
+    flex-grow: 0 !important;
+    margin-right: .5em !important;
+  }
+
+  .status {
+    border: $border-default;
+    color: $color-silver-chalice;
+    margin-left: .5em;
+    margin-right: auto;
+    padding: .25em;
+
+    &[data-ready="true"] {
+      background: $brand-success;
+      border-color: $brand-success;
+      color: $color-white;
+    }
+  }
+
+  ul {
+    list-style-type: none;
+    padding-left: 0;
+
+    li {
+      padding: .5em 0;
+    }
+
+    .indented_row {
+      padding-left: 4px;
+    }
+  }
+
+  ol {
+    padding-left: 0;
+
+    li {
+      padding: .5em 0;
+    }
+
+    .indented_row {
+      padding-left: 4px;
+    }
+  }
+
+  .zebra-settings-collapse {
+    .collapse-content {
+      ol {
+        padding-left: 1.5em;
+      }
+    }
+
+    li:last-child {
+      padding-bottom: 0;
+    }
+
+    .zebra-printers {
+      color: $color-silver-chalice;
+    }
+  }
+
+  .zebra-status-tag {
+    align-items: center;
+    border-radius: 2px;
+    font-size: 12px;
+    margin-left: 1em;
+    margin-right: 1em;
+    padding: 4px 8px;
+    white-space: nowrap;
+
+    &.ready {
+      background-color: $brand-success;
+      color: $color-white;
+    }
+
+    &.offline {
+      background-color: $color-white;
+      border: 1px solid $color-gray;
+      color: $color-gray;
+    }
+  }
+
+  .sn-icon-down {
+    cursor: pointer;
+    margin-right: .25em;
+
+    &.collapsed {
+      @include rotate(-90deg);
+    }
+  }
+
+  .collapse-row {
+    align-items: center;
+    display: flex;
+    padding-left: 1em;
+  }
+
+  .collapse-content {
+    margin-bottom: 1em;
+    padding-left: 2.5em;
+  }
+
+  .row-title {
+    @include font-h2;
+    margin-left: .5em;
+    margin-top: .25em;
+  }
+
+  .api-key-container {
+    display: flex;
+    position: relative;
+
+    &.warning {
+      &::after {
+        color: $brand-primary-light;
+        content: attr(data-warning);
+        left: 0;
+        position: absolute;
+        bottom: -1.5em;
+      }
+    }
+
+    .api-key-input {
+      margin-right: .5em;
+
+
+    }
+
+    .btn {
+      margin-left: .5em;
+      margin-top: 23px;
+    }
+  }
+
+  .update-printers {
+    margin-left: auto;
+  }
+
+  .searching-printers {
+    img {
+      margin-right: .5em;
+    }
+  }
+}

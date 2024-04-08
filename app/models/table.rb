@@ -19,10 +19,10 @@ class Table < ApplicationRecord
              class_name: 'User',
              optional: true
   belongs_to :team, optional: true
-  has_one :step_table, inverse_of: :table
+  has_one :step_table, inverse_of: :table, dependent: :destroy
   has_one :step, through: :step_table
 
-  has_one :result_table, inverse_of: :table
+  has_one :result_table, inverse_of: :table, dependent: :destroy
   has_one :result, through: :result_table
   has_many :report_elements, inverse_of: :table, dependent: :destroy
 
@@ -35,29 +35,19 @@ class Table < ApplicationRecord
                   page = 1,
                   _current_team = nil,
                   options = {})
-    step_ids =
-      Step
-      .search(user, include_archived, nil, Constants::SEARCH_NO_LIMIT)
-      .joins(:step_tables)
-      .distinct
-      .pluck('step_tables.id')
+    step_ids = Step.search(user, include_archived, nil, Constants::SEARCH_NO_LIMIT)
+                   .joins(:step_tables)
+                   .distinct
+                   .pluck('step_tables.id')
 
-    result_ids =
-      Result
-      .search(user, include_archived, nil, Constants::SEARCH_NO_LIMIT)
-      .joins(:result_table)
-      .distinct
-      .pluck('result_tables.id')
+    result_ids = Result.search(user, include_archived, nil, Constants::SEARCH_NO_LIMIT)
+                       .joins(:result_tables)
+                       .distinct
+                       .pluck('result_tables.id')
 
-    table_query =
-      Table
-      .distinct
-      .joins('LEFT OUTER JOIN step_tables ON step_tables.table_id = tables.id')
-      .joins('LEFT OUTER JOIN result_tables ON ' \
-             'result_tables.table_id = tables.id')
-      .joins('LEFT OUTER JOIN results ON result_tables.result_id = results.id')
-      .where('step_tables.id IN (?) OR result_tables.id IN (?)',
-             step_ids, result_ids)
+    table_query = Table.distinct
+                       .left_outer_joins(:step_table, :result_table, :result)
+                       .where('step_tables.id IN (?) OR result_tables.id IN (?)', step_ids, result_ids)
 
     if options[:whole_word].to_s == 'true' ||
        options[:whole_phrase].to_s == 'true'
@@ -111,10 +101,12 @@ class Table < ApplicationRecord
     if page == Constants::SEARCH_NO_LIMIT
       new_query
     else
-      new_query
-        .limit(Constants::SEARCH_LIMIT)
-        .offset((page - 1) * Constants::SEARCH_LIMIT)
+      new_query.limit(Constants::SEARCH_LIMIT).offset((page - 1) * Constants::SEARCH_LIMIT)
     end
+  end
+
+  def metadata
+    attributes['metadata'].is_a?(String) ? JSON.parse(attributes['metadata']) : attributes['metadata']
   end
 
   def contents_utf_8
@@ -139,6 +131,47 @@ class Table < ApplicationRecord
      data.each do |row|
        csv << row
      end
+    end
+  end
+
+  def duplicate(parent, user, position = nil)
+    case parent
+    when Step
+      ActiveRecord::Base.transaction do
+        new_table = parent.tables.create!(
+          name: name,
+          contents: contents.encode('UTF-8', 'UTF-8'),
+          team: parent.protocol.team,
+          created_by: user,
+          metadata: metadata,
+          last_modified_by: user
+        )
+
+        parent.step_orderable_elements.create!(
+          position: position || parent.step_orderable_elements.length,
+          orderable: new_table.step_table
+        )
+
+        new_table
+      end
+    when Result
+      ActiveRecord::Base.transaction do
+        new_table = parent.tables.create!(
+          name: name,
+          contents: contents.encode('UTF-8', 'UTF-8'),
+          team: parent.my_module.team,
+          created_by: user,
+          metadata: metadata,
+          last_modified_by: user
+        )
+
+        parent.result_orderable_elements.create!(
+          position: position || parent.result_orderable_elements.length,
+          orderable: new_table.result_table
+        )
+
+        new_table
+      end
     end
   end
 end

@@ -23,6 +23,7 @@ class Checklist < ApplicationRecord
   has_many :report_elements,
     inverse_of: :checklist,
     dependent: :destroy
+  has_one :step_orderable_element, as: :orderable, dependent: :destroy
 
   accepts_nested_attributes_for :checklist_items,
     reject_if: :all_blank,
@@ -36,27 +37,46 @@ class Checklist < ApplicationRecord
                   page = 1,
                   _current_team = nil,
                   options = {})
-    step_ids =
-      Step
-      .search(user, include_archived, nil, Constants::SEARCH_NO_LIMIT)
-      .pluck(:id)
+    step_ids = Step.search(user, include_archived, nil, Constants::SEARCH_NO_LIMIT)
+                   .pluck(:id)
 
-    new_query =
-      Checklist
-      .distinct
-      .where('checklists.step_id IN (?)', step_ids)
-      .joins('LEFT JOIN checklist_items ON ' \
-             'checklists.id = checklist_items.checklist_id')
-      .where_attributes_like(['checklists.name', 'checklist_items.text'],
-                             query, options)
+    new_query = Checklist.distinct
+                         .where(checklists: { step_id: step_ids })
+                         .left_outer_joins(:checklist_items)
+                         .where_attributes_like(['checklists.name', 'checklist_items.text'], query, options)
 
     # Show all results if needed
     if page == Constants::SEARCH_NO_LIMIT
       new_query
     else
-      new_query
-        .limit(Constants::SEARCH_LIMIT)
-        .offset((page - 1) * Constants::SEARCH_LIMIT)
+      new_query.limit(Constants::SEARCH_LIMIT).offset((page - 1) * Constants::SEARCH_LIMIT)
+    end
+  end
+
+  def duplicate(step, user, position = nil)
+    ActiveRecord::Base.transaction do
+      new_checklist = step.checklists.create!(
+        name: name,
+        created_by: user,
+        last_modified_by: user
+      )
+
+      checklist_items.each do |item|
+        new_checklist.checklist_items.create!(
+          text: item.text,
+          checked: false,
+          position: item.position,
+          created_by: user,
+          last_modified_by: user
+        )
+      end
+
+      step.step_orderable_elements.create!(
+        position: position || step.step_orderable_elements.length,
+        orderable: new_checklist
+      )
+
+      new_checklist
     end
   end
 end

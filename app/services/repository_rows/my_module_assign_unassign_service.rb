@@ -2,6 +2,7 @@
 
 module RepositoryRows
   class MyModuleAssignUnassignService
+    include Canaid::Helpers::PermissionsHelper
     extend Service
 
     attr_reader :repository,
@@ -28,6 +29,8 @@ module RepositoryRows
       ActiveRecord::Base.transaction do
         if params[:downstream] == 'true'
           @my_module.downstream_modules.each do |downstream_module|
+            next unless can_assign_my_module_repository_rows?(@user, downstream_module)
+
             unassign_repository_rows_from_my_module(downstream_module)
             assign_repository_rows_to_my_module(downstream_module)
           end
@@ -85,8 +88,8 @@ module RepositoryRows
 
       unassigned_rows = @repository.repository_rows
                                    .active
-                                   .joins("LEFT OUTER JOIN my_module_repository_rows "\
-                                          "ON repository_rows.id = my_module_repository_rows.repository_row_id "\
+                                   .joins("LEFT OUTER JOIN my_module_repository_rows " \
+                                          "ON repository_rows.id = my_module_repository_rows.repository_row_id " \
                                           "AND my_module_repository_rows.my_module_id = #{my_module.id.to_i}")
                                    .where(my_module_repository_rows: { id: nil })
                                    .where(id: @params[:rows_to_assign])
@@ -94,9 +97,7 @@ module RepositoryRows
       return [] unless unassigned_rows.any?
 
       unassigned_rows.find_each do |repository_row|
-        MyModuleRepositoryRow.create!(my_module: my_module,
-                                      repository_row: repository_row,
-                                      assigned_by: @user)
+        my_module.my_module_repository_rows.create!(repository_row: repository_row, assigned_by: @user)
         assigned_names << repository_row.name
       end
 

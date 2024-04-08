@@ -1,50 +1,64 @@
+# frozen_string_literal: true
+
 class Experiment < ApplicationRecord
+  ID_PREFIX = 'EX'
+
+  include PrefixedIdModel
+  SEARCHABLE_ATTRIBUTES = ['experiments.name', 'experiments.description', PREFIXED_ID_SQL].freeze
+
   include ArchivableModel
   include SearchableModel
   include SearchableByNameModel
+  include ViewableModel
+  include PermissionCheckableModel
+  include Assignable
+  include Cloneable
+
+  before_save -> { report_elements.destroy_all }, if: -> { !new_record? && project_id_changed? }
 
   belongs_to :project, inverse_of: :experiments, touch: true
+  delegate :team, to: :project
   belongs_to :created_by,
-             foreign_key: :created_by_id,
              class_name: 'User'
   belongs_to :last_modified_by,
-             foreign_key: :last_modified_by_id,
              class_name: 'User'
-  belongs_to :archived_by,
-             foreign_key: :archived_by_id, class_name: 'User', optional: true
+  belongs_to :archived_by, class_name: 'User', optional: true
   belongs_to :restored_by,
-             foreign_key: :restored_by_id,
              class_name: 'User',
              optional: true
 
   has_many :my_modules, inverse_of: :experiment, dependent: :destroy
-  has_many :active_my_modules,
-           -> { where(archived: false).order(:name) },
-           class_name: 'MyModule'
   has_many :my_module_groups, inverse_of: :experiment, dependent: :destroy
   has_many :report_elements, inverse_of: :experiment, dependent: :destroy
   # Associations for old activity type
   has_many :activities, inverse_of: :experiment
+  has_many :users, through: :user_assignments, dependent: :destroy
 
   has_one_attached :workflowimg
 
   auto_strip_attributes :name, :description, nullify: false
-  validates :name,
-            length: { minimum: Constants::NAME_MIN_LENGTH,
-                      maximum: Constants::NAME_MAX_LENGTH },
-            uniqueness: { scope: :project, case_sensitive: false }
+  validates :name, length: { minimum: Constants::NAME_MIN_LENGTH, maximum: Constants::NAME_MAX_LENGTH }
   validates :description, length: { maximum: Constants::TEXT_MAX_LENGTH }
   validates :project, presence: true
   validates :created_by, presence: true
   validates :last_modified_by, presence: true
   validates :uuid, uniqueness: { scope: :project },
                    unless: proc { |e| e.uuid.blank? }
-  with_options if: :archived do |experiment|
-    experiment.validates :archived_by, presence: true
-    experiment.validates :archived_on, presence: true
-  end
 
-  scope :is_archived, ->(is_archived) { where("archived = ?", is_archived) }
+  scope :is_archived, lambda { |is_archived|
+    if is_archived
+      joins(:project).where('experiments.archived = TRUE OR projects.archived = TRUE')
+    else
+      joins(:project).where('experiments.archived = FALSE AND projects.archived = FALSE')
+    end
+  }
+
+  scope :experiment_search_scope, lambda { |project_ids, user|
+    joins(:user_assignments).where(
+      project: project_ids,
+      user_assignments: { user: user }
+    )
+  }
 
   def self.search(
     user,
@@ -54,71 +68,84 @@ class Experiment < ApplicationRecord
     current_team = nil,
     options = {}
   )
-    project_ids =
-      Project
-      .search(user, include_archived, nil, Constants::SEARCH_NO_LIMIT)
-      .pluck(:id)
+    viewable_projects = Project.search(user, include_archived, nil, Constants::SEARCH_NO_LIMIT, current_team)
+                               .pluck(:id)
+    new_query = Experiment.with_granted_permissions(user, ExperimentPermissions::READ)
+                          .where(project: viewable_projects)
+                          .where_attributes_like(SEARCHABLE_ATTRIBUTES, query, options)
 
-    if current_team
-      projects_ids =
-        Project
-        .search(user,
-                include_archived,
-                nil,
-                1,
-                current_team)
-        .select('id')
-
-      new_query =
-        Experiment
-        .where('experiments.project_id IN (?)', projects_ids)
-        .where_attributes_like([:name, :description], query, options)
-      return include_archived ? new_query : new_query.is_archived(false)
-    elsif include_archived
-      new_query =
-        Experiment
-        .where(project: project_ids)
-        .where_attributes_like([:name, :description], query, options)
-    else
-      new_query =
-        Experiment
-        .is_archived(false)
-        .where(project: project_ids)
-        .where_attributes_like([:name, :description], query, options)
-    end
+    new_query = new_query.active unless include_archived
 
     # Show all results if needed
     if page == Constants::SEARCH_NO_LIMIT
       new_query
     else
-      new_query
-        .limit(Constants::SEARCH_LIMIT)
-        .offset((page - 1) * Constants::SEARCH_LIMIT)
+      new_query.limit(Constants::SEARCH_LIMIT).offset((page - 1) * Constants::SEARCH_LIMIT)
     end
   end
 
   def self.viewable_by_user(user, teams)
-    where(project: Project.viewable_by_user(user, teams))
+    with_granted_permissions(user, ExperimentPermissions::READ)
+      .where(project: Project.viewable_by_user(user, teams))
+  end
+
+  def self.with_children_viewable_by_user(user)
+    joins("
+      LEFT OUTER JOIN my_modules ON my_modules.experiment_id = experiments.id
+      LEFT OUTER JOIN user_assignments my_module_user_assignments
+        ON my_module_user_assignments.assignable_id = my_modules.id AND
+           my_module_user_assignments.assignable_type = 'MyModule'
+      LEFT OUTER JOIN user_roles my_module_user_roles
+        ON my_module_user_roles.id = my_module_user_assignments.user_role_id
+    ")
+      .where('
+        (my_module_user_assignments.user_id = ? AND my_module_user_roles.permissions @> ARRAY[?]::varchar[]
+          OR my_modules.id IS NULL)
+      ', user.id, MyModulePermissions::READ)
+  end
+
+  def self.filter_by_teams(teams = [])
+    return self if teams.blank?
+
+    joins(:project).where(project: { team: teams })
+  end
+
+  def default_view_state
+    {
+      my_modules: {
+        active: { sort: 'atoz' },
+        archived: { sort: 'atoz' },
+        view_type: 'canvas'
+      }
+    }
+  end
+
+  def validate_view_state(view_state)
+    if %w(canvas table).exclude?(view_state.state.dig('my_modules', 'view_type')) ||
+       %w(atoz ztoa due_first due_last
+          id_asc id_desc).exclude?(view_state.state.dig('my_modules', 'active', 'sort')) ||
+       %w(atoz ztoa due_first due_last id_asc id_desc
+          archived_old archived_new).exclude?(view_state.state.dig('my_modules', 'archived', 'sort'))
+      view_state.errors.add(:state, :wrong_state)
+    end
+  end
+
+  def connections
+    Connection.joins(
+      'LEFT JOIN my_modules AS inputs ON input_id = inputs.id'
+    ).joins(
+      'LEFT JOIN my_modules AS outputs ON output_id = outputs.id'
+    ).where(
+      'inputs.experiment_id = ? OR outputs.experiment_id = ?', id, id
+    )
+  end
+
+  def archived_branch?
+    archived? || project.archived?
   end
 
   def navigable?
     !project.archived?
-  end
-
-  def active_modules
-    my_modules.where(archived: false)
-  end
-
-  def archived_modules
-    my_modules.where(archived: true)
-  end
-
-  def assigned_samples
-    Sample.joins(:my_modules).where(my_modules: { id: my_modules })
-  end
-
-  def unassigned_samples(assigned_samples)
-    Sample.where(team_id: team).where.not(id: assigned_samples)
   end
 
   def update_canvas(
@@ -132,14 +159,23 @@ class Experiment < ApplicationRecord
     positions,
     current_user
   )
-    cloned_modules = []
     begin
       with_lock do
-        # First, add new modules
+        # Start with archiving to release positions for new tasks
+        archive_modules(to_archive, current_user) if to_archive.any?
+
+        # Update only existing tasks positions to release positions for new tasks
+        existing_positions = positions.slice(*positions.keys.map { |k| k unless k.to_s.start_with?('n') }.compact)
+        update_module_positions(existing_positions) if existing_positions.any?
+
+        # Move only existing tasks to release positions for new tasks
+        existing_to_move = to_move.slice(*to_move.keys.map { |k| k unless k.to_s.start_with?('n') }.compact)
+        move_modules(existing_to_move, current_user) if existing_to_move.any?
+
+        # add new modules
         new_ids, cloned_pairs, originals = add_modules(
           to_add, to_clone, current_user
         )
-        cloned_modules = cloned_pairs.collect { |mn, _| mn }
 
         # Rename modules
         rename_modules(to_rename, current_user)
@@ -160,9 +196,6 @@ class Experiment < ApplicationRecord
                   message_items: { my_module_original: mo.id,
                                    my_module_new: mn.id })
         end
-
-        # Then, archive modules that need to be archived
-        archive_modules(to_archive, current_user) if to_archive.any?
 
         # Update connections, positions & module group variables
         # with actual IDs retrieved from the new modules creation
@@ -207,59 +240,39 @@ class Experiment < ApplicationRecord
       end
     rescue ActiveRecord::ActiveRecordError,
            ArgumentError,
-           ActiveRecord::RecordNotSaved => ex
-      logger.error ex.message
+           ActiveRecord::RecordNotSaved => e
+      logger.error e.message
       return false
     end
     true
   end
 
-  def generate_workflow_img
-    workflowimg.purge if workflowimg.attached?
-    Experiments::GenerateWorkflowImageService.delay.call(experiment_id: id)
-  end
-
   def workflowimg_exists?
-    workflowimg.service.exist?(workflowimg.blob.key)
-  end
-
-  # Get projects where user is either owner or user in the same team
-  # as this experiment
-  def projects_with_role_above_user(current_user)
-    team = project.team
-    projects = team.projects.where(archived: false)
-
-    current_user.user_projects
-                .where(project: projects)
-                .where('role < 2')
-                .map(&:project)
+    workflowimg.attached? && workflowimg.service.exist?(workflowimg.blob.key)
   end
 
   # Projects to which this experiment can be moved (inside the same
   # team and not archived), all users assigned on experiment.project has
   # to be assigned on such project
-  def moveable_projects(current_user)
-    projects = projects_with_role_above_user(current_user)
-
-    projects = projects.each_with_object([]) do |p, arr|
-      arr << p if (project.users - p.users).empty?
-      arr
-    end
-    projects - [project]
+  def movable_projects(current_user)
+    project.team.projects.active
+           .where.not(id: project_id)
+           .where(archived: false)
+           .with_granted_permissions(current_user, ProjectPermissions::EXPERIMENTS_CREATE)
   end
 
-  private
+  def parent
+    project
+  end
 
-  # Archive all modules. Receives an array of module integer IDs.
-  def archive_modules(module_ids)
-    my_modules.where(id: module_ids).each(&:archive!)
-    my_modules.reload
+  def permission_parent
+    project
   end
 
   # Archive all modules. Receives an array of module integer IDs
   # and current user.
   def archive_modules(module_ids, current_user)
-    my_modules.where(id: module_ids).each do |my_module|
+    my_modules.where(id: module_ids).find_each do |my_module|
       my_module.archive!(current_user)
       log_activity(:archive_module, current_user, my_module)
     end
@@ -277,7 +290,7 @@ class Experiment < ApplicationRecord
     cloned_pairs = {}
     ids_map = {}
     to_add.each do |m|
-      original = MyModule.find_by_id(to_clone.fetch(m[:id], nil)) if to_clone.present?
+      original = MyModule.find_by(id: to_clone.fetch(m[:id], nil)) if to_clone.present?
       if original.present?
         my_module = original.deep_clone(current_user)
         cloned_pairs[my_module] = original
@@ -307,12 +320,12 @@ class Experiment < ApplicationRecord
   # it's obviously not updated.
   def rename_modules(to_rename, current_user)
     to_rename.each do |id, new_name|
-      my_module = MyModule.find_by_id(id)
-      if my_module.present?
-        my_module.name = new_name
-        my_module.save!
-        log_activity(:rename_task, current_user, my_module)
-      end
+      my_module = MyModule.find_by(id: id)
+      next if my_module.blank?
+
+      my_module.name = new_name
+      my_module.save!
+      log_activity(:rename_task, current_user, my_module)
     end
   end
 
@@ -323,11 +336,11 @@ class Experiment < ApplicationRecord
   # it's obviously not updated. Any connection on module is destroyed.
   def move_modules(to_move, current_user)
     to_move.each do |id, experiment_id|
-      my_module = my_modules.find_by_id(id)
-      experiment = project.experiments.find_by_id(experiment_id)
-      experiment_org = my_module.experiment
+      my_module = my_modules.find_by(id: id)
+      experiment = project.experiments.find_by(id: experiment_id)
       next unless my_module.present? && experiment.present?
 
+      experiment_original = my_module.experiment
       my_module.experiment = experiment
 
       # Calculate new module position
@@ -335,11 +348,13 @@ class Experiment < ApplicationRecord
       my_module.x = new_pos[:x]
       my_module.y = new_pos[:y]
 
-      unless my_module.outputs.destroy_all && my_module.inputs.destroy_all
-        raise ActiveRecord::ActiveRecordError
-      end
+      raise ActiveRecord::ActiveRecordError unless my_module.outputs.destroy_all && my_module.inputs.destroy_all
 
       next unless my_module.save
+
+      # regenerate user assignments
+      my_module.user_assignments.destroy_all
+      UserAssignments::GenerateUserAssignmentsJob.perform_later(my_module, current_user.id)
 
       Activities::CreateActivityService.call(activity_type: :move_task,
                                              owner: current_user,
@@ -349,13 +364,10 @@ class Experiment < ApplicationRecord
                                              message_items: {
                                                my_module: my_module.id,
                                                experiment_original:
-                                                 experiment_org.id,
+                                                 experiment_original.id,
                                                experiment_new: experiment.id
                                              })
     end
-
-    # Generate workflow image for the experiment in which we moved the task
-    generate_workflow_img_for_moved_modules(to_move)
   end
 
   # Move module groups; this method accepts a map where keys
@@ -366,64 +378,60 @@ class Experiment < ApplicationRecord
   # it's obviously not updated. Position for entire module group is updated
   # to bottom left corner.
   def move_module_groups(to_move, current_user)
-    to_move.each do |ids, experiment_id|
-      modules = my_modules.find(ids)
-      groups = Set.new(modules.map(&:my_module_group))
-      experiment = project.experiments.find_by_id(experiment_id)
+    ActiveRecord::Base.transaction do
+      to_move.each do |ids, experiment_id|
+        modules = my_modules.find(ids)
+        groups = Set.new(modules.map(&:my_module_group))
+        experiment = project.experiments.find_by(id: experiment_id)
 
-      groups.each do |group|
-        next unless group && experiment.present?
+        groups.each do |group|
+          next unless group && experiment.present?
 
-        # Find the lowest point for current modules(max_y) and the leftmost
-        # module(min_x)
-        if experiment.active_modules.empty?
-          max_y = 0
-          min_x = 0
-        else
-          max_y = experiment.active_modules.maximum(:y) + MyModule::HEIGHT
-          min_x = experiment.active_modules.minimum(:x)
+          # Find the lowest point for current modules(max_y) and the leftmost
+          # module(min_x)
+          active_modules = experiment.my_modules.active
+          if active_modules.blank?
+            max_y = 0
+            min_x = 0
+          else
+            max_y = active_modules.maximum(:y) + MyModule::HEIGHT
+            min_x = active_modules.minimum(:x)
+          end
+
+          # Set new positions
+          curr_min_x = modules.min_by(&:x).x
+          curr_min_y = modules.min_by(&:y).y
+          modules.each { |m| m.x += -curr_min_x + min_x }
+          modules.each { |m| m.y += -curr_min_y + max_y }
+
+          modules.each do |m|
+            experiment_org = m.experiment
+            m.experiment = experiment
+            m.save!
+
+            # regenerate user assignments
+            m.user_assignments.destroy_all
+            UserAssignments::GenerateUserAssignmentsJob.new(m, current_user.id).perform_now
+
+            # Add activity
+            Activities::CreateActivityService.call(
+              activity_type: :move_task,
+              owner: current_user,
+              subject: m,
+              project: experiment.project,
+              team: experiment.project.team,
+              message_items: {
+                my_module: m.id,
+                experiment_original: experiment_org.id,
+                experiment_new: experiment.id
+              }
+            )
+          end
+
+          group.experiment = experiment
+          group.save!
         end
-
-        # Set new positions
-        curr_min_x = modules.min_by(&:x).x
-        curr_min_y = modules.min_by(&:y).y
-        modules.each { |m| m.x += -curr_min_x + min_x }
-        modules.each { |m| m.y += -curr_min_y + max_y }
-
-        modules.each do |m|
-          experiment_org = m.experiment
-          m.experiment = experiment
-          m.save!
-
-          # Add activity
-          Activities::CreateActivityService.call(
-            activity_type: :move_task,
-            owner: current_user,
-            subject: m,
-            project: experiment.project,
-            team: experiment.project.team,
-            message_items: {
-              my_module: m.id,
-              experiment_original: experiment_org.id,
-              experiment_new: experiment.id
-            }
-          )
-        end
-
-        group.experiment = experiment
-        group.save!
       end
-    end
-
-    # Generate workflow image for the experiment in which we moved the workflow
-    generate_workflow_img_for_moved_modules(to_move)
-  end
-
-  # Generates workflow img when the workflow or module is moved
-  # to other experiment
-  def generate_workflow_img_for_moved_modules(to_move)
-    Experiment.where(id: to_move.values.uniq).each do |exp|
-      exp.generate_workflow_img
     end
   end
 
@@ -438,23 +446,19 @@ class Experiment < ApplicationRecord
     dg = RGL::DirectedAdjacencyGraph.new
     connections.each do |a, b|
       # Check if both vertices exist
-      if (my_modules.find_all { |m| [a.to_i, b.to_i].include? m.id }).count == 2
-        dg.add_edge(a, b)
-      end
+      dg.add_edge(a, b) if (my_modules.find_all { |m| [a.to_i, b.to_i].include? m.id }).count == 2
     end
 
     # Check if cycles exist!
     topsort = dg.topsort_iterator.to_a
-    if topsort.length.zero? && dg.edges.size > 1
-      raise ArgumentError, 'Cycles exist.'
-    end
+    raise ArgumentError, 'Cycles exist.' if topsort.length.zero? && dg.edges.size > 1
 
     # First, delete existing connections
     # but keep a copy of previous state
     previous_sources = {}
     previous_sources.default = []
 
-    my_modules.includes(inputs: { from: [:inputs, outputs: :to] }).each do |m|
+    my_modules.includes(inputs: { from: [:inputs, outputs: :to] }).find_each do |m|
       previous_sources[m.id] = []
       m.inputs.each do |c|
         previous_sources[m.id] << c.from
@@ -470,27 +474,9 @@ class Experiment < ApplicationRecord
       Connection.create!(input_id: b, output_id: a)
     end
 
-    # Unassign samples from former downstream modules
-    # for all destroyed connections
-    unassign_samples_from_old_downstream_modules(previous_sources)
-
-    visited = []
-    # Assign samples to all new downstream modules
-    filtered_edges.each do |a, b|
-      source = my_modules.includes({ inputs: :from }, :samples).find(a.to_i)
-      target = my_modules.find(b.to_i)
-      # Do this only for new edges
-      next unless previous_sources[target.id].exclude?(source)
-      # Go as high upstream as new edges take us
-      # and then assign samples to all downsteam samples
-      assign_samples_to_new_downstream_modules(previous_sources,
-                                               visited,
-                                               source)
-    end
-
     # Save topological order of modules (for modules without workflow,
     # leave them unordered)
-    my_modules.includes(:my_module_group).each do |m|
+    my_modules.includes(:my_module_group).find_each do |m|
       m.workflow_order =
         if topsort.include? m.id.to_s
           topsort.find_index(m.id.to_s)
@@ -501,52 +487,8 @@ class Experiment < ApplicationRecord
     end
 
     # Make sure to reload my modules, which now have updated connections
-    # and samples
     my_modules.reload
     true
-  end
-
-  # When connections are deleted, unassign samples that
-  # are not inherited anymore
-  def unassign_samples_from_old_downstream_modules(sources)
-    my_modules.each do |my_module|
-      sources[my_module.id].each do |src|
-        # Only do this for newly deleted connections
-        next unless src.outputs.map(&:to).exclude? my_module
-        my_module.downstream_modules.each do |dm|
-          # Get unique samples for all upstream modules
-          um = dm.upstream_modules
-          um.shift # remove current module
-          ums = um.map(&:samples).flatten.uniq
-          src.samples.find_each do |sample|
-            dm.samples.destroy(sample) if ums.exclude? sample
-          end
-        end
-      end
-    end
-  end
-
-  # Assign samples to new connections recursively
-  def assign_samples_to_new_downstream_modules(sources, visited, my_module)
-    # If samples are already assigned for this module, stop going upstream
-    return if visited.include?(my_module)
-    visited << my_module
-    # Edge case, when module is source or it doesn't have any new input
-    # connections
-    if my_module.inputs.blank? ||
-       (my_module.inputs.map(&:from) - sources[my_module.id]).empty?
-      my_module.downstream_modules.each do |dm|
-        new_samples = my_module.samples.where.not(id: dm.samples)
-        dm.samples << new_samples
-      end
-    else
-      my_module.inputs.each do |input|
-        # Go upstream for new in connections
-        if sources[my_module.id].exclude?(input.from)
-          assign_samples_to_new_downstream_modules(sources, visited, input.from)
-        end
-      end
-    end
   end
 
   # Updates positions of modules.
@@ -555,7 +497,7 @@ class Experiment < ApplicationRecord
   def update_module_positions(positions)
     modules = my_modules.where(id: positions.keys)
     modules.each do |m|
-      m.update_columns(x: positions[m.id.to_s][:x], y: positions[m.id.to_s][:y])
+      m.update(x: positions[m.id.to_s][:x], y: positions[m.id.to_s][:y])
     end
     my_modules.reload
   end
@@ -564,12 +506,19 @@ class Experiment < ApplicationRecord
   def normalize_module_positions
     # This method normalizes module positions so x-s and y-s
     # are all positive
-    x_diff = my_modules.pluck(:x).min
-    y_diff = my_modules.pluck(:y).min
+    x_diff = my_modules.active.pluck(:x).min
+    y_diff = my_modules.active.pluck(:y).min
 
-    my_modules.each do |m|
-      m.update_columns(x: m.x - x_diff, y: m.y - y_diff)
+    return unless x_diff && y_diff
+
+    moving_direction = {
+      x: x_diff.positive? ? :asc : :desc,
+      y: y_diff.positive? ? :asc : :desc
+    }
+    my_modules.active.order(moving_direction).each do |m|
+      m.update!(x: m.x - x_diff, y: m.y - y_diff)
     end
+    my_modules.reload
   end
 
   # Recalculate module groups in this project. Input is
@@ -581,8 +530,8 @@ class Experiment < ApplicationRecord
 
     dg = RGL::DirectedAdjacencyGraph[]
     group_ids = Set.new
-    active_modules.includes(:my_module_group, outputs: :to).each do |m|
-      group_ids << m.my_module_group.id unless m.my_module_group.blank?
+    my_modules.active.includes(:my_module_group, outputs: :to).find_each do |m|
+      group_ids << m.my_module_group.id if m.my_module_group.present?
       dg.add_vertex m.id unless dg.has_vertex? m.id
       m.outputs.each do |o|
         dg.add_edge m.id, o.to.id
@@ -594,14 +543,13 @@ class Experiment < ApplicationRecord
     end
 
     # Remove any existing module groups from modules
-    unless MyModuleGroup.where(id: group_ids.to_a).destroy_all
-      raise ActiveRecord::ActiveRecordError
-    end
+    raise ActiveRecord::ActiveRecordError unless MyModuleGroup.where(id: group_ids.to_a).destroy_all
 
     # Second, create new groups
     workflows.each do |modules|
       # Single modules are not considered part of any workflow
       next unless modules.length > 1
+
       MyModuleGroup.create!(experiment: self,
                             my_modules: modules,
                             created_by: current_user)
@@ -610,6 +558,8 @@ class Experiment < ApplicationRecord
     my_module_groups.reload
     true
   end
+
+  private
 
   def log_activity(type_of, current_user, my_module)
     Activities::CreateActivityService

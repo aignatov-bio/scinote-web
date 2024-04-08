@@ -1,110 +1,42 @@
 # frozen_string_literal: true
 
 class RepositoryCell < ApplicationRecord
+  include ReminderRepositoryCellJoinable
+
   attr_accessor :importing
 
   belongs_to :repository_row
   belongs_to :repository_column
-  belongs_to :value, polymorphic: true,
-                     inverse_of: :repository_cell,
-                     dependent: :destroy
-  belongs_to :repository_text_value,
-             (lambda do
-               includes(:repository_cell)
-               .where(repository_cells: { value_type: 'RepositoryTextValue' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-  belongs_to :repository_number_value,
-             (lambda do
-               includes(:repository_cell)
-               .where(repository_cells: { value_type: 'RepositoryNumberValue' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-  belongs_to :repository_date_value,
-             (lambda do
-               includes(:repository_cell)
-               .where(repository_cells: { value_type: 'RepositoryDateTimeValueBase' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-  belongs_to :repository_list_value,
-             (lambda do
-               includes(:repository_cell)
-               .where(repository_cells: { value_type: 'RepositoryListValue' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-  belongs_to :repository_asset_value,
-             (lambda do
-               includes(:repository_cell)
-               .where(repository_cells: { value_type: 'RepositoryAssetValue' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
+  belongs_to :value, polymorphic: true, inverse_of: :repository_cell, dependent: :destroy
 
-  belongs_to :repository_status_value,
-             (lambda do
-               includes(:repository_cell)
-                 .where(repository_cells: { value_type: 'RepositoryStatusValue' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
+  {
+    repository_text: 'RepositoryTextValue',
+    repository_number: 'RepositoryNumberValue',
+    repository_list: 'RepositoryListValue',
+    repository_asset: 'RepositoryAssetValue',
+    repository_status: 'RepositoryStatusValue',
+    repository_checklist: 'RepositoryChecklistValue',
+    repository_date_time: 'RepositoryDateTimeValueBase',
+    repository_time: 'RepositoryDateTimeValueBase',
+    repository_date: 'RepositoryDateTimeValueBase',
+    repository_date_time_range: 'RepositoryDateTimeRangeValueBase',
+    repository_time_range: 'RepositoryDateTimeRangeValueBase',
+    repository_date_range: 'RepositoryDateTimeRangeValueBase',
+    repository_stock: 'RepositoryStockValue',
+    repository_stock_consumption_snapshot: 'RepositoryStockConsumptionValue'
+  }.each do |relation, class_name|
+    belongs_to "#{relation}_value".to_sym,
+               (lambda do |repository_cell|
+                 repository_cell.value_type == class_name ? self : none
+               end),
+               optional: true, foreign_key: :value_id, inverse_of: :repository_cell
+  end
 
-  belongs_to :repository_checklist_value,
-             (lambda do
-               includes(:repository_cell)
-                 .where(repository_cells: { value_type: 'RepositoryChecklistValue' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-
-  belongs_to :repository_date_time_value_base,
-             (lambda do
-               includes(:repository_cell)
-                 .where(repository_cells: { value_type: 'RepositoryDateTimeValueBase' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-
-  belongs_to :repository_date_time_value,
-             (lambda do
-               includes(:repository_cell)
-                 .where(repository_cells: { value_type: 'RepositoryDateTimeValueBase' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-
-  belongs_to :repository_time_value,
-             (lambda do
-               includes(:repository_cell)
-                 .where(repository_cells: { value_type: 'RepositoryDateTimeValueBase' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-
-  belongs_to :repository_date_time_range_value_base,
-             (lambda do
-               includes(:repository_cell)
-                 .where(repository_cells: { value_type: 'RepositoryDateTimeRangeValueBase' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-
-  belongs_to :repository_date_time_range_value,
-             (lambda do
-               includes(:repository_cell)
-                 .where(repository_cells: { value_type: 'RepositoryDateTimeRangeValueBase' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-
-  belongs_to :repository_date_range_value,
-             (lambda do
-               includes(:repository_cell)
-                 .where(repository_cells: { value_type: 'RepositoryDateTimeRangeValueBase' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
-
-  belongs_to :repository_time_range_value,
-             (lambda do
-               includes(:repository_cell)
-                 .where(repository_cells: { value_type: 'RepositoryDateTimeRangeValueBase' })
-             end),
-             optional: true, foreign_key: :value_id, inverse_of: :repository_cell
+  has_many :hidden_repository_cell_reminders, dependent: :destroy
 
   validates :repository_column,
-            inclusion: { in: (lambda do |cell|
-              cell.repository_row&.repository&.repository_columns || []
+            inclusion: { in: (lambda do |repository_cell|
+              repository_cell.repository_row&.repository&.repository_columns || []
             end) },
             unless: :importing
   validates :repository_column, presence: true
@@ -112,6 +44,10 @@ class RepositoryCell < ApplicationRecord
   validates :repository_row,
             uniqueness: { scope: :repository_column },
             unless: :importing
+
+  scope :with_active_reminder, lambda { |user|
+    reminder_repository_cells_scope(self, user)
+  }
 
   def self.create_with_value!(row, column, data, user)
     cell = new(repository_row: row, repository_column: column)
@@ -138,6 +74,7 @@ class RepositoryCell < ApplicationRecord
       updated_at: updated_at
     )
     value.snapshot!(cell_snapshot)
+    cell_snapshot
   end
 
   private

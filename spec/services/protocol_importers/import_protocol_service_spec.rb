@@ -4,7 +4,7 @@ require 'rails_helper'
 
 describe ProtocolImporters::ImportProtocolService do
   let(:user) { create :user }
-  let(:team) { create :team }
+  let(:team) { create :team, created_by: user }
   let(:protocol_params) { attributes_for :protocol, :in_public_repository }
   let(:steps_params) do
     [
@@ -15,14 +15,15 @@ describe ProtocolImporters::ImportProtocolService do
 
   let(:service_call) do
     ProtocolImporters::ImportProtocolService
-      .call(protocol_params: protocol_params, steps_params_json: steps_params, user_id: user.id, team_id: team.id)
+      .call(protocol_params: protocol_params, steps_params_json: steps_params, user: user, team: team)
   end
 
   context 'when have invalid arguments' do
     it 'returns an error when can\'t find user' do
-      allow(User).to receive(:find_by_id).and_return(nil)
+      protocol_import = ProtocolImporters::ImportProtocolService
+                        .call(protocol_params: protocol_params, steps_params_json: steps_params, user: nil, team: team)
 
-      expect(service_call.errors).to have_key(:invalid_arguments)
+      expect(protocol_import.errors).to have_key(:invalid_arguments)
     end
 
     it 'returns invalid protocol when can\'t save it' do
@@ -31,10 +32,10 @@ describe ProtocolImporters::ImportProtocolService do
         attributes_for(:step).except(:name).merge!(tables_attributes: [attributes_for(:table)])
       ].to_json
 
-      s = ProtocolImporters::ImportProtocolService.call(protocol_params: protocol_params,
-                                                        steps_params_json: steps_invalid_params,
-                                                        user_id: user.id, team_id: team.id)
-      expect(s.protocol).to be_invalid
+      s1 = ProtocolImporters::ImportProtocolService.call(protocol_params: protocol_params,
+                                                         steps_params_json: steps_invalid_params,
+                                                         user: user, team: team)
+      expect(s1.errors[:protocol][:name]).to include("can't be blank")
     end
   end
 

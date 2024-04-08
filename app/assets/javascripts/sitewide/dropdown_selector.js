@@ -8,6 +8,7 @@
     data-select-by-group // Add groups to dropdown
     data-disable-placeholder // Placeholder for disabled fields
     data-placeholder // Search placeholder
+    data-select-hint // A hint on top of a dropdown
     data-disable-on-load // Disable input after initialization
     data-select-all-button // Text for select all button
     data-combine-tags // Combine multiple tags to one (in simple mode gives you multiple select)
@@ -47,42 +48,48 @@
 
 
 */
+
 var dropdownSelector = (function() {
   // /////////////////////
   // Support functions //
   // ////////////////////
+  const MAX_DROPDOWN_HEIGHT = 320;
 
   // Change direction of dropdown depends of container position
   function updateDropdownDirection(selector, container) {
     var windowHeight = $(window).height();
-    var containerPosition = container[0].getBoundingClientRect().top;
+    var containerPositionTop = container[0].getBoundingClientRect().top;
     var containerPositionLeft = container[0].getBoundingClientRect().left;
     var containerHeight = container[0].getBoundingClientRect().height;
     var containerWidth = container[0].getBoundingClientRect().width;
     var bottomSpace;
     var modalContainer = container.closest('.modal-dialog');
     var modalContainerBottom = 0;
+    var modalContainerTop = 0;
     var maxHeight = 0;
-    const bottomTreshold = 280;
+    const bottomThreshold = 280;
 
     if (modalContainer.length && windowHeight !== modalContainer.height()) {
       let modalClientRect = modalContainer[0].getBoundingClientRect();
       windowHeight = modalContainer.height() + modalClientRect.top;
       containerPositionLeft -= modalClientRect.left;
-      modalContainerBottom = windowHeight + modalClientRect.bottom;
+      modalContainerBottom = $(window).height() - modalClientRect.bottom;
+      modalContainerTop = modalClientRect.top;
       maxHeight += modalContainerBottom;
     }
-    bottomSpace = windowHeight - containerPosition - containerHeight;
+    bottomSpace = windowHeight - containerPositionTop - containerHeight;
 
-    if ((modalContainerBottom + bottomSpace) < bottomTreshold) {
+    if ((modalContainerBottom + bottomSpace) < bottomThreshold) {
       container.addClass('inverse');
-      container.find('.dropdown-container').css('max-height', `${(containerPosition - 122 + maxHeight)}px`)
-        .css('margin-bottom', `${(containerPosition * -1)}px`)
+      maxHeight = Math.min(containerPositionTop - 122 + maxHeight, MAX_DROPDOWN_HEIGHT);
+      container.find('.dropdown-container').css('max-height', `${maxHeight}px`)
+        .css('margin-bottom', `${((containerPositionTop - modalContainerTop) * -1)}px`)
         .css('left', `${containerPositionLeft}px`)
         .css('width', `${containerWidth}px`);
     } else {
       container.removeClass('inverse');
-      container.find('.dropdown-container').css('max-height', `${(bottomSpace - 32 + maxHeight)}px`)
+      maxHeight = Math.min(bottomSpace - 32 + maxHeight, MAX_DROPDOWN_HEIGHT);
+      container.find('.dropdown-container').css('max-height', `${maxHeight}px`)
         .css('width', `${containerWidth}px`)
         .css('left', `${containerPositionLeft}px`)
         .css('margin-top', `${(bottomSpace * -1)}px`);
@@ -91,12 +98,15 @@ var dropdownSelector = (function() {
 
   // Get data in JSON from field
   function getCurrentData(container) {
+    if (!container.find('.data-field').val()) {
+      return '';
+    }
     return JSON.parse(container.find('.data-field').val());
   }
 
   // Save data to the field
   function updateCurrentData(container, data) {
-    container.find('.data-field').val(JSON.stringify(data));
+    container.find('.data-field').val(JSON.stringify(data)).change();
   }
 
   // Search filter for non-ajax data
@@ -120,13 +130,15 @@ var dropdownSelector = (function() {
   function refreshDropdownSelection(selector, container) {
     container.find('.dropdown-option, .dropdown-group').removeClass('select');
     $.each(getCurrentData(container), function(i, selectedOption) {
-      container.find(`.dropdown-option[data-value="${selectedOption.value}"][data-group="${selectedOption.group || ''}"]`)
+      container.find(`.dropdown-option[data-value="${_.escape(selectedOption.value)}"][data-group="${selectedOption.group || ''}"]`)
         .addClass('select');
     });
     if (selector.data('select-by-group')) {
       $.each(container.find('.dropdown-group'), function(gi, group) {
         if ($(group).find('.dropdown-option').length === $(group).find('.dropdown-option.select').length) {
-          $(group).addClass('select');
+          $(group).find('.group-name').addClass('select');
+        } else {
+          $(group).find('.group-name').removeClass('select');
         }
       });
     }
@@ -142,7 +154,9 @@ var dropdownSelector = (function() {
   function disableEnableDropdown(selector, container, mode) {
     var searchFieldValue = container.find('.search-field');
     if (mode) {
-      updateCurrentData(container, []);
+      if ($(selector).data('ajax-url')) {
+        updateCurrentData(container, []);
+      }
       updateTags(selector, container, { skipChange: true });
       searchFieldValue.attr('placeholder', selector.data('disable-placeholder') || '');
       container.addClass('disabled').removeClass('open')
@@ -168,6 +182,10 @@ var dropdownSelector = (function() {
     };
   }
 
+  function noOptionsForSelect(selector) {
+    return !$(selector).data('ajax-url') && $(selector).find('.dropdown-option').length == 0;
+  }
+
   // Ajax intial values, we will use default options //
   function ajaxInitialValues(selector, container) {
     var intialData = [];
@@ -179,19 +197,30 @@ var dropdownSelector = (function() {
   }
 
   // Add selected option to value
-  function addSelectedOption(selector, container) {
-    setData(selector, [convertOptionToJson($(selector).find('option:selected')[0])], true);
+  function addSelectedOptions(selector, container) {
+    var selectedOptions = [];
+    var optionSelector = selector.data('config').noEmptyOption ? 'option:selected' : 'option[data-selected=true]';
+    $.each($(selector).find(optionSelector), function(i, option) {
+      selectedOptions.push(convertOptionToJson(option));
+      if (selector.data('config').singleSelect) return false;
+      return true;
+    });
+
+    if (!selectedOptions.length) return false;
+
+    setData(selector, selectedOptions, true);
+    return true;
   }
 
   // Prepare custom dropdown icon
-  function prepareCustomDropdownIcon(config) {
+  function prepareCustomDropdownIcon(selector, config) {
+    if (config.inputTagMode && noOptionsForSelect(selector)) {
+      return '';
+    }
     if (config.customDropdownIcon) {
       return config.customDropdownIcon();
     }
-    if (config.inputTagMode) {
-      return '';
-    }
-    return '<i class="fas fa-caret-down right-icon"></i><i class="fas fa-search right-icon"></i>';
+    return '<i class="sn-icon sn-icon-down right-icon"></i><i class="sn-icon sn-icon-search right-icon simple-dropdown"></i>';
   }
 
   // Set new data
@@ -233,8 +262,8 @@ var dropdownSelector = (function() {
     updateTags(selector, container, { select: true });
   }
 
-  // intialization keyboard control
-  function initKeyboardControl(container) {
+  // initialize keyboard control
+  function initKeyboardControl(selector, container) {
     container.find('.search-field').keydown(function(e) {
       var dropdownContainer = container.find('.dropdown-container');
       var pressedKey = e.keyCode;
@@ -244,20 +273,22 @@ var dropdownSelector = (function() {
         dropdownContainer.find('.dropdown-option').first().addClass('highlight');
       }
 
-      if (pressedKey === 38) {
+      if (pressedKey === 38) { // arrow up
         if (selectedOption.prev('.dropdown-option').length) {
           selectedOption.removeClass('highlight').prev().addClass('highlight');
         }
         if (selectedOption.prev('.delimiter').length) {
           selectedOption.removeClass('highlight').prev().prev().addClass('highlight');
         }
-      } else if (pressedKey === 40) {
+      } else if (pressedKey === 40) { // arrow down
         if (selectedOption.next('.dropdown-option').length) {
           selectedOption.removeClass('highlight').next().addClass('highlight');
         }
         if (selectedOption.next('.delimiter').length) {
           selectedOption.removeClass('highlight').next().next().addClass('highlight');
         }
+      } else if (pressedKey === 8 && e.target.value === '') { // backspace
+        deleteTag(selector, container, container.find('.ds-tags .sn-icon-close-small').last());
       }
     });
   }
@@ -272,6 +303,7 @@ var dropdownSelector = (function() {
     var optionContainer;
     var perfectScroll;
     var dropdownContainer;
+    var toggleElement;
 
     if (selectElement.length === 0) return;
 
@@ -289,11 +321,35 @@ var dropdownSelector = (function() {
       <div class="dropdown-container"></div>
       <div class="input-field">
         <input type="text" class="search-field" data-options-selected=0 placeholder="${selectElement.data('placeholder') || ''}"></input>
-        ${prepareCustomDropdownIcon(config)}
+        ${prepareCustomDropdownIcon(selector, config)}
       </div>
       <input type="hidden" class="data-field" value="[]">
 
     `).appendTo(dropdownContainer);
+
+    // Blank option
+    if (selectElement.data('blank')) {
+      $(`<div class="dropdown-blank btn">${selectElement.data('blank')}</div>`)
+        .appendTo(dropdownContainer.find('.dropdown-container'))
+        .click(() => {
+          dropdownContainer.find('.dropdown-group, .dropdown-option').removeClass('select');
+          saveData(selectElement, dropdownContainer);
+          dropdownContainer.removeClass('open');
+        });
+    }
+
+    if (selectElement.data('toggle-target')) {
+      dropdownContainer.find('.data-field').on('change', function() {
+        toggleElement = $(selectElement.data('toggle-target'));
+        if (getCurrentData(dropdownContainer).length > 0) {
+          toggleElement.removeClass('hidden');
+          toggleElement.find('input, select').attr('disabled', false);
+        } else {
+          toggleElement.addClass('hidden');
+          toggleElement.find('input, select').attr('disabled', true);
+        }
+      });
+    }
 
     // If we setup Select All we draw it and add correspond logic
     if (selectElement.data('select-all-button')) {
@@ -325,6 +381,9 @@ var dropdownSelector = (function() {
           || (config.selectKeys || []).includes(e.keyCode)) {
           return;
         }
+        if (!dropdownContainer.hasClass('open')) {
+          dropdownContainer.find('.input-field').focus();
+        }
         e.stopPropagation();
         loadData(selectElement, dropdownContainer);
       })
@@ -338,6 +397,9 @@ var dropdownSelector = (function() {
             dropdownContainer.find('.dropdown-option').first().click();
           }
           dropdownContainer.find('.search-field').val('');
+
+          e.stopPropagation();
+          e.preventDefault();
         }
       }).click((e) =>{
         e.stopPropagation();
@@ -355,6 +417,24 @@ var dropdownSelector = (function() {
     // Select options container
     optionContainer = dropdownContainer.find('.dropdown-container');
 
+    dropdownContainer.find('.input-field').on('focus', () => {
+      setTimeout(function() {
+        if (!dropdownContainer.hasClass('open')) {
+          dropdownContainer.find('.input-field').click();
+        }
+      }, 250);
+    });
+
+    dropdownContainer.find('.search-field').on('keydown', function(e) {
+      if (e.which === 9) { // Tab key
+        dropdownContainer.find('.search-field').val('');
+        if (dropdownContainer.hasClass('open') && config.onClose) {
+          config.onClose();
+        }
+        dropdownContainer.removeClass('open active');
+      }
+    });
+
     // Add click event to input field
     dropdownContainer.find('.input-field').click(() => {
       // Now we can have only one dropdown opened at same time
@@ -362,11 +442,13 @@ var dropdownSelector = (function() {
       dropdownContainer.addClass('active');
       $('.dropdown-selector-container:not(.active)').removeClass('open');
 
-      // If dropdown disabled or we use it in tag mode we not open it
-      if (dropdownContainer.hasClass('disabled') || config.inputTagMode) return;
+      // If dropdown disabled or we use it in only tag mode we not open it
+      if (dropdownContainer.hasClass('disabled') || (config.inputTagMode && noOptionsForSelect(selector))) return;
 
       // Each time we open option contianer we must scroll it
-      optionContainer.scrollTo(0);
+      dropdownContainer.animate({
+        scrollTop: optionContainer.offset().top
+      });
 
       // Now open/close option container
       dropdownContainer.toggleClass('open');
@@ -374,6 +456,7 @@ var dropdownSelector = (function() {
         // on Open we load new data
         loadData(selectElement, dropdownContainer);
         updateDropdownDirection(selectElement, dropdownContainer);
+
         dropdownContainer.find('.search-field').focus();
 
         // onOpen event
@@ -396,7 +479,7 @@ var dropdownSelector = (function() {
     $(window).scroll(() => { updateDropdownDirection(selectElement, dropdownContainer); });
 
     // When user will click away, we must close dropdown
-    $(window).click(() => {
+    $(document).click(() => {
       if (dropdownContainer.hasClass('open')) {
         dropdownContainer.find('.search-field').val('');
       }
@@ -422,8 +505,8 @@ var dropdownSelector = (function() {
     }
 
     // Select default value
-    if (config.noEmptyOption && config.singleSelect) {
-      addSelectedOption(selectElement, dropdownContainer);
+    if (!selectElement.data('ajax-url')) {
+      addSelectedOptions(selectElement, dropdownContainer);
     }
 
     // Enable simple mode for dropdown selector
@@ -439,10 +522,10 @@ var dropdownSelector = (function() {
       dropdownContainer.addClass('disable-search');
     }
 
-    // initialization keyboard controll
-    initKeyboardControl(dropdownContainer);
+    // initialization keyboard control
+    initKeyboardControl(selector, dropdownContainer);
 
-    // In some case dropdown position not correclty calculated
+    // In some case dropdown position not correctly calculated
     updateDropdownDirection(selectElement, dropdownContainer);
   }
 
@@ -463,18 +546,26 @@ var dropdownSelector = (function() {
     // Draw option object
     function drawOption(selector2, option, group = null) {
       // Check additional params from config
+      var params = option.params || {};
       var customLabel = selector2.data('config').optionLabel;
-      var customClass = selector2.data('config').optionClass || '';
+      var customClass = params.optionClass || selector2.data('config').optionClass || '';
       var customStyle = selector2.data('config').optionStyle;
-      return $(`
-        <div class="dropdown-option ${customClass}" style="${customStyle ? customStyle(option) : ''}"
-          data-params='${JSON.stringify(option.params || {})}'
-          data-label="${option.label}"
-          data-group="${group ? group.value : ''}"
-          data-value="${option.value}">
-            ${customLabel ? customLabel(option) : option.label}
-        </div>"
+      var optionElement = $(`
+        <div class="dropdown-option ${customClass}" style="${customStyle ? customStyle(option) : ''}">
+        </div>
       `);
+      optionElement
+        .attr('title', (option.params && option.params.tooltip) || '')
+        .attr('data-params', JSON.stringify(option.params || {}))
+        .attr('data-label', option.label)
+        .attr('data-group', group ? group.value : '')
+        .attr('data-value', option.value);
+      if (customLabel) {
+        optionElement.html(customLabel(option));
+      } else {
+        optionElement.html(option.label);
+      }
+      return optionElement;
     }
 
     // Draw delimiter object
@@ -505,10 +596,15 @@ var dropdownSelector = (function() {
     }
 
     // Remove placeholder from option container
-    container.find('.dropdown-group, .dropdown-option, .empty-dropdown, .delimiter').remove();
+    container.find('.dropdown-group, .dropdown-option, .empty-dropdown, .dropdown-hint, .delimiter').remove();
     if (!data) return;
 
     if (data.length > 0 && !(data.length === 1 && data[0].value === '')) {
+      if (selector.data('select-hint')) {
+        $(`<div class="dropdown-hint">${selector.data('select-hint')}</div>`)
+          .appendTo(container.find('.dropdown-container'));
+      }
+
       // If we use select-by-group option we need first draw groups
       if (selector.data('select-by-group')) {
         $.each(data, function(gi, group) {
@@ -528,7 +624,7 @@ var dropdownSelector = (function() {
             // Disable group select to single select
             if (selector.data('config').singleSelect) return;
 
-            if (groupContainer.toggleClass('select').hasClass('select')) {
+            if ($(this).toggleClass('select').hasClass('select')) {
               groupContainer.find('.dropdown-option').addClass('select');
             } else {
               groupContainer.find('.dropdown-option').removeClass('select');
@@ -543,7 +639,7 @@ var dropdownSelector = (function() {
         // For simple options we only draw them
         $.each(data, function(oi, option) {
           var optionElement;
-          if (option.delimiter) {
+          if (option.delimiter || (option.params && option.params.delimiter)) {
             drawDelimiter().appendTo(container.find('.dropdown-container'));
             return;
           }
@@ -612,6 +708,29 @@ var dropdownSelector = (function() {
     updateTags(selector, container, { select: true });
   }
 
+  function deleteTag(selector, container, target) {
+    var tagLabel = target.prev();
+
+    // Start delete animation
+    target.parent().addClass('closing');
+
+    // Add timeout for deleting animation
+    setTimeout(() => {
+      const $selector = $(selector);
+      if ($selector.data('combine-tags')) {
+        // if we use combine-tags options we simply clear all values
+        container.find('.data-field').val('[]');
+        updateTags($selector, container);
+      } else {
+        // Or delete specific one
+        deleteValue($selector, container, tagLabel.data('ds-tag-id'), tagLabel.data('ds-tag-group'));
+        if ($selector.data('config').tagClass) {
+          removeOptionFromSelector($selector, tagLabel.data('ds-tag-id'));
+        }
+      }
+    }, 350);
+  }
+
   // Refresh tags in input field
   function updateTags(selector, container, config = {}) {
     var selectedOptions = getCurrentData(container);
@@ -627,16 +746,19 @@ var dropdownSelector = (function() {
       // Select element appearance
       var tagAppearance = selector.data('config').selectAppearance === 'simple' ? 'ds-simple' : 'ds-tags';
       var label = customLabel ? customLabel(data) : data.label;
+      var title = (data.params && data.params.tooltip) || $('<span>' + label + '</span>').text().trim();
       // Add new tag before search field
       var tag = $(`<div class="${tagAppearance} ${customClass}" style="${customStyle ? customStyle(data) : ''}" >
-                  <div class="tag-label"
-                    title="${$('<span>' + label + '</span>').text()}"
-                    data-ds-tag-group="${data.group}"
-                    data-ds-tag-id="${data.value}">
+                  <div class="tag-label">
                   </div>
-                  <i class="fas fa-times ${selector.data('config').singleSelect ? 'hidden' : ''}"></i>
+                  <i class="sn-icon sn-icon-close-small ${selector.data('config').singleSelect ? 'hidden' : ''}"></i>
                 </div>`).insertBefore(container.find('.input-field .search-field'));
 
+
+      tag.find('.tag-label')
+        .attr('data-ds-tag-group', data.group)
+        .attr('data-ds-tag-id', data.value)
+        .attr('title', title);
       if (selector.data('config').labelHTML) {
         tag.find('.tag-label').html(label);
       } else {
@@ -644,23 +766,9 @@ var dropdownSelector = (function() {
       }
 
       // Now we need add delete action to tag
-      tag.find('.fa-times').click(function(e) {
-        var tagLabel = $(this).prev();
-        var toDelete;
+      tag.find('.sn-icon-close-small').click(function(e) {
         e.stopPropagation();
-        // Start delete animation
-        $(this).parent().addClass('closing');
-        // Add timeout for deleting animation
-        setTimeout(() => {
-          if (selector.data('combine-tags')) {
-            // if we use combine-tags optons we simply clear all values
-            container.find('.data-field').val('[]');
-            updateTags(selector, container);
-          } else {
-            // Or delete specific one
-            deleteValue(selector, container, tagLabel.data('ds-tag-id'), tagLabel.data('ds-tag-group'));
-          }
-        }, 350);
+        deleteTag(selector, container, $(this));
       });
     }
 
@@ -785,6 +893,17 @@ var dropdownSelector = (function() {
     return result;
   }
 
+  function appendOptionToSelector(selector, value) {
+    $(selector).append(`<option
+        data-params=${JSON.stringify(value.params)}
+        value='${value.value}'
+        >${value.label}</option>`);
+  }
+
+  function removeOptionFromSelector(selector, id) {
+    $(selector).find(`option[value="${id}"]`).remove();
+  }
+
   // ////////////////////
   // Public functions ///
   // ////////////////////
@@ -833,6 +952,17 @@ var dropdownSelector = (function() {
 
       return values;
     },
+    // Get selected labels
+    getLabels: function(selector) {
+      var labels;
+      if ($(selector).length === 0) return false;
+      labels = $.map(getCurrentData($(selector).next()), (v) => {
+        return v.label;
+      });
+      if ($(selector).data('config').singleSelect) return labels[0];
+
+      return labels;
+    },
     // Get all data
     getData: function(selector) {
       if ($(selector).length === 0) return false;
@@ -849,17 +979,21 @@ var dropdownSelector = (function() {
       return this;
     },
 
-    // Select value
-    selectValue: function(selector, value) {
-      var $selector;
+    // Select values
+    selectValues: function(selector, values) {
+      var $selector = $(selector);
       var option;
+      var valuesArray = [].concat(values);
+      var options = [];
 
-      if ($(selector).length === 0) return false;
+      if ($selector.length === 0) return false;
 
-      $selector = $(selector);
-      option = $selector.find(`option[value="${value}"]`)[0];
-      setData($selector, [convertOptionToJson(option)]);
-
+      valuesArray.forEach(function(value) {
+        option = $selector.find(`option[value="${value}"]`);
+        option.attr('selected', true);
+        options.push(convertOptionToJson(option[0]));
+      });
+      setData($selector, options);
       return this;
     },
 
@@ -886,6 +1020,9 @@ var dropdownSelector = (function() {
       currentData = getCurrentData($(selector).next());
       currentData.push(value);
       setData($(selector), currentData, skip_event);
+      if ($(selector).data('config').tagClass) {
+        appendOptionToSelector(selector, value);
+      }
 
       return this;
     },
@@ -946,6 +1083,34 @@ var dropdownSelector = (function() {
       setTimeout(() => {
         container.removeClass('error');
       }, 1500);
+      return this;
+    },
+
+    showError: function(selector, error) {
+      var container = $(selector).next();
+      if ($(selector).length === 0) return false;
+      container.addClass('error').attr('data-error-text', error);
+      return this;
+    },
+
+    hideError: function(selector) {
+      var container = $(selector).next();
+      if ($(selector).length === 0) return false;
+      container.removeClass('error');
+      return this;
+    },
+
+    showWarning: function(selector) {
+      var container = $(selector).next();
+      if ($(selector).length === 0) return false;
+      container.addClass('warning');
+      return this;
+    },
+
+    hideWarning: function(selector) {
+      var container = $(selector).next();
+      if ($(selector).length === 0) return false;
+      container.removeClass('warning');
       return this;
     }
   };

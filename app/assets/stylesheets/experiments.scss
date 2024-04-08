@@ -1,0 +1,616 @@
+// scss-lint:disable SelectorDepth
+// scss-lint:disable NestingDepth
+// scss-lint:disable SelectorFormat
+// scss-lint:disable IdSelector
+
+
+// New experiments page
+.clone-experiment-modal,
+.move-experiment-modal {
+  .dropdown-toggle {
+    box-shadow: unset;
+    outline: unset;
+  }
+
+  .dropdown-menu {
+    .dropdown-item {
+      min-height: 32px;
+      outline: none;
+      white-space: break-spaces;
+    }
+  }
+}
+
+.projects-show {
+  .content-header {
+    height: var(--content-header-size);
+  }
+
+  .experiment-actions-menu {
+    height: 36px;
+    width: 36px;
+
+    .dropdown-menu {
+      z-index: 102;
+
+      a,
+      button {
+        @include font-button;
+        padding: .5em 1em;
+
+        .fas {
+          margin-right: .4em;
+        }
+      }
+    }
+
+    .dropdown-backdrop {
+      z-index: 101;
+    }
+  }
+
+  .project-show-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .btn {
+      margin-right: .25em;
+    }
+    .left {
+      align-self: flex-start;
+    }
+
+    .middle {
+      align-self: center;
+    }
+
+    .right {
+      align-self: flex-end;
+    }
+  }
+
+  .content-header {
+    .project-name {
+      align-items: center;
+      display: flex;
+      max-width: calc(100% - 2rem);
+
+      .fas {
+        margin-right: .5em;
+      }
+    }
+
+    .edit-experiments-form,
+    .clone-experiments-form,
+    .move-experiments-form,
+    .archive-experiments-form,
+    .new-experiment-form,
+    .restore-experiments-form {
+      display: inline-block;
+    }
+  }
+
+  .project-show-container {
+    margin: 0;
+
+    .cards-wrapper {
+      --card-min-width: 350px;
+      --list-columns-number: 8;
+      grid-auto-rows: auto;
+
+      .card {
+        align-items: center;
+
+        .experiment-code-cell {
+          display: block;
+        }
+
+        &.experiment-card {
+          border-radius: 4px;
+          box-shadow: $flyout-shadow;
+
+          .workflow-img-wrapper {
+            background-color: $color-concrete;
+            border-radius: 4px;
+            height: 76px;
+            width: 76px;
+
+            .archived-icon-plceholder {
+              color: $color-silver-chalice;
+              font-size: 3.5em;
+              line-height: 76px;
+              text-align: center;
+            }
+
+            .workflowimg-container {
+              text-align: center;
+
+              img {
+                border-radius: 4px;
+                max-height: 70px;
+              }
+            }
+          }
+
+          .experiment-name-cell {
+            @include font-h3;
+            height: 3em;
+            margin-bottom: 1em;
+            width: 100%;
+
+
+            a {
+              -webkit-box-orient: vertical;
+              color: inherit;
+              display: -webkit-box;
+              height: 3em;
+              -webkit-line-clamp: 2;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+          }
+
+          .dates-and-img-container {
+            display: flex;
+            height: 6em;
+            width: 100%;
+
+            .dates-container {
+              flex-grow: 1;
+            }
+          }
+
+          .actions-cell {
+            height: 36px;
+            margin-left: auto;
+          }
+
+          .data-row {
+            display: flex;
+
+            .card-label {
+              color: $color-silver-chalice;
+              width: 7em;
+            }
+
+            .card-value {
+              font-weight: 600;
+            }
+          }
+
+          .progress {
+            box-shadow: none;
+            height: 4px;
+            margin-bottom: 0;
+            width: 100%;
+
+            .progress-bar {
+              min-width: 0 !important;
+            }
+          }
+
+          .completed-task-cell {
+            width: 100%;
+          }
+
+          .description-cell {
+            .description-text {
+              -webkit-box-orient: vertical;
+              display: -webkit-box;
+              height: 3em;
+              -webkit-line-clamp: 2;
+              overflow: hidden;
+              padding-top: .25em;
+
+              &::after {
+                background: linear-gradient(to right, $color-transparent, $color-white 50%);
+                bottom: .4em;
+                content: "";
+                height: 1.5em;
+                position: absolute;
+                right: 0;
+                text-align: right;
+                width: 25%;
+                min-width: 75px;
+              }
+            }
+
+            .more-button {
+              bottom: .5em;
+              position: absolute;
+              right: 1em;
+            }
+          }
+        }
+
+        &.experiment-placeholder {
+          align-items: center;
+          background-color: $color-white;
+          border-radius: $border-radius-default;
+          box-shadow: $flyout-shadow;
+          display: flex;
+
+          .placeholder-body {
+            display: flex;
+            flex-basis: 70%;
+            flex-wrap: wrap;
+            height: 80px;
+          }
+
+          .image-container {
+            margin-left: auto;
+
+            .image-text {
+              display: none;
+            }
+          }
+
+          .placeholder-element {
+            animation-duration: 2s;
+            animation-iteration-count: infinite;
+            animation-name: placeholder-pulsing;
+            background-color: $color-alto;
+            border-radius: $border-radius-default;
+            height: 18px;
+
+            &.header,
+            &.footer {
+              flex-basis: 100%;
+            }
+
+            &.footer {
+              height: 36px;
+            }
+
+            &.line-0 {
+              flex-basis: 100%;
+            }
+
+            &.line-1 {
+              flex-basis: 90%;
+            }
+
+            &.line-2 {
+              flex-basis: 80%;
+            }
+
+            &.image {
+              height: 80px;
+              width: 80px;
+            }
+
+            @keyframes placeholder-pulsing {
+              0% {
+                opacity: 1;
+              }
+
+              50% {
+                opacity: .5;
+              }
+
+              100% {
+                opacity: 1;
+              }
+            }
+          }
+        }
+      }
+
+      &.list {
+        grid-auto-rows: 1px minmax(3em, auto);
+        grid-template-columns: max-content minmax(100px, auto) minmax(80px, max-content) repeat(calc(var(--list-columns-number) - 4), minmax(100px, auto)) max-content;
+        grid-template-rows: 3em;
+
+        .card {
+          &.experiment-card {
+
+            .card-value {
+              font-weight: normal;
+              line-height: 2em;
+            }
+
+            .workflow-img-wrapper {
+              flex-shrink: 0;
+              height: 3em;
+              margin: 0 .75em 0 .25em;
+              padding: .25em;
+              width: 3em;
+
+              .archived-icon-plceholder {
+                font-size: 2em;
+                line-height: 1.75em;
+              }
+
+              .workflowimg-container {
+                text-align: center;
+
+                img {
+                  max-height: 2.5em;
+                }
+              }
+            }
+
+            .dates-and-img-container,
+            .dates-container {
+              display: contents;
+            }
+
+            .checkbox-cell {
+              align-items: normal;
+              padding-top: .5em;
+            }
+
+            .experiment-name-cell {
+              @include font-button;
+              color: $brand-primary;
+              display: flex;
+              font-weight: normal;
+              grid-column: 2;
+              height: 100%;
+              margin: 0;
+              padding: .25em 0;
+
+              a {
+                overflow: hidden;
+              }
+            }
+
+            .experiment-code-cell {
+              display: block;
+              grid-column: 3;
+              line-height: 1.25em;
+              padding-top: .5em;
+            }
+
+            .start-date-cell {
+              grid-column: 4;
+            }
+
+            .modified-date-cell {
+              grid-column: 5;
+            }
+
+            .completed-task-cell {
+              grid-column: 6;
+            }
+
+            .description-cell {
+              grid-column: 7;
+              position: relative;
+
+              .description-text {
+                height: 3em;
+                -webkit-line-clamp: 2;
+
+                &::after {
+                  bottom: .5em;
+                  right: .5em;
+                }
+              }
+
+              .more-button {
+                bottom: .5em;
+              }
+            }
+
+            .actions-cell {
+              grid-column: 8;
+              height: 100%;
+              padding-top: 3px;
+              position: initial;
+            }
+          }
+
+          &.experiment-placeholder {
+            display: contents;
+
+            .placeholder-body {
+              display: contents;
+            }
+
+            .placeholder-element {
+              align-self: flex-start;
+              display: none;
+              margin-top: .5em;
+              padding: .5em 0;
+            }
+
+            .footer {
+              display: block;
+              grid-column: 6;
+              height: 18px;
+              width: 80%;
+
+            }
+
+            .header {
+              display: block;
+              grid-column: 7;
+              width: 80%;
+            }
+
+            .image-container {
+              display: flex;
+              grid-column: 2;
+              margin-left: 0;
+
+              .image {
+                display: block;
+                flex-basis: 56px;
+                height: 56px;
+                margin: 0;
+              }
+
+              .image-text {
+                display: block;
+                flex-basis: calc(100% - 80px);
+                margin: 0 10px 0 auto;
+              }
+            }
+
+            .line-0 {
+              display: block;
+              grid-column: 3;
+              width: 80%;
+            }
+
+            .line-1 {
+              display: block;
+              grid-column: 4;
+              width: 80%;
+            }
+
+            .line-2 {
+              display: block;
+              grid-column: 5;
+              width: 80%;
+            }
+          }
+        }
+      }
+
+      &.last-page {
+        padding-bottom: 5em;
+        position: relative;
+      }
+
+      .experiment-list-end-placeholder {
+        align-items: center;
+        background-color: $color-concrete;
+        bottom: 1em;
+        display: flex;
+        height: 3em;
+        left: calc(50% - 150px);
+        margin: 0 auto;
+        padding: 1em;
+        position: absolute;
+        width: 300px;
+
+        > * {
+          flex-grow: 1;
+          text-align: center;
+        }
+      }
+    }
+  }
+
+  &.active {
+    [data-view-mode="archived"] {
+      display: none !important;
+    }
+  }
+
+  &.archived {
+    [data-view-mode="active"] {
+      display: none !important;
+    }
+
+    .project-show-container {
+      .experiment-actions-menu {
+        height: 36px;
+        width: 36px;
+
+        .btn-light:hover {
+          background: $color-alto;
+        }
+      }
+
+      .cards-wrapper {
+        .card.experiment-card {
+          .workflow-img-wrapper {
+            align-items: center;
+            background-color: $color-concrete;
+            border: 1px solid $color-alto;
+            display: flex;
+            justify-content: center;
+          }
+
+          .progress-bar {
+            background-color: $color-silver-chalice;
+          }
+
+          .description-cell {
+            width: 100%;
+
+            .description-text::before {
+              background: $color-alto;
+              content: "";
+              display: block;
+              height: 4px;
+            }
+
+            .description-text::after {
+              background: linear-gradient(to right, $color-transparent, $color-concrete 50%);
+            }
+          }
+        }
+
+        &.list {
+          .card.experiment-card {
+            .archived-date-cell {
+              grid-column: 6;
+            }
+            .description-cell {
+              .description-text::before {
+                content: unset;
+              }
+            }
+
+            &:hover {
+              .description-text::after {
+                background: linear-gradient(to right, $color-transparent, $color-alto 50%);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.move-experiment-modal {
+  .warning-message {
+    background: $brand-warning-light;
+    margin-top: 1em;
+    padding: .5em;
+
+    .fas {
+      color: $brand-warning;
+    }
+  }
+}
+
+@media (max-height: 700px) {
+  .projects-show {
+    .experiments-filters {
+      max-height: calc(100vh - var(--navbar-height) - var(--content-header-size));
+      overflow: auto;
+    }
+  }
+}
+
+.tasks-no-results-container {
+  grid-column: 1 / -1;
+  grid-row: 8;
+  display: none;
+}
+
+.no-results-img {
+  display: block;
+  margin: auto;
+  max-height: 230px;
+}
+
+.no-results-title {
+  @include font-h1;
+  margin-bottom: .25em;
+  margin-top: 1.25em;
+  text-align: center;
+}
+
+.no-results-description {
+  @include font-main;
+  color: $color-silver-chalice;
+  text-align: center;
+}

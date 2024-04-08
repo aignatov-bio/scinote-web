@@ -9,12 +9,14 @@ module Api
       attributes :id, :file_name, :file_size, :file_type, :file_url
       belongs_to :step, serializer: StepSerializer
 
+      include TimestampableModel
+
       def file_type
         object.content_type
       end
 
       def file_url
-        rails_blob_url(object.file, disposition: 'attachment') if object.file.attached?
+        object.file.url if object.file.attached?
       end
     end
   end

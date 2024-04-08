@@ -11,10 +11,14 @@ module Api
       before_action :check_manage_permissions, only: %i(create update destroy)
 
       def index
-        cells = @inventory_item.repository_cells
-                               .preload(@inventory.cell_preload_includes)
-                               .page(params.dig(:page, :number))
-                               .per(params.dig(:page, :size))
+        cells =
+          timestamps_filter(
+            @inventory_item.repository_cells
+          )
+          .preload(:repository_column, value: @inventory.cell_preload_includes)
+          .page(params.dig(:page, :number))
+          .per(params.dig(:page, :size))
+
         render jsonapi: cells, each_serializer: InventoryCellSerializer
       end
 
@@ -34,7 +38,7 @@ module Api
 
       def update
         value = update_inventory_cell_params[:value]
-        if @inventory_cell.value.data_changed?(value)
+        if @inventory_cell.value.data_different?(value)
           @inventory_cell.value.update_data!(value, current_user)
           render jsonapi: @inventory_cell, serializer: InventoryCellSerializer
         else

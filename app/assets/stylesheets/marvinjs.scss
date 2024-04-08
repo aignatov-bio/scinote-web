@@ -4,22 +4,12 @@
 // scss-lint:disable ImportantRule
 // scss-lint:disable IdSelector
 
-@import "constants";
-@import "mixins";
 
 // MarvinJs modal
 .modal-marvin-js {
   background: transparent;
-  font-size: $font-size-large;
+  font-size: $font-size-base;
   padding: 0 !important;
-
-  .preview-close {
-    background: transparent;
-    border: 0;
-    color: $color-white;
-    display: inline-block;
-    float: right;
-  }
 
   .modal-dialog {
     height: 100%;
@@ -29,30 +19,33 @@
   }
 
   .modal-content {
-    background: transparent;
     border: 0;
     box-shadow: none;
-    color: $color-white;
     height: 100%;
+    padding: 0;
     width: auto;
   }
 
   .modal-header {
-    background: $color-black;
-    border: 0;
+    background: $color-white;
+    display: flex;
+    flex-direction: row;
     height: 60px;
     line-height: 40px;
     padding: 10px 15px;
     text-align: center;
 
     .file-save-link {
+      flex-shrink: 0;
       margin: 0 20px 0 0;
     }
 
     .file-name {
       align-items: center;
       display: flex;
+      flex-shrink: 0;
       float: left;
+      margin-right: auto;
 
       input {
         border-radius: 5px;
@@ -70,7 +63,6 @@
 
   .modal-body {
     height: calc(100% - 60px);
-    padding: 0;
 
     #marvinjs-editor {
       height: 100%;
@@ -102,7 +94,6 @@
 
       .sketch-name {
         color: $brand-primary;
-        font-family: Lato;
         font-size: 16px;
         line-height: 18px;
         margin: 10px auto;
@@ -119,14 +110,6 @@
       }
     }
   }
-
-  .file-save-link {
-    color: $color-white;
-    cursor: pointer;
-    display: inline-block;
-    float: right;
-    margin-right: 20px;
-  }
 }
 
 #new-step-sketch {
@@ -140,12 +123,10 @@
 }
 
 .new-marvinjs-upload-button {
-  padding: 1px 16px !important;
-
   .new-marvinjs-upload-icon {
     display: inline-block;
-    height: 32px;
-    width: 32px;
+    height: 1.5em;
+    width: 1.5em;
 
     img {
       height: 100%;
@@ -169,9 +150,5 @@
 .modal-promo-marvin-js {
   .modal-header {
     padding-left: 35px;
-  }
-
-  .modal-body {
-    padding: 15px 35px;
   }
 }

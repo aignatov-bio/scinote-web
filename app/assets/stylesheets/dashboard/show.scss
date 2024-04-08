@@ -1,22 +1,50 @@
 // scss-lint:disable SelectorDepth
 // scss-lint:disable NestingDepth
 
-.dashboard-container {
+.dashboard-background {
+  background: $color-concrete;
+  height: 100%;
+  left: 0;
+  position: fixed;
+  top: 0;
+  width: 100%;
+}
+
+.dashboard-view {
   --dashboard-widgets-gap: 30px;
+  padding: 1.5rem 0;
+}
+
+.dashboard-header {
+  padding-bottom: 1.5rem;
+}
+
+.dashboard-container {
   --widget-header-size: 44px;
   display: grid;
+  grid-auto-rows: 26em;
   grid-column-gap: var(--dashboard-widgets-gap);
   grid-row-gap: var(--dashboard-widgets-gap);
-  grid-template-columns: repeat(12, 1fr);
-  grid-template-rows: repeat(12, 1fr);
-  min-height: calc(100vh - 51px);
-  padding: var(--dashboard-widgets-gap) calc(var(--dashboard-widgets-gap) - 15px);
+  grid-template-columns: repeat(auto-fit, minmax(7em, 1fr));
   width: 100%;
 
   .basic-widget {
+    background: $color-white;
     border-radius: $border-radius-modal;
     box-shadow: $flyout-shadow;
     position: relative;
+
+    &.large-widget {
+      grid-column: auto / 9 span;
+    }
+
+    &.medium-widget {
+      grid-column: auto / 6 span;
+    }
+
+    &.small-widget {
+      grid-column: auto / 3 span;
+    }
 
     .widget-header {
       align-items: center;
@@ -27,6 +55,7 @@
 
       .widget-title {
         @include font-h2;
+        flex-shrink: 0;
       }
     }
 
@@ -36,7 +65,6 @@
       width: 100%;
 
       .widget-placeholder {
-        color: $color-alto;
         padding: 24px;
 
         .widget-placeholder-title {
@@ -45,22 +73,66 @@
 
         .widget-placeholder-description {
           @include font-main;
+          color: $color-alto;
         }
       }
     }
   }
 }
 
-@media (max-width: 1300px) {
+
+.quick-start-buttons {
+  display: flex;
+  position: relative;
+
+  .btn {
+    margin-right: .25em;
+  }
+}
+
+@media (max-width: 1240px) {
   .dashboard-container {
-    --dashboard-widgets-gap: 16px;
+    --dashboard-widgets-gap: 15px;
+    grid-template-columns: 100%;
+
+    .basic-widget {
+      &.large-widget,
+      &.medium-widget,
+      &.small-widget {
+        grid-column: auto / 1 span;
+      }
+    }
+  }
+}
+
+@media (max-height: 800px) {
+  .dashboard-container {
+    grid-auto-rows: 20em;
+  }
+
+  .dashboard-view {
+    --dashboard-widgets-gap: 15px;
+  }
+}
+
+@media (min-height: 1080px) {
+  .dashboard-container {
+    grid-auto-rows: 32em;
   }
 }
 
 @media (max-width: 700px) {
+
   .dashboard-container {
     --widget-header-size: 72px;
-    grid-template-rows: auto;
+
+    .basic-widget {
+      &.large-widget,
+      &.medium-widget,
+      &.small-widget {
+        grid-column: 1 span;
+      }
+    }
 
     .widget-header {
       flex-wrap: wrap;

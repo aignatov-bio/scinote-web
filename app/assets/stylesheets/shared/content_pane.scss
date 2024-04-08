@@ -1,56 +1,213 @@
+// scss-lint:disable SelectorDepth SelectorFormat
+// scss-lint:disable NestingDepth QualifyingElement
+
 .content-pane {
-  background-color: $color-white;
+  --content-header-size: 4em;
+  background-color: var(--sn-white);
   margin: 20px 0;
-  padding: 25px 20px;
+
+  &.with-grey-background {
+    background: var(--sn-super-light-grey);
+  }
 
   &.flexible {
     margin: 0;
-    padding: 0 .5em;
+  }
+
+  .fixed-content-body {
+    height: calc(100vh - var(--content-header-size) - var(--navbar-height));
+    width: 100%;
   }
 
   .content-header {
-    align-items: center;
-    border-bottom: $border-default;
-    display: flex;
-    height: 5em;
+    &.sticky-header {
+      background-color: inherit;
+      position: sticky;
+      position: -webkit-sticky;
+      top: 0;
+      z-index: 250;
+    }
 
-    h1 {
-      margin: 0;
+    .title-row {
+      align-items: center;
+      background-color: inherit;
+      display: flex;
+      height: 4em;
+      margin-left: -1rem;
+      padding: 0 1rem;
+      width: calc(100% + 2rem);
+
+
+      h1 {
+        align-items: center;
+        display: flex;
+        flex-grow: 1;
+        margin: 0;
+        max-width: 100%;
+      }
+
+      .name-readonly-placeholder {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .header-actions {
+      align-items: center;
+      display: flex;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    .view-switch,
+    .filter-container {
+      display: inline-block;
     }
 
     .view-switch {
       margin-left: auto;
 
+      .view-switch-button {
+        outline: 1px solid $color-alto;
+      }
+
       .caret {
-          margin: 8px 0 8px 8px;
-        }
+        margin: 8px 0 8px 8px;
+      }
+
       &.open {
         .caret {
-          transform: rotateX(180deg)
+          transform: rotateX(180deg);
         }
       }
 
       .dropdown-menu {
         @include font-button;
-        min-width: 250px;
+        margin-right: .25em;
+        min-width: calc(100% - .25em);
+        padding: 0;
+
+        .divider-label {
+          @include font-small;
+          color: $color-silver-chalice;
+          padding: .25em 1em;
+        }
+
+        .divider {
+          margin: 0;
+        }
 
         li {
           cursor: pointer;
-          padding: 1em;
+          padding: .5em 1em;
+          white-space: nowrap;
 
           .button-icon {
             margin-right: .5em;
           }
 
+          &:hover:not(.divider-label) {
+            background: $color-concrete;
+          }
+
+          .btn {
+            height: 36px;
+          }
+
+          a {
+            display: inline-block;
+            margin: -1em;
+            padding: .5em 1em;
+            width: calc(100% + 2em);
+
+            &.selected::after {
+              @include font-sn-icon;
+              content: $sn-icon-check;
+              margin-left: auto;
+              position: absolute;
+              right: .5rem;
+              top: 0;
+            }
+          }
+        }
+      }
+
+      .cards-switch {
+        &.active::after {
+          @include font-awesome;
+          content: "\f00c";
+          position: absolute;
+          right: 1em;
+        }
+      }
+    }
+
+    .sort-menu {
+      display: inline-block;
+
+      .dropdown-menu {
+        @include font-button;
+        min-width: 160px;
+        padding: .5em 0;
+
+        a {
+          border-radius: unset;
+          cursor: pointer;
+          padding: .5em 1em;
+          text-align: left;
+
           &:hover {
             background: $color-concrete;
           }
+
+          &.selected::after {
+            @include font-sn-icon;
+            content: $sn-icon-check;
+            margin-left: auto;
+            position: absolute;
+            right: .5rem;
+            top: 0;
+          }
         }
+
+        .fa-stack {
+          width: 2em;
+        }
+      }
+    }
+
+    .toolbar-row {
+      background: $color-white;
+      margin-left: -1rem;
+      padding: 1rem;
+      width: calc(100% + 2rem);
+    }
+
+    .narrow {
+      .btn:not(.prevent-shrink) {
+        padding: 7px;
+        width: 36px;
+      }
+
+      .hidden-xs {
+        display: none;
+      }
+
+      .left,
+      .middle,
+      .right {
+        display: flex;
+        flex-direction: inherit;
       }
     }
   }
 
-  .content-body {
+  &[data-toolbar-visible="false"] {
+    --content-header-size: 5em;
 
+    .toolbar-row {
+      display: none;
+    }
   }
 }

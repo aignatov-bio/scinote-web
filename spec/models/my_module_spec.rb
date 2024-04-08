@@ -30,12 +30,12 @@ describe MyModule, type: :model do
     it { should have_db_column :archived_by_id }
     it { should have_db_column :restored_by_id }
     it { should have_db_column :restored_on }
-    it { should have_db_column :nr_of_assigned_samples }
     it { should have_db_column :workflow_order }
     it { should have_db_column :experiment_id }
     it { should have_db_column :state }
     it { should have_db_column :completed_on }
     it { should have_db_column :started_on }
+    it { should have_db_column :my_module_status_id }
   end
 
   describe 'Relations' do
@@ -50,8 +50,6 @@ describe MyModule, type: :model do
     it { should have_many :tags }
     it { should have_many :task_comments }
     it { should have_many :my_modules }
-    it { should have_many :sample_my_modules }
-    it { should have_many :samples }
     it { should have_many :my_module_repository_rows }
     it { should have_many :repository_rows }
     it { should have_many :user_my_modules }
@@ -62,21 +60,22 @@ describe MyModule, type: :model do
     it { should have_many(:inputs).class_name('Connection') }
     it { should have_many(:outputs).class_name('Connection') }
     it { should have_many(:my_module_antecessors).class_name('MyModule') }
+    it { should have_one(:shareable_link).dependent(:destroy) }
   end
 
   describe 'Validations' do
     describe '#name' do
       it do
         is_expected.to(validate_length_of(:name)
-                         .is_at_least(Constants::NAME_MIN_LENGTH)
-                         .is_at_most(Constants::NAME_MAX_LENGTH))
+                   .is_at_least(Constants::NAME_MIN_LENGTH)
+                   .is_at_most(Constants::NAME_MAX_LENGTH))
       end
     end
 
     describe '#description' do
       it do
         is_expected.to(validate_length_of(:description)
-                         .is_at_most(Constants::RICH_TEXT_MAX_LENGTH))
+                   .is_at_most(Constants::RICH_TEXT_MAX_LENGTH))
       end
     end
 

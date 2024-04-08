@@ -9,11 +9,11 @@ class RepositoryDateTimeValueBase < ApplicationRecord
              inverse_of: :modified_repository_date_time_values
   has_one :repository_cell, as: :value, dependent: :destroy
   accepts_nested_attributes_for :repository_cell
+  before_save :reset_notification_sent, if: -> { data_changed? }
 
   validates :repository_cell, :data, :type, presence: true
 
   SORTABLE_COLUMN_NAME = 'repository_date_time_values.data'
-  SORTABLE_VALUE_INCLUDE = :repository_date_time_value_base
 
   def formatted(format)
     I18n.l(data, format: format)
@@ -33,5 +33,11 @@ class RepositoryDateTimeValueBase < ApplicationRecord
       updated_at: updated_at
     )
     value_snapshot.save!
+  end
+
+  private
+
+  def reset_notification_sent
+    self.notification_sent = false
   end
 end

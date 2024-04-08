@@ -9,6 +9,7 @@ function applyCreateWopiFileCallback() {
     $modal.find('#element_id').val($(this).data('id'));
     $modal.find('#element_type').val($(this).data('type'));
     $modal.modal('show');
+    $($modal).find('#new-wopi-file-name').focus();
 
     return false;
   });
@@ -40,6 +41,11 @@ function initCreateWopiFileModal() {
         msg = I18n.t('assets.create_wopi_file.errors.not_found');
       }
       renderFormError(undefined, element, msg);
+    })
+    .on('input', '#new-wopi-file-name', function() {
+      if (this.value.length <= GLOBAL_CONSTANTS.FILENAME_MAX_LENGTH) {
+        $(this).closest('form').clearFormErrors();
+      }
     });
 }
 

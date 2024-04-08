@@ -7,6 +7,7 @@ require_relative 'support/controller_macros'
 ENV['RAILS_ENV'] = 'test'
 
 ENV['CORE_API_V1_ENABLED'] = 'true'
+ENV['CORE_API_V2_ENABLED'] = 'true'
 
 require File.expand_path('../../config/environment', __FILE__)
 # Prevent database truncation if the environment is production
@@ -40,10 +41,6 @@ RSpec.configure do |config|
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
   config.fixture_path = "#{::Rails.root}/spec/fixtures"
 
-  # If you're not using ActiveRecord, or you'd prefer not to run each of your
-  # examples within a transaction, remove the following line or assign false
-  # instead of true.
-  # http://www.virtuouscode.com/2012/08/31/configuring-database_cleaner-with-rails-rspec-capybara-and-selenium/
   config.use_transactional_fixtures = false
   config.before(:suite) do
     DatabaseCleaner.clean_with(:truncation)
@@ -59,6 +56,10 @@ RSpec.configure do |config|
 
   config.before(:each) do
     DatabaseCleaner.start
+
+    # project creation now requires an owner role to be present, as it assigns it to creator
+    # so we must ensure it always exists
+    UserRole.exists?(name: I18n.t('user_roles.predefined.owner')) || UserRole.owner_role.save!
   end
 
   config.after(:each) do
@@ -71,19 +72,17 @@ RSpec.configure do |config|
 
   config.before(:all) do
     DatabaseCleaner.start
+    # project creation now requires an owner role to be present, as it assigns it to creator
+    # so we must ensure it always exists
+    UserRole.exists?(name: I18n.t('user_roles.predefined.owner')) || UserRole.owner_role.save!
   end
 
   config.after(:all) do
     DatabaseCleaner.clean
   end
 
-  config.around(:each, type: :background_job) do |example|
-    run_background_jobs_immediately do
-      example.run
-    end
-  end
+  Delayed::Worker.delay_jobs = false
 
-  config.include BackgroundJobs
   # RSpec Rails can automatically mix in different behaviours to your tests
   # based on their file location, for example enabling you to call `get` and
   # `post` in specs under `spec/controllers`.
@@ -111,9 +110,11 @@ RSpec.configure do |config|
   end
   # Devise
   config.include Devise::Test::ControllerHelpers, type: :controller
+  config.include Devise::Test::IntegrationHelpers, type: :system
   config.include ApiHelper, type: :controller
   config.include ApiHelper, type: :request
   config.extend ControllerMacros, type: :controller
+  config.include PermissionHelpers
 
   config.filter_run_excluding broken: true
 end

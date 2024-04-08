@@ -1,10 +1,10 @@
-/* global inlineEditing PerfectScrollbar */
+/* global inlineEditing PerfectScrollbar HelperModule I18n */
 /* eslint-disable no-restricted-globals, no-alert */
 var Comments = (function() {
   function changeCounter(comment, value) {
     var currentCount = $('#comment-counter-' + comment.closest('.comments-container').attr('data-object-id'));
     var newValue = parseInt(currentCount.html(), 10) + value;
-    currentCount.html(newValue);
+    currentCount.text(newValue);
     if (newValue === 0) {
       currentCount.addClass('hidden');
     } else {
@@ -49,7 +49,11 @@ var Comments = (function() {
             $this.closest('.comment-container').remove();
           },
           error: (error) => {
-            alert(error.responseJSON.errors.message);
+            if (error.status === 403) {
+              HelperModule.flashAlertMsg(I18n.t('general.no_permissions'), 'danger');
+            } else {
+              alert(error.responseJSON.errors.message);
+            }
           }
         });
       }
@@ -83,11 +87,13 @@ var Comments = (function() {
           $el.find('.new-comment-button').removeClass('show');
           newButton.disable = false;
           $el.find('textarea').focus().blur();
-        })
-          .error((error) => {
-            errorField.html(error.responseJSON.errors.message);
-            newButton.disable = false;
-          });
+        }).fail((error) => {
+          if (error.status === 403) {
+            HelperModule.flashAlertMsg(I18n.t('general.no_permissions'), 'danger');
+          }
+          errorField.text(error.responseJSON.errors.message);
+          newButton.disable = false;
+        });
       });
     });
   }

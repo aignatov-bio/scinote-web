@@ -53,10 +53,10 @@ RSpec.describe RepositoryListValue, type: :model do
     end
   end
 
-  describe 'data_changed?' do
+  describe 'data_different?' do
     context 'when has new data' do
       it do
-        expect(repository_list_value.data_changed?('-1')).to be_truthy
+        expect(repository_list_value.data_different?('-1')).to be_truthy
       end
     end
 
@@ -65,7 +65,7 @@ RSpec.describe RepositoryListValue, type: :model do
         repository_list_value.save
         id = repository_list_value.repository_list_item.id
 
-        expect(repository_list_value.data_changed?(id)).to be_falsey
+        expect(repository_list_value.data_different?(id)).to be_falsey
       end
     end
   end
@@ -89,8 +89,8 @@ RSpec.describe RepositoryListValue, type: :model do
   describe 'self.new_with_payload' do
     let(:user) { create :user }
     let(:column) { create :repository_column }
-    let(:cell) { build :repository_cell, repository_column: column }
     let(:list_item) { create :repository_list_item, repository_column: column }
+    let(:cell) { build :repository_cell, repository_column: column }
     let(:attributes) do
       {
         repository_cell: cell,
