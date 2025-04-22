@@ -50,7 +50,8 @@
   ></ConfirmationModal>
   <DescriptionModal
     v-if="descriptionModalObject"
-    :project="descriptionModalObject"
+    :object="descriptionModalObject"
+    @update="updateTable"
     @close="descriptionModalObject = null"/>
   <ExportLimitExceededModal v-if="exportLimitExceded" :description="exportDescription" @close="exportLimitExceded = false"/>
   <EditProjectModal v-if="editProject" :userRolesUrl="userRolesUrl"
@@ -83,7 +84,7 @@ import SuperviserRenderer from './renderers/superviser.vue';
 import CommentsRenderer from '../shared/datatable/renderers/comments.vue';
 import DueDateRenderer from '../shared/datatable/renderers/date.vue';
 import DescriptionRenderer from '../shared/datatable/renderers/description.vue';
-import DescriptionModal from './modals/description.vue';
+import DescriptionModal from '../shared/datatable/modals/description.vue';
 import ProjectCard from './card.vue';
 import ConfirmationModal from '../shared/confirmation_modal.vue';
 import EditProjectModal from './modals/edit.vue';
