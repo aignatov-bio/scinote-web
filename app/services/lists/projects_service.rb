@@ -1,5 +1,8 @@
 module Lists
   class ProjectsService < BaseService
+
+    include ActionView::Helpers::SanitizeHelper
+
     def initialize(team, user, folder, params)
       @team = team
       @user = user
@@ -133,6 +136,26 @@ module Lists
         @records = @records.sort_by { |object| project_comments_count(object) }
       when 'comments_DESC'
         @records = @records.sort_by { |object| project_comments_count(object) }.reverse!
+      when 'start_on_ASC'
+        @records = @records.sort_by { |object| project_start_on(object) }
+      when 'start_on_DESC'
+        @records = @records.sort_by { |object| project_start_on(object) }.reverse!
+      when 'due_date_ASC'
+        @records = @records.sort_by { |object| project_due_date(object) }
+      when 'due_date_DESC'
+        @records = @records.sort_by { |object| project_due_date(object) }.reverse!
+      when 'status_ASC'
+        @records = @records.sort_by { |object| project_status(object, 'asc') }
+      when 'status_DESC'
+        @records = @records.sort_by { |object| project_status(object, 'desc') }.reverse!
+      when 'supervised_by_ASC'
+        @records = @records.sort_by { |object| project_supervised_by(object, 'asc') }
+      when 'supervised_by_DESC'
+        @records = @records.sort_by { |object| project_supervised_by(object, 'desc') }.reverse!
+      when 'description_ASC'
+        @records = @records.sort_by { |object| project_description(object, 'asc') }
+      when 'description_DESC'
+        @records = @records.sort_by { |object| project_description(object, 'desc') }.reverse!
       end
     end
 
@@ -146,6 +169,52 @@ module Lists
 
     def project_users_count(object)
       project?(object) ? object.users.count : -1
+    end
+
+    def project_start_on(object)
+      project?(object) ? object.start_on : nil
+    end
+
+    def project_due_date(object)
+      project?(object) ? object.due_date : nil
+    end
+
+    def project_status(object, direction)
+      return (direction == 'asc' ? 10 : -1) unless project?(object)
+
+      case object.status
+      when :not_started
+        0
+      when :started
+        1
+      when :completed
+        2
+      end
+    end
+
+    def project_supervised_by(object, direction)
+      no_value = direction == 'asc' ? '1' : '0'
+      has_value = direction == 'asc' ? '0' : '1'
+
+      return no_value unless project?(object)
+      if object.supervised_by
+        "#{has_value}#{object.supervised_by.name}"
+      else
+        no_value
+      end
+    end
+
+    def project_description(object, direction)
+      no_value = direction == 'asc' ? '1' : '0'
+      has_value = direction == 'asc' ? '0' : '1'
+
+      return no_value unless project?(object)
+
+      if object.description.present?
+        "#{has_value}#{strip_tags(object.description)}"
+      else
+        no_value
+      end
     end
 
     def project?(object)
