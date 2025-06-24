@@ -286,14 +286,14 @@ var RepositoryColumns = (function() {
         let destroyUrl = $(el).attr('data-destroy-column-url');
         const isDisabled = $(el).attr('data-disabled') === 'true';
         let thederName;
-        
+
         if ($(el).find('.modal-tooltiptext').length > 0) {
           thederName = $(el).find('.modal-tooltiptext').text();
         } else {
           thederName = el.innerText;
         }
         thederName = _.escape(thederName);
-        
+
         const e2eName = thederName.toLowerCase().replace(' ', '_');
 
         if (['row-name', 'archived-by', 'archived-on'].includes(el.id)) {
