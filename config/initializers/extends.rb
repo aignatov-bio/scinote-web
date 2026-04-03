@@ -855,6 +855,7 @@ class Extends
     result_templates/index
     my_module_repositories/index
     protocol_repository_rows/index
+    my_modules/archive
   )
 
   DEFAULT_USER_NOTIFICATION_SETTINGS = {
@@ -927,6 +928,28 @@ class Extends
   DEFAULT_TEAM_SETTINGS = {}
 
   WHITELISTED_USER_SETTINGS = [].freeze
+
+  AVAILABLE_TEAM_SETTINGS = {
+    sharing: {
+      task_sharing_enabled: {
+        permission_helper: :can_manage_team?,
+        confirm: {
+          description_params: %i(name shared_task_count)
+        }
+      }
+    },
+    deletion: {
+      repository_deletion_enabled: {
+        permission_helper: :can_modify_team_deletion_prevention?
+      },
+      result_deletion_enabled: {
+        permission_helper: :can_modify_team_deletion_prevention?
+      },
+      protocol_steps_deletion_enabled: {
+        permission_helper: :can_modify_team_deletion_prevention?
+      }
+    }
+  }
 end
 
 # rubocop:enable Style/MutableConstant
