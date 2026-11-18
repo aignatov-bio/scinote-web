@@ -62,6 +62,7 @@
         v-if="textCellModalObject"
         :row="textCellModalObject.row"
         :colDef="textCellModalObject.colDef"
+        :errorMessage="textCellModalObject.errorMessage"
         @updateCell="updateCell"
         @close="textCellModalObject = null"/>
       <StockValueModal
@@ -436,6 +437,10 @@ export default {
       });
     },
     updateCell(row, columnDef, value) {
+      if (this.textCellModalObject?.errorMessage) {
+        this.textCellModalObject = { ...this.textCellModalObject, errorMessage: null };
+      }
+
       axios.post(repository_repository_row_repository_cell_path({
         repository_id: row.repository_id,
         repository_row_id: row.id,
@@ -453,6 +458,11 @@ export default {
         this.textCellModalObject = null;
       }).catch((error) => {
         const errors = error.response?.data?.errors;
+        if (error.response?.data?.not_unique && this.textCellModalObject) {
+          this.textCellModalObject = { ...this.textCellModalObject, errorMessage: errors[0] };
+          return;
+        }
+
         HelperModule.flashAlertMsg(errors?.length ? errors.join(' ') : I18n.t('general.error'), 'danger');
         this.textCellModalObject = null;
         // re-render the cell so it shows the stored value again

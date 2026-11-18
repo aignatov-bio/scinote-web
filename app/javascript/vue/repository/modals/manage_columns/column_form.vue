@@ -72,6 +72,7 @@ import {
   update_unique_item_names_repository_path
 } from '../../../../routes.js';
 import NameTypeFields from './name_type_fields.vue';
+import TextColumnType from './column_types/text.vue';
 import NumberColumnType from './column_types/number.vue';
 import ListColumnType from './column_types/list.vue';
 import ChecklistColumnType from './column_types/checklist.vue';
@@ -94,6 +95,7 @@ const ROUTES = {
 };
 
 const TYPE_COMPONENTS = {
+  RepositoryTextValue: TextColumnType,
   RepositoryNumberValue: NumberColumnType,
   RepositoryListValue: ListColumnType,
   RepositoryChecklistValue: ChecklistColumnType,
@@ -137,6 +139,8 @@ export default {
       return this.column?.field === 'name';
     },
     typeComponent() {
+      if (this.isNameColumn) return null;
+
       return TYPE_COMPONENTS[this.dataType] || null;
     },
     typeKind() {

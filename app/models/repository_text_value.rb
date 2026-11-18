@@ -16,6 +16,7 @@ class RepositoryTextValue < ApplicationRecord
 
   validates :repository_cell, presence: true
   validates :data, presence: true, length: { maximum: Constants::TEXT_MAX_LENGTH }
+  validate :data_unique_in_column, if: -> { new_record? || will_save_change_to_data? }
 
   SORTABLE_COLUMN_NAME = 'repository_text_values.data'
 
@@ -69,4 +70,25 @@ class RepositoryTextValue < ApplicationRecord
   end
 
   alias export_formatted formatted
+
+  def not_unique_error?
+    errors.of_kind?(:data, :not_unique)
+  end
+
+  private
+
+  def data_unique_in_column
+    return if data.blank?
+
+    column = repository_cell&.repository_column
+    return unless column&.enforce_unique? && column.repository.is_a?(Repository)
+
+    duplicates = RepositoryTextValue.joins(:repository_cell)
+                                    .where(repository_cells: { repository_column_id: column.id })
+                                    .where("LOWER(repository_text_values.data) = LOWER(?)",
+                                           data.strip)
+    duplicates = duplicates.where.not(id: id) if persisted?
+
+    errors.add(:data, :not_unique) if duplicates.exists?
+  end
 end
