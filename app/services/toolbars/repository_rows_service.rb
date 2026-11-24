@@ -89,12 +89,19 @@ module Toolbars
 
       return unless @repository_rows.all?(&:active?)
 
-      {
+      action = {
         name: 'duplicate',
         label: I18n.t('repositories.copy_record'),
         icon: 'sn-icon sn-icon-duplicate',
         type: :emit
       }
+      # a single item is duplicated through the item card, where failed validations can be resolved
+      return action if @single
+
+      error = RepositoryRows::DuplicateValidationService.new(@repository, @repository_rows).error
+      return action unless error
+
+      action.merge(disabled: true, tooltip: I18n.t("repositories.copy_records_disabled.#{error}"))
     end
 
     def export_items_action

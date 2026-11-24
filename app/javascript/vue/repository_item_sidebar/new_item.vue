@@ -43,6 +43,9 @@
                     :repositoryId="repositoryId"
                     :itemName="name"
                     :canManageStock="canManageStock"
+                    :initialCell="source?.cells[column.id]"
+                    :initialStock="source?.stock?.column_id === column.id ? source.stock.draft : null"
+                    :showErrors="!!source"
                     @change="onCellChange(column.id, $event)"/>
                   <div v-if="cellErrors[column.id]"
                        class="-mt-3 text-xs text-sn-delete-red"
@@ -101,6 +104,7 @@ import ConfirmationModal from '../shared/confirmation_modal.vue';
 import ScrollSpy from './scroll_spy.vue';
 import NewItemCell from './new_item_cell.vue';
 import {
+  duplicate_repository_repository_row_path,
   new_repository_repository_row_path,
   repository_repository_rows_path,
   rails_direct_uploads_path
@@ -148,7 +152,8 @@ export default {
     NewItemCell
   },
   props: {
-    repositoryId: { type: [Number, String], required: true }
+    repositoryId: { type: [Number, String], required: true },
+    sourceRowId: { type: [Number, String], default: null }
   },
   emits: ['created', 'close'],
   data() {
@@ -161,6 +166,7 @@ export default {
       itemNameError: null,
       cellErrors: {},
       cells: {},
+      source: null,
       createAnother: false,
       creating: false,
       formKey: 0,
@@ -193,13 +199,18 @@ export default {
     filledCells() {
       return Object.fromEntries(Object.entries(this.cells).filter(([, value]) => !isBlank(value)));
     },
+    copiedColumnIds() {
+      if (!this.source) return [];
+
+      return Object.keys(this.source.cells).filter((columnId) => !(columnId in this.cells));
+    },
     isDirty() {
-      return this.name.trim() !== '' || Object.keys(this.filledCells).length > 0;
+      return this.name.trim() !== '' || Object.keys(this.filledCells).length > 0 || this.copiedColumnIds.length > 0;
     },
     canCreate() {
       return !this.loading && !this.creating && this.name.trim() !== '' && !this.nameError
         && Object.keys(this.cellErrors).length === 0
-        && this.columns.every((column) => !column.mandatory || column.id in this.filledCells);
+        && this.columns.every((column) => !column.mandatory || this.isFilled(column.id));
     }
   },
   watch: {
@@ -208,10 +219,12 @@ export default {
     }
   },
   created() {
-    axios.get(new_repository_repository_row_path(this.repositoryId))
+    const query = this.sourceRowId ? { source_row_id: this.sourceRowId } : {};
+    axios.get(new_repository_repository_row_path(this.repositoryId, query))
       .then(({ data }) => {
         this.columns = data.column_defs;
         this.canManageStock = data.can_manage_stock;
+        if (data.source) this.prefill(data.source);
         this.loading = false;
       })
       .catch(() => {
@@ -223,6 +236,21 @@ export default {
     this.focusName();
   },
   methods: {
+    prefill(source) {
+      this.source = { ...source, id: this.sourceRowId };
+      this.name = source.name;
+      this.nameTouched = true;
+      if (source.stock) this.cells[source.stock.column_id] = source.stock.draft;
+      this.cellErrors = Object.fromEntries(
+        Object.entries(source.errors.unique_cells || {}).map(([columnId, messages]) => [columnId, messages[0]])
+      );
+      this.$nextTick(() => {
+        this.itemNameError = source.errors.name?.[0] || null;
+      });
+    },
+    isFilled(columnId) {
+      return columnId in this.filledCells || this.copiedColumnIds.includes(String(columnId));
+    },
     focusName() {
       this.$refs.nameInput.focus({ preventScroll: true });
     },
@@ -267,11 +295,19 @@ export default {
     },
     async postItem() {
       const repositoryCells = {};
-      await Promise.all(Object.entries(this.filledCells).map(async ([columnId, value]) => {
-        repositoryCells[columnId] = value instanceof File ? await directUpload(value) : value;
+      const cells = this.source ? this.cells : this.filledCells;
+      await Promise.all(Object.entries(cells).map(async ([columnId, value]) => {
+        if (isBlank(value)) {
+          repositoryCells[columnId] = null;
+        } else {
+          repositoryCells[columnId] = value instanceof File ? await directUpload(value) : value;
+        }
       }));
 
-      const response = await axios.post(repository_repository_rows_path(this.repositoryId), {
+      const url = this.source
+        ? duplicate_repository_repository_row_path(this.repositoryId, this.source.id)
+        : repository_repository_rows_path(this.repositoryId);
+      const response = await axios.post(url, {
         repository_row: { name: this.name.trim() },
         repository_cells: repositoryCells
       });
@@ -285,6 +321,7 @@ export default {
       }
     },
     reset() {
+      this.source = null;
       this.cellErrors = {};
       this.name = '';
       this.nameTouched = false;
